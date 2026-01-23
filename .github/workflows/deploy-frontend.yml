@@ -1,0 +1,70 @@
+name: Deploy Frontend
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    branches:
+      - main
+  workflow_dispatch:
+    inputs:
+      skip-cache:
+        description: 'Skip deployment cache and force redeploy'
+        type: boolean
+        default: false
+
+permissions:
+  contents: read
+  statuses: write
+  id-token: write
+
+concurrency:
+  group: deploy-frontend-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    name: Build
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup node
+        uses: ./.github/actions/setup-node
+        with:
+          NODEJS_VERSION: '22'
+
+      - name: Compute source hash
+        id: source-hash
+        run: echo "hash=$(find src public package.json next.config.js -type f 2>/dev/null | sort | xargs sha256sum | sha256sum | cut -d' ' -f1)" >> "$GITHUB_OUTPUT"
+
+      - name: Cache build
+        id: cache-build
+        uses: actions/cache@v4
+        with:
+          path: out
+          key: build-${{ steps.source-hash.outputs.hash }}
+
+      - name: Build app
+        if: steps.cache-build.outputs.cache-hit != 'true'
+        run: npm run build
+
+      - name: Upload build artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: frontend-build
+          path: out
+          retention-days: 1
+
+  deploy:
+    needs: build
+    name: Deploy
+    uses: paritytech/product-infrastructure/.github/workflows/deploy-frontend.yml@42b3964b01799b78acd46a49ebcfb14d4c30ffb0
+    with:
+      dotns-domain: ${{ github.event_name == 'push' && 'sdk-test-app00.dot' || format('{0}-{1}.dot', github.event.repository.name, github.event.pull_request.head.ref) }}
+      artifact-name: frontend-build
+      skip-cache: ${{ inputs.skip-cache || false }}
+    secrets:
+      mnemonic: ${{ secrets.MNEMONIC || 'bottom drive obey lake curtain smoke basket hold race lonely fit walk' }}
