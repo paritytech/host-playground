@@ -1,13 +1,16 @@
-'use client'
+"use client";
 
-import { CHAINS, type ChainId } from '@/src/lib/sdk/types'
+import { CHAINS, type ChainId } from "@/src/lib/types";
 
 interface ChainSelectorProps {
-  selectedChain: ChainId
-  onChainChange: (chain: ChainId) => void
+  selectedChain: ChainId;
+  onChainChange: (chain: ChainId) => void;
 }
 
-export function ChainSelector({ selectedChain, onChainChange }: ChainSelectorProps) {
+export function ChainSelector({
+  selectedChain,
+  onChainChange,
+}: ChainSelectorProps) {
   return (
     <select
       value={selectedChain}
@@ -20,5 +23,5 @@ export function ChainSelector({ selectedChain, onChainChange }: ChainSelectorPro
         </option>
       ))}
     </select>
-  )
+  );
 }

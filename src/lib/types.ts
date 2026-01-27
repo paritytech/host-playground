@@ -15,6 +15,8 @@ export interface TestResult {
   details?: unknown;
 }
 
+export type TestLogger = (message: string) => void;
+
 export type TestCategory =
   | "extension"
   | "accounts"
@@ -35,7 +37,7 @@ export interface TestDefinition {
   description: string;
   category: TestCategory;
   requiresIframe?: boolean;
-  run: (chain: ChainConfig) => Promise<TestResult>;
+  run: (chain: ChainConfig, logger?: TestLogger) => Promise<TestResult>;
 }
 
 // Chain configurations

@@ -1,23 +1,28 @@
-'use client'
+"use client";
 
-import { useEffect, useState } from 'react'
-import { AlertCircle, CheckCircle2 } from 'lucide-react'
-import { SpektrExtensionName } from '@novasamatech/product-sdk'
-import { Badge } from '@/src/components/ui/badge'
-import { Card, CardContent, CardHeader, CardTitle } from '@/src/components/ui/card'
-import { type ChainConfig } from '@/src/lib/sdk/types'
-import { truncateHash } from '@/src/lib/utils'
+import { useEffect, useState } from "react";
+import { AlertCircle, CheckCircle2 } from "lucide-react";
+import { SpektrExtensionName } from "@novasamatech/product-sdk";
+import { Badge } from "@/src/components/badge";
+import {
+  Card,
+  CardContent,
+  CardHeader,
+  CardTitle,
+} from "@/src/components/card";
+import { type ChainConfig } from "@/src/lib/types";
+import { truncateHash } from "@/src/lib/utils";
 
 interface EnvironmentInfoProps {
-  selectedChain: ChainConfig
+  selectedChain: ChainConfig;
 }
 
 export function EnvironmentInfo({ selectedChain }: EnvironmentInfoProps) {
-  const [isInIframe, setIsInIframe] = useState<boolean | null>(null)
+  const [isInIframe, setIsInIframe] = useState<boolean | null>(null);
 
   useEffect(() => {
-    setIsInIframe(window !== window.top)
-  }, [])
+    setIsInIframe(window !== window.top);
+  }, []);
 
   return (
     <Card>
@@ -50,9 +55,13 @@ export function EnvironmentInfo({ selectedChain }: EnvironmentInfoProps) {
         <div className="pt-4 border-t border-border/60">
           <div className="text-sm font-medium mb-3">Selected Chain</div>
           <div className="text-sm">
-            <span className="font-medium text-foreground">{selectedChain.name}</span>
+            <span className="font-medium text-foreground">
+              {selectedChain.name}
+            </span>
             <span className="mx-2 text-muted-foreground">·</span>
-            <span className="text-muted-foreground">{selectedChain.network}</span>
+            <span className="text-muted-foreground">
+              {selectedChain.network}
+            </span>
           </div>
           <div className="font-mono text-xs text-muted-foreground mt-1">
             {truncateHash(selectedChain.genesis)}
@@ -72,5 +81,5 @@ export function EnvironmentInfo({ selectedChain }: EnvironmentInfoProps) {
         )}
       </CardContent>
     </Card>
-  )
+  );
 }

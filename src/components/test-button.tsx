@@ -1,19 +1,24 @@
-'use client'
+"use client";
 
-import { AlertTriangle, Play } from 'lucide-react'
-import { Button } from '@/src/components/ui/button'
-import type { TestDefinition } from '@/src/lib/sdk/types'
+import { AlertTriangle, Play } from "lucide-react";
+import { Button } from "@/src/components/button";
+import type { TestDefinition } from "@/src/lib/types";
 
 interface TestButtonProps {
-  test: TestDefinition
-  isRunning: boolean
-  onRun: () => void
-  disabled?: boolean
+  test: TestDefinition;
+  isRunning: boolean;
+  onRun: () => void;
+  disabled?: boolean;
 }
 
-export function TestButton({ test, isRunning, onRun, disabled }: TestButtonProps) {
-  const isCurrentlyRunning = isRunning
-  const isDisabled = disabled || isCurrentlyRunning
+export function TestButton({
+  test,
+  isRunning,
+  onRun,
+  disabled,
+}: TestButtonProps) {
+  const isCurrentlyRunning = isRunning;
+  const isDisabled = disabled || isCurrentlyRunning;
 
   return (
     <Button
@@ -37,5 +42,5 @@ export function TestButton({ test, isRunning, onRun, disabled }: TestButtonProps
         </span>
       </div>
     </Button>
-  )
+  );
 }

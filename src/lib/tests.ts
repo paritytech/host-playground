@@ -15,6 +15,7 @@ import { toHex } from "polkadot-api/utils";
 import {
   type ChainConfig,
   type TestDefinition,
+  type TestLogger,
   type TestResult,
 } from "./types";
 
@@ -217,10 +218,12 @@ export const signingTests: TestDefinition[] = [
   },
   {
     id: "sign-payload",
-    name: "Sign Payload",
-    description: "Signs a transaction payload for the selected chain",
+    name: "Sign & Submit Payload",
+    description: "Signs a transaction payload and submits it to the selected chain",
     category: "signing",
-    async run(chain: ChainConfig) {
+    async run(chain: ChainConfig, logger?: TestLogger) {
+      const log = logger || (() => {});
+
       const accountResult = await hostApi.get_non_product_accounts({
         tag: "v1",
         value: undefined,
@@ -258,6 +261,8 @@ export const signingTests: TestDefinition[] = [
       const api = client.getUnsafeApi();
 
       try {
+        log("Preparing transaction...");
+
         const message = `Sign this message to verify wallet ownership.\n\nWallet: ${address}\n\nThis will not trigger a blockchain transaction or cost any fees.`;
         const tx = api.tx.System.remark({
           remark: Binary.fromBytes(new TextEncoder().encode(message)),
@@ -265,17 +270,26 @@ export const signingTests: TestDefinition[] = [
         const callData = await tx.getEncodedData();
         const block = await client.getFinalizedBlock();
 
+        // Fetch runtime version from chain
+        const runtimeVersion = await api.apis.Core.version();
+        const specVersion = runtimeVersion.spec_version;
+        const transactionVersion = runtimeVersion.transaction_version;
+
+        // Fetch account nonce from chain
+        const accountInfo = await api.query.System.Account.getValue(address);
+        const nonce = accountInfo.nonce;
+
         const payload = {
           address,
-          blockHash: block.hash as `0x${string}`,
+          blockHash: chain.genesis, // For immortal era, use genesis hash
           blockNumber: `0x${block.number.toString(16)}` as `0x${string}`,
-          era: "0x0000" as `0x${string}`,
+          era: "0x00" as `0x${string}`, // Immortal era (single byte)
           genesisHash: chain.genesis,
           method: toHex(callData.asBytes()) as `0x${string}`,
-          nonce: "0x0" as `0x${string}`,
-          specVersion: "0x0" as `0x${string}`,
+          nonce: `0x${nonce.toString(16)}` as `0x${string}`,
+          specVersion: `0x${specVersion.toString(16)}` as `0x${string}`,
           tip: "0x0" as `0x${string}`,
-          transactionVersion: "0x0" as `0x${string}`,
+          transactionVersion: `0x${transactionVersion.toString(16)}` as `0x${string}`,
           signedExtensions: [],
           version: 4,
           assetId: undefined,
@@ -284,16 +298,66 @@ export const signingTests: TestDefinition[] = [
           withSignedTransaction: true,
         };
 
+        log("Waiting for signature...");
+
         const result = await hostApi.sign_payload({
           tag: "v1",
           value: payload,
         });
 
-        client.destroy();
+        return await result.match(
+          async (res) => {
+            const signedTx = res.value.signedTransaction as `0x${string}` | undefined;
 
-        return result.match(
-          (res) => success(`Payload signed for ${chain.name}`, res.value),
-          (err) => error(err.value.name, err.value),
+            if (!signedTx) {
+              client.destroy();
+              return success(`Payload signed for ${chain.name} (no signed tx returned)`, res.value);
+            }
+
+            try {
+              log("Submitting transaction...");
+
+              const txResult = await new Promise<{ hash: string; status: string }>((resolve, reject) => {
+                const subscription = client.submitAndWatch(signedTx).subscribe({
+                  next: (event) => {
+                    if (event.type === "broadcasted") {
+                      log(`⏳ BROADCASTED\nTxHash: ${event.txHash}`);
+                    } else if (event.type === "txBestBlocksState") {
+                      if (event.found) {
+                        log(`📦 IN BEST BLOCK (${event.ok ? "success" : "failed"})\nBlock: ${event.block.hash}\nTxHash: ${event.txHash}`);
+                      } else {
+                        log(`⏳ Waiting for block...\nTxHash: ${event.txHash}`);
+                      }
+                    } else if (event.type === "finalized") {
+                      const status = event.ok ? "success" : "failed";
+                      log(`✅ FINALIZED (${status})\nBlock: ${event.block.hash}\nTxHash: ${event.txHash}`);
+                      resolve({ hash: event.txHash, status: `finalized (${status})` });
+                      subscription.unsubscribe();
+                    } else {
+                      log(`${event.type}`);
+                    }
+                  },
+                  error: (err) => {
+                    reject(err);
+                  },
+                });
+              });
+
+              client.destroy();
+              return success(`Payload signed and submitted for ${chain.name}: ${txResult.status}`, {
+                ...res.value,
+                txHash: txResult.hash,
+                txStatus: txResult.status,
+              });
+            } catch (submitErr) {
+              client.destroy();
+              return error(`Signed but failed to submit: ${submitErr}`, res.value);
+            }
+          },
+          async (err) => {
+            client.destroy();
+            return error(err.value.name, err.value);
+          },
         );
       } catch (e) {
         client.destroy();

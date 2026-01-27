@@ -2,21 +2,21 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { AlertTriangle, RotateCcw } from "lucide-react";
-import { Button } from "@/src/components/ui/button";
-import { Card, CardContent } from "@/src/components/ui/card";
-import { EnvironmentInfo } from "@/src/components/sdk-test/environment-info";
-import { LogViewer } from "@/src/components/sdk-test/log-viewer";
-import { TestCategoryCard } from "@/src/components/sdk-test/test-category";
-import { ChainSelector } from "@/src/components/sdk-test/chain-selector";
-import { testsByCategory } from "@/src/lib/sdk/tests";
+import { Button } from "@/src/components/button";
+import { Card, CardContent } from "@/src/components/card";
+import { EnvironmentInfo } from "@/src/components/environment-info";
+import { LogViewer } from "@/src/components/log-viewer";
+import { TestCategoryCard } from "@/src/components/test-category";
+import { ChainSelector } from "@/src/components/chain-selector";
+import { testsByCategory } from "@/src/lib/tests";
 import {
   CHAINS,
   type ChainConfig,
   type ChainId,
   type TestDefinition,
   type TestCategory,
-} from "@/src/lib/sdk/types";
-import { useLogs } from "@/src/lib/sdk/use-logs";
+} from "@/src/lib/types";
+import { useLogs } from "@/src/lib/use-logs";
 import { stringify } from "@/src/lib/utils";
 
 const SDK_VERSION = "0.5.2";
@@ -95,8 +95,13 @@ export default function SdkTestPage() {
       setRunningTest(test.id);
       const logId = log(test.name, "pending", "Running...");
 
+      // Create a logger that updates the pending log entry
+      const testLogger = (message: string) => {
+        updateLog(logId, "pending", message);
+      };
+
       try {
-        const result = await test.run(currentChain);
+        const result = await test.run(currentChain, testLogger);
         updateLog(
           logId,
           result.success ? "success" : "error",

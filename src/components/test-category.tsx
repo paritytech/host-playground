@@ -1,26 +1,32 @@
-'use client'
+"use client";
 
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/src/components/ui/card'
-import type { TestCategory, TestDefinition } from '@/src/lib/sdk/types'
-import { TestButton } from './test-button'
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/src/components/card";
+import type { TestCategory, TestDefinition } from "@/src/lib/types";
+import { TestButton } from "./test-button";
 
 interface TestCategoryProps {
-  title: string
-  description: string
-  category: TestCategory
-  tests: TestDefinition[]
-  runningTest: string | null
-  onRunTest: (test: TestDefinition) => void
+  title: string;
+  description: string;
+  category: TestCategory;
+  tests: TestDefinition[];
+  runningTest: string | null;
+  onRunTest: (test: TestDefinition) => void;
 }
 
 const categoryIcons: Record<TestCategory, string> = {
-  extension: '🔌',
-  accounts: '👤',
-  signing: '✍️',
-  storage: '💾',
-  permissions: '🔐',
-  chat: '💬',
-}
+  extension: "🔌",
+  accounts: "👤",
+  signing: "✍️",
+  storage: "💾",
+  permissions: "🔐",
+  chat: "💬",
+};
 
 export function TestCategoryCard({
   title,
@@ -53,5 +59,5 @@ export function TestCategoryCard({
         </div>
       </CardContent>
     </Card>
-  )
+  );
 }
