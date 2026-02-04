@@ -1,9 +1,9 @@
 import {
   createChat,
-  createExtensionEnableFactory,
+  createNonProductExtensionEnableFactory,
   createMetaProvider,
   createPapiProvider,
-  defaultTransport,
+  sandboxTransport,
   hostApi,
   injectSpektrExtension,
   metaProvider,
@@ -58,7 +58,7 @@ export const extensionTests: TestDefinition[] = [
     category: "extension",
     async run() {
       const enableFactory =
-        await createExtensionEnableFactory(defaultTransport);
+        await createNonProductExtensionEnableFactory(sandboxTransport);
       if (!enableFactory) {
         return error("Transport not ready - enable factory returned null");
       }
@@ -117,7 +117,7 @@ export const extensionTests: TestDefinition[] = [
             throw new Error("Fallback provider called");
           },
         },
-        { transport: defaultTransport },
+        { transport: sandboxTransport },
       );
       return success(`PAPI provider created for ${chain.name}`, {
         provider: typeof provider,
@@ -129,13 +129,42 @@ export const extensionTests: TestDefinition[] = [
 // Account Tests
 export const accountTests: TestDefinition[] = [
   {
+    id: "check-environment",
+    name: "Check Environment",
+    description: "Verifies hostApi environment is properly configured",
+    category: "accounts",
+    async run() {
+      const hasWebviewMark =
+        typeof window !== "undefined" &&
+        (window as any).__HOST_WEBVIEW_MARK__ === true;
+      const hasApiPort =
+        typeof window !== "undefined" &&
+        (window as any).__HOST_API_PORT__ !== undefined;
+
+      const details = {
+        __HOST_WEBVIEW_MARK__: hasWebviewMark,
+        __HOST_API_PORT__: hasApiPort,
+        windowTop:
+          typeof window !== "undefined" ? window === window.top : "N/A",
+      };
+
+      if (hasWebviewMark && hasApiPort) {
+        return success("Environment properly configured", details);
+      } else if (!hasWebviewMark && !hasApiPort) {
+        return error("Not running in Polkadot Desktop webview", details);
+      } else {
+        return error("Partial environment setup", details);
+      }
+    },
+  },
+  {
     id: "account-get",
     name: "Get Account",
     description: "Gets a product account (requires iframe)",
     category: "accounts",
     requiresIframe: true,
     async run() {
-      const result = await hostApi.account_get({
+      const result = await hostApi.accountGet({
         tag: "v1",
         value: ["spektr.app", 0],
       });
@@ -152,7 +181,7 @@ export const accountTests: TestDefinition[] = [
     description: "Gets all non-product accounts",
     category: "accounts",
     async run() {
-      const result = await hostApi.get_non_product_accounts({
+      const result = await hostApi.getNonProductAccounts({
         tag: "v1",
         value: undefined,
       });
@@ -180,7 +209,7 @@ export const signingTests: TestDefinition[] = [
     description: "Signs a raw message with a non-product account",
     category: "signing",
     async run() {
-      const accountResult = await hostApi.get_non_product_accounts({
+      const accountResult = await hostApi.getNonProductAccounts({
         tag: "v1",
         value: undefined,
       });
@@ -202,7 +231,7 @@ export const signingTests: TestDefinition[] = [
       const message = `SDK Test: ${new Date().toISOString()}`;
       const messageBytes = new TextEncoder().encode(message);
 
-      const result = await hostApi.sign_raw({
+      const result = await hostApi.signRaw({
         tag: "v1",
         value: {
           address: toHex(publicKey),
@@ -219,12 +248,13 @@ export const signingTests: TestDefinition[] = [
   {
     id: "sign-payload",
     name: "Sign & Submit Payload",
-    description: "Signs a transaction payload and submits it to the selected chain",
+    description:
+      "Signs a transaction payload and submits it to the selected chain",
     category: "signing",
     async run(chain: ChainConfig, logger?: TestLogger) {
       const log = logger || (() => {});
 
-      const accountResult = await hostApi.get_non_product_accounts({
+      const accountResult = await hostApi.getNonProductAccounts({
         tag: "v1",
         value: undefined,
       });
@@ -289,7 +319,8 @@ export const signingTests: TestDefinition[] = [
           nonce: `0x${nonce.toString(16)}` as `0x${string}`,
           specVersion: `0x${specVersion.toString(16)}` as `0x${string}`,
           tip: "0x0" as `0x${string}`,
-          transactionVersion: `0x${transactionVersion.toString(16)}` as `0x${string}`,
+          transactionVersion:
+            `0x${transactionVersion.toString(16)}` as `0x${string}`,
           signedExtensions: [],
           version: 4,
           assetId: undefined,
@@ -300,38 +331,53 @@ export const signingTests: TestDefinition[] = [
 
         log("Waiting for signature...");
 
-        const result = await hostApi.sign_payload({
+        const result = await hostApi.signPayload({
           tag: "v1",
           value: payload,
         });
 
         return await result.match(
           async (res) => {
-            const signedTx = res.value.signedTransaction as `0x${string}` | undefined;
+            const signedTx = res.value.signedTransaction as
+              | `0x${string}`
+              | undefined;
 
             if (!signedTx) {
               client.destroy();
-              return success(`Payload signed for ${chain.name} (no signed tx returned)`, res.value);
+              return success(
+                `Payload signed for ${chain.name} (no signed tx returned)`,
+                res.value,
+              );
             }
 
             try {
               log("Submitting transaction...");
 
-              const txResult = await new Promise<{ hash: string; status: string }>((resolve, reject) => {
+              const txResult = await new Promise<{
+                hash: string;
+                status: string;
+              }>((resolve, reject) => {
                 const subscription = client.submitAndWatch(signedTx).subscribe({
                   next: (event) => {
                     if (event.type === "broadcasted") {
                       log(`⏳ BROADCASTED\nTxHash: ${event.txHash}`);
                     } else if (event.type === "txBestBlocksState") {
                       if (event.found) {
-                        log(`📦 IN BEST BLOCK (${event.ok ? "success" : "failed"})\nBlock: ${event.block.hash}\nTxHash: ${event.txHash}`);
+                        log(
+                          `📦 IN BEST BLOCK (${event.ok ? "success" : "failed"})\nBlock: ${event.block.hash}\nTxHash: ${event.txHash}`,
+                        );
                       } else {
                         log(`⏳ Waiting for block...\nTxHash: ${event.txHash}`);
                       }
                     } else if (event.type === "finalized") {
                       const status = event.ok ? "success" : "failed";
-                      log(`✅ FINALIZED (${status})\nBlock: ${event.block.hash}\nTxHash: ${event.txHash}`);
-                      resolve({ hash: event.txHash, status: `finalized (${status})` });
+                      log(
+                        `✅ FINALIZED (${status})\nBlock: ${event.block.hash}\nTxHash: ${event.txHash}`,
+                      );
+                      resolve({
+                        hash: event.txHash,
+                        status: `finalized (${status})`,
+                      });
                       subscription.unsubscribe();
                     } else {
                       log(`${event.type}`);
@@ -344,14 +390,20 @@ export const signingTests: TestDefinition[] = [
               });
 
               client.destroy();
-              return success(`Payload signed and submitted for ${chain.name}: ${txResult.status}`, {
-                ...res.value,
-                txHash: txResult.hash,
-                txStatus: txResult.status,
-              });
+              return success(
+                `Payload signed and submitted for ${chain.name}: ${txResult.status}`,
+                {
+                  ...res.value,
+                  txHash: txResult.hash,
+                  txStatus: txResult.status,
+                },
+              );
             } catch (submitErr) {
               client.destroy();
-              return error(`Signed but failed to submit: ${submitErr}`, res.value);
+              return error(
+                `Signed but failed to submit: ${submitErr}`,
+                res.value,
+              );
             }
           },
           async (err) => {
@@ -390,7 +442,7 @@ export const signingTests: TestDefinition[] = [
         },
       };
 
-      const result = await hostApi.create_transaction({
+      const result = await hostApi.createTransaction({
         tag: "v1",
         value: [["spektr.app", 0], txPayload],
       });
@@ -412,7 +464,7 @@ export const signingTests: TestDefinition[] = [
       const message = `Statement: ${Date.now()}`;
       const messageBytes = new TextEncoder().encode(message);
 
-      const result = await hostApi.statement_store_create_proof({
+      const result = await hostApi.statementStoreCreateProof({
         tag: "v1",
         value: [
           ["spektr.app", 0],
@@ -459,7 +511,7 @@ export const storageTests: TestDefinition[] = [
       const valueBytes = new TextEncoder().encode(value);
 
       // Write
-      const writeResult = await hostApi.storage_write({
+      const writeResult = await hostApi.storageWrite({
         tag: "v1",
         value: [key, valueBytes],
       });
@@ -477,7 +529,7 @@ export const storageTests: TestDefinition[] = [
       }
 
       // Read
-      const readResult = await hostApi.storage_read({
+      const readResult = await hostApi.storageRead({
         tag: "v1",
         value: key,
       });
@@ -502,7 +554,7 @@ export const storageTests: TestDefinition[] = [
     description: "Clears a storage key",
     category: "storage",
     async run() {
-      const result = await hostApi.storage_clear({
+      const result = await hostApi.storageClear({
         tag: "v1",
         value: "0x746573745f6b6579",
       });
@@ -523,7 +575,7 @@ export const permissionTests: TestDefinition[] = [
     description: "Requests chain connection permission",
     category: "permissions",
     async run(chain: ChainConfig) {
-      const result = await hostApi.permission_request({
+      const result = await hostApi.permissionRequest({
         tag: "v1",
         value: {
           tag: "ChainConnect",
@@ -599,7 +651,7 @@ export const chatTests: TestDefinition[] = [
     description: "Creates a chat contact for the product",
     category: "chat",
     async run() {
-      const result = await hostApi.chat_create_contact({
+      const result = await hostApi.chatCreateContact({
         tag: "v1",
         value: {
           name: "SDK Test Product",
@@ -619,7 +671,7 @@ export const chatTests: TestDefinition[] = [
     description: "Posts a message to the chat",
     category: "chat",
     async run() {
-      const result = await hostApi.chat_post_message({
+      const result = await hostApi.chatPostMessage({
         tag: "v1",
         value: {
           tag: "Text",

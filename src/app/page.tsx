@@ -19,7 +19,7 @@ import {
 import { useLogs } from "@/src/lib/use-logs";
 import { stringify } from "@/src/lib/utils";
 
-const SDK_VERSION = "0.5.2";
+const SDK_VERSION = "0.5.4-7";
 
 const categoryInfo: Record<
   TestCategory,

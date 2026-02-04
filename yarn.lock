@@ -590,27 +590,36 @@
   resolved "https://registry.yarnpkg.com/@nolyfill/is-core-module/-/is-core-module-1.0.39.tgz#3dc35ba0f1e66b403c00b39344f870298ebb1c8e"
   integrity sha512-nn5ozdjYQpUCZlWGuxcJY/KpxkWQs4DcbMCmKojjyrYDEAGy4Ce19NN4v5MduafTwJlbKc99UA8YhSVqq9yPZA==
 
-"@novasamatech/host-api@0.5.2":
-  version "0.5.2"
-  resolved "https://registry.yarnpkg.com/@novasamatech/host-api/-/host-api-0.5.2.tgz#84463ccc52c1d409b90f166fe04a01aba794ed8e"
-  integrity sha512-k5WuvZ7RmS7YxpJhQLuOrkrIzaUnbPCzgvSv+igtngTWA7DEEcdf5hEqlAoaZHF6BwIzmeftC4XhBCByAb3oLA==
+"@novasamatech/host-api@0.5.4-7":
+  version "0.5.4-7"
+  resolved "https://registry.yarnpkg.com/@novasamatech/host-api/-/host-api-0.5.4-7.tgz#8556724d9a8bed4327d23277b13c2f0e3086b490"
+  integrity sha512-rmrr5RkqPv00Eviy/s0xfHM8NXesrntVmPM2jePWbkIgmZVRxVdeMmdXpgetmIuaHov/by+Y6InoOOwuZ9ED4g==
   dependencies:
+    "@novasamatech/scale" "0.5.4-7"
     "@polkadot-api/utils" "^0.2.0"
     nanoevents "9.1.0"
     nanoid "5.1.6"
     neverthrow "^8.2.0"
     scale-ts "1.6.1"
 
-"@novasamatech/product-sdk@0.5.2":
-  version "0.5.2"
-  resolved "https://registry.yarnpkg.com/@novasamatech/product-sdk/-/product-sdk-0.5.2.tgz#b52ae330902fb9e2de8feae59b3cd30a011284bc"
-  integrity sha512-klKwRU3ciZKu0WDA84vkYoQQBM7QkAfh8WbViM93KR3LN5QnFEUMzfDPa1v+5Uq/pVSvxtzjgqpQ3fsYfCE0Lw==
+"@novasamatech/product-sdk@0.5.4-7":
+  version "0.5.4-7"
+  resolved "https://registry.yarnpkg.com/@novasamatech/product-sdk/-/product-sdk-0.5.4-7.tgz#89f2b97b9621dffb65c5bf7d8b6b82744cdb3603"
+  integrity sha512-4eWKVFkmDUqZEtuxCedZkgndsvl5pOf2ZyEKwQ9KS4bsfnrW3AI0Whi6pLbqNHkOEuOPvvJ50SYBJCMtJyV4Qw==
   dependencies:
-    "@novasamatech/host-api" "0.5.2"
+    "@novasamatech/host-api" "0.5.4-7"
     "@polkadot-api/json-rpc-provider" "^0.0.4"
     "@polkadot-api/json-rpc-provider-proxy" "^0.2.7"
-    "@polkadot-api/substrate-bindings" "^0.16.6"
+    "@polkadot-api/substrate-bindings" "^0.16.5"
     "@polkadot/extension-inject" "^0.62.6"
+
+"@novasamatech/scale@0.5.4-7":
+  version "0.5.4-7"
+  resolved "https://registry.yarnpkg.com/@novasamatech/scale/-/scale-0.5.4-7.tgz#c2ea49ba29873efcb2eeb00e1a32b7d6769f8481"
+  integrity sha512-TrsA4bdWkeEilcUlwyNmhN0kv2yNTVD4Rkb5RlCmUkfnPZjdkOhD/mYeohO5Fy5kqnt4ybIyN+xL1UYmVNAB4g==
+  dependencies:
+    "@polkadot-api/utils" "^0.2.0"
+    scale-ts "1.6.1"
 
 "@polkadot-api/cli@0.17.1":
   version "0.17.1"
@@ -847,7 +856,7 @@
     "@scure/base" "^1.1.1"
     scale-ts "^1.6.0"
 
-"@polkadot-api/substrate-bindings@^0.16.6":
+"@polkadot-api/substrate-bindings@^0.16.5":
   version "0.16.6"
   resolved "https://registry.yarnpkg.com/@polkadot-api/substrate-bindings/-/substrate-bindings-0.16.6.tgz#34bbe78297a270f4e8b1ee0f4e8565312707db7d"
   integrity sha512-cATY7HWU5hWd09C1MUEddechq7JT7QAciKL2/N/1wv5rxGcAFyAD9ZtaKBXVI4Aui9RSeGh8KvHdgKFLoozMyQ==
