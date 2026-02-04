@@ -503,7 +503,7 @@ export const storageTests: TestDefinition[] = [
       const valueBytes = new TextEncoder().encode(value);
 
       // Write
-      const writeResult = await hostApi.storageWrite({
+      const writeResult = await hostApi.localStorageWrite({
         tag: "v1",
         value: [key, valueBytes],
       });
@@ -521,7 +521,7 @@ export const storageTests: TestDefinition[] = [
       }
 
       // Read
-      const readResult = await hostApi.storageRead({
+      const readResult = await hostApi.localStorageRead({
         tag: "v1",
         value: key,
       });
@@ -546,7 +546,7 @@ export const storageTests: TestDefinition[] = [
     description: "Clears a storage key",
     category: "storage",
     async run() {
-      const result = await hostApi.storageClear({
+      const result = await hostApi.localStorageClear({
         tag: "v1",
         value: "0x746573745f6b6579",
       });
@@ -561,29 +561,7 @@ export const storageTests: TestDefinition[] = [
 
 // Permission Tests
 export const permissionTests: TestDefinition[] = [
-  {
-    id: "permission-request",
-    name: "Request Permission",
-    description: "Requests chain connection permission",
-    category: "permissions",
-    async run(chain: ChainConfig) {
-      const result = await hostApi.permissionRequest({
-        tag: "v1",
-        value: {
-          tag: "ChainConnect",
-          value: {
-            genesisHash: chain.genesis,
-            name: chain.name,
-          },
-        },
-      });
-
-      return result.match(
-        () => success(`Permission granted for ${chain.name}`),
-        (err) => error(err.value.name),
-      );
-    },
-  },
+  // Note: permissionRequest API has been removed from the SDK
   {
     id: "feature-check",
     name: "Feature Check",
@@ -619,12 +597,13 @@ export const chatTests: TestDefinition[] = [
       try {
         // Register the product as a chat contact
         const registrationStatus = await chat.register({
+          roomId: "test-room",
           name: "SDK Test Product",
           icon: "",
         });
 
         // Send a test message
-        const result = await chat.sendMessage({
+        const result = await chat.sendMessage("test-room", {
           tag: "Text",
           value: `SDK Test: ${new Date().toISOString()}`,
         });
@@ -638,21 +617,22 @@ export const chatTests: TestDefinition[] = [
     },
   },
   {
-    id: "chat-create-contact",
-    name: "Create Contact",
-    description: "Creates a chat contact for the product",
+    id: "chat-create-room",
+    name: "Create Room",
+    description: "Creates a chat room",
     category: "chat",
     async run() {
-      const result = await hostApi.chatCreateContact({
+      const result = await hostApi.chatCreateRoom({
         tag: "v1",
         value: {
+          roomId: "test-room",
           name: "SDK Test Product",
           icon: "https://example.com/icon.png",
         },
       });
 
       return result.match(
-        (res) => success(`Contact status: ${res.value}`),
+        (res) => success(`Room status: ${res.value}`),
         (err) => error(err.value.name),
       );
     },
@@ -666,8 +646,11 @@ export const chatTests: TestDefinition[] = [
       const result = await hostApi.chatPostMessage({
         tag: "v1",
         value: {
-          tag: "Text",
-          value: `SDK Test: ${new Date().toISOString()}`,
+          roomId: "test-room",
+          payload: {
+            tag: "Text",
+            value: `SDK Test: ${new Date().toISOString()}`,
+          },
         },
       });
 
