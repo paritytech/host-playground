@@ -110,15 +110,7 @@ export const extensionTests: TestDefinition[] = [
     description: "Creates a PAPI provider for the selected chain",
     category: "extension",
     async run(chain: ChainConfig) {
-      const provider = createPapiProvider(
-        {
-          chainId: chain.genesis,
-          fallback: () => {
-            throw new Error("Fallback provider called");
-          },
-        },
-        { transport: sandboxTransport },
-      );
+      const provider = createPapiProvider(chain.genesis);
       return success(`PAPI provider created for ${chain.name}`, {
         provider: typeof provider,
       });
@@ -283,10 +275,10 @@ export const signingTests: TestDefinition[] = [
       }
 
       // Create a proper PAPI client and transaction with WebSocket fallback
-      const provider = createPapiProvider({
-        chainId: chain.genesis,
-        fallback: getWsProvider([rpcEndpoint]),
-      });
+      const provider = createPapiProvider(
+        chain.genesis,
+        getWsProvider([rpcEndpoint]),
+      );
       const client = createClient(provider);
       const api = client.getUnsafeApi();
 
