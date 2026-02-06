@@ -4,14 +4,15 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "dev": "next dev --experimental-https",
+    "dev": "next dev",
     "start": "npx serve out",
     "build": "next build",
     "lint": "next lint",
     "lint:fix": "next lint --fix"
   },
   "dependencies": {
-    "@novasamatech/product-sdk": "0.5.4-7",
+    "@novasamatech/product-sdk": "0.5.4-9",
+    "@polkadot-api/pjs-signer": "0.6.19",
     "@radix-ui/react-slot": "^1.2.3",
     "@radix-ui/react-tabs": "^1.1.13",
     "@radix-ui/react-tooltip": "^1.1.8",

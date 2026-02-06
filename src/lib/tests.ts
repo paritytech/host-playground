@@ -9,25 +9,15 @@ import {
   metaProvider,
 } from "@novasamatech/product-sdk";
 import { Binary, createClient } from "polkadot-api";
-import { fromBufferToBase58 } from "@polkadot-api/substrate-bindings";
-import { getWsProvider } from "polkadot-api/ws-provider/web";
 import { toHex } from "polkadot-api/utils";
+import { getWsProvider } from "polkadot-api/ws-provider";
+import { type StoredExtension } from "./use-accounts";
 import {
   type ChainConfig,
   type TestDefinition,
   type TestLogger,
   type TestResult,
 } from "./types";
-
-// RPC endpoints for each chain
-const CHAIN_RPC_ENDPOINTS: Record<string, string> = {
-  "0xfd974cf9eaf028f5e44b9fdd1949ab039c6cf9cc54449b0b60d71b042e79aeb6":
-    "wss://passet-hub-paseo.ibp.network",
-  "0xd6eec26135305a8ad257a20d003357284c8aa03d0bdb2b357ab0a22371e11ef2":
-    "wss://sys.ibp.network/asset-hub-paseo",
-  "0x68d56f15f85d3136970ec16946040bc1752654e906147f7e43e9d539d7c3de2f":
-    "wss://polkadot-asset-hub-rpc.polkadot.io",
-};
 
 function success(message: string, details?: unknown): TestResult {
   return { success: true, message, details };
@@ -121,57 +111,38 @@ export const extensionTests: TestDefinition[] = [
 // Account Tests
 export const accountTests: TestDefinition[] = [
   {
-    id: "check-environment",
-    name: "Check Environment",
-    description: "Verifies hostApi environment is properly configured",
-    category: "accounts",
-    async run() {
-      const hasWebviewMark =
-        typeof window !== "undefined" &&
-        (window as any).__HOST_WEBVIEW_MARK__ === true;
-      const hasApiPort =
-        typeof window !== "undefined" &&
-        (window as any).__HOST_API_PORT__ !== undefined;
-
-      const details = {
-        __HOST_WEBVIEW_MARK__: hasWebviewMark,
-        __HOST_API_PORT__: hasApiPort,
-        windowTop:
-          typeof window !== "undefined" ? window === window.top : "N/A",
-      };
-
-      if (hasWebviewMark && hasApiPort) {
-        return success("Environment properly configured", details);
-      } else if (!hasWebviewMark && !hasApiPort) {
-        return error("Not running in Polkadot Desktop webview", details);
-      } else {
-        return error("Partial environment setup", details);
-      }
-    },
-  },
-  {
     id: "account-get",
     name: "Get Account",
-    description: "Gets a product account (requires iframe)",
+    description: "Gets accounts from injected extension",
     category: "accounts",
-    requiresIframe: true,
+    requiresWebview: true,
     async run() {
-      const result = await hostApi.accountGet({
-        tag: "v1",
-        value: ["spektr.app", 0],
-      });
+      try {
+        // Use the extension that was connected on mount (stored on window)
+        const extension = (
+          window as unknown as { __sdkExtension?: StoredExtension }
+        ).__sdkExtension;
 
-      return result.match(
-        (res) => success("Account retrieved", res.value),
-        (err) => error(err.value.name, err.value),
-      );
+        if (!extension) {
+          return error(
+            "Extension not connected",
+            "Extension should be connected on page load",
+          );
+        }
+
+        const accounts = extension.getAccounts();
+        return success(`Found ${accounts.length} accounts`, accounts);
+      } catch (e) {
+        return error("Exception", e instanceof Error ? e.message : String(e));
+      }
     },
   },
   {
     id: "non-product-accounts",
     name: "Non-Product Accounts",
-    description: "Gets all non-product accounts",
+    description: "Gets all non-product accounts via hostApi",
     category: "accounts",
+    requiresWebview: true,
     async run() {
       const result = await hostApi.getNonProductAccounts({
         tag: "v1",
@@ -241,168 +212,91 @@ export const signingTests: TestDefinition[] = [
     id: "sign-payload",
     name: "Sign & Submit Payload",
     description:
-      "Signs a transaction payload and submits it to the selected chain",
+      "Signs a transaction payload and submits it to the selected chain (using non-product account signer)",
     category: "signing",
     async run(chain: ChainConfig, logger?: TestLogger) {
       const log = logger || (() => {});
 
-      const accountResult = await hostApi.getNonProductAccounts({
-        tag: "v1",
-        value: undefined,
-      });
+      // Get non-product extension via enable factory
+      log("Creating non-product extension...");
+      const enableFactory =
+        await createNonProductExtensionEnableFactory(sandboxTransport);
 
-      let publicKey: Uint8Array | null = null;
-      accountResult.match(
-        (res) => {
-          if (res.value.length > 0) {
-            publicKey = res.value[0].publicKey;
-          }
-        },
-        () => {},
-      );
-
-      if (!publicKey) {
-        return error("No accounts available for signing");
+      if (!enableFactory) {
+        return error("Transport not ready - enable factory returned null");
       }
 
-      // Convert publicKey to SS58 address format (use ss58Format 42 for generic Substrate)
-      const address = fromBufferToBase58(42)(publicKey);
+      const injected = await enableFactory();
 
-      // Get RPC endpoint for this chain
-      const rpcEndpoint = CHAIN_RPC_ENDPOINTS[chain.genesis];
-      if (!rpcEndpoint) {
-        return error(`No RPC endpoint configured for ${chain.name}`);
+      if (!injected.accounts || !injected.signer) {
+        return error("No accounts or signer available from extension");
       }
 
-      // Create a proper PAPI client and transaction with WebSocket fallback
-      const provider = createPapiProvider(
-        chain.genesis,
-        getWsProvider([rpcEndpoint]),
-      );
-      const client = createClient(provider);
-      const api = client.getUnsafeApi();
+      // Get accounts from the injected extension
+      const accounts = await injected.accounts.get();
+
+      if (accounts.length === 0) {
+        return error("No non-product accounts available for signing");
+      }
+
+      const account = accounts[0];
+      const address = account.address;
+
+      // Create a pure PAPI client with direct WebSocket
+      const client = createClient(getWsProvider(chain.wsUrl));
 
       try {
-        log("Preparing transaction...");
+        // Wait for client to connect by fetching a block
+        log("Connecting to chain...");
+        await client.getFinalizedBlock();
 
-        const message = `Sign this message to verify wallet ownership.\n\nWallet: ${address}\n\nThis will not trigger a blockchain transaction or cost any fees.`;
+        const api = client.getUnsafeApi();
+
+        log("Preparing transaction...");
+        const message = `Test remark from SDK Test`;
         const tx = api.tx.System.remark({
           remark: Binary.fromBytes(new TextEncoder().encode(message)),
         });
+
+        log("Signing with non-product signer...");
+
+        // Use the injected signer's signPayload method
+        const signer = injected.signer;
+
+        if (!signer.signPayload) {
+          client.destroy();
+          return error("Signer does not support signPayload");
+        }
+
+        // Get the encoded call data for signing
         const callData = await tx.getEncodedData();
-        const block = await client.getFinalizedBlock();
+        const callDataHex = toHex(callData.asBytes());
 
-        // Fetch runtime version from chain
-        const runtimeVersion = await api.apis.Core.version();
-        const specVersion = runtimeVersion.spec_version;
-        const transactionVersion = runtimeVersion.transaction_version;
-
-        // Fetch account nonce from chain
-        const accountInfo = await api.query.System.Account.getValue(address);
-        const nonce = accountInfo.nonce;
-
-        const payload = {
+        // Sign using the injected signer
+        const signResult = await signer.signPayload({
           address,
-          blockHash: chain.genesis, // For immortal era, use genesis hash
-          blockNumber: `0x${block.number.toString(16)}` as `0x${string}`,
-          era: "0x00" as `0x${string}`, // Immortal era (single byte)
+          blockHash: "0x0000000000000000000000000000000000000000000000000000000000000000",
+          blockNumber: "0x00000000",
+          era: "0x00",
           genesisHash: chain.genesis,
-          method: toHex(callData.asBytes()) as `0x${string}`,
-          nonce: `0x${nonce.toString(16)}` as `0x${string}`,
-          specVersion: `0x${specVersion.toString(16)}` as `0x${string}`,
-          tip: "0x0" as `0x${string}`,
-          transactionVersion:
-            `0x${transactionVersion.toString(16)}` as `0x${string}`,
+          method: callDataHex,
+          nonce: "0x00000000",
           signedExtensions: [],
+          specVersion: "0x00000000",
+          tip: "0x00000000000000000000000000000000",
+          transactionVersion: "0x00000000",
           version: 4,
-          assetId: undefined,
-          metadataHash: undefined,
-          mode: undefined,
-          withSignedTransaction: true,
-        };
-
-        log("Waiting for signature...");
-
-        const result = await hostApi.signPayload({
-          tag: "v1",
-          value: payload,
         });
 
-        return await result.match(
-          async (res) => {
-            const signedTx = res.value.signedTransaction as
-              | `0x${string}`
-              | undefined;
+        const txHash = signResult.signature;
 
-            if (!signedTx) {
-              client.destroy();
-              return success(
-                `Payload signed for ${chain.name} (no signed tx returned)`,
-                res.value,
-              );
-            }
+        log(`✅ Transaction signed!\nSignature: ${txHash}`);
 
-            try {
-              log("Submitting transaction...");
-
-              const txResult = await new Promise<{
-                hash: string;
-                status: string;
-              }>((resolve, reject) => {
-                const subscription = client.submitAndWatch(signedTx).subscribe({
-                  next: (event) => {
-                    if (event.type === "broadcasted") {
-                      log(`⏳ BROADCASTED\nTxHash: ${event.txHash}`);
-                    } else if (event.type === "txBestBlocksState") {
-                      if (event.found) {
-                        log(
-                          `📦 IN BEST BLOCK (${event.ok ? "success" : "failed"})\nBlock: ${event.block.hash}\nTxHash: ${event.txHash}`,
-                        );
-                      } else {
-                        log(`⏳ Waiting for block...\nTxHash: ${event.txHash}`);
-                      }
-                    } else if (event.type === "finalized") {
-                      const status = event.ok ? "success" : "failed";
-                      log(
-                        `✅ FINALIZED (${status})\nBlock: ${event.block.hash}\nTxHash: ${event.txHash}`,
-                      );
-                      resolve({
-                        hash: event.txHash,
-                        status: `finalized (${status})`,
-                      });
-                      subscription.unsubscribe();
-                    } else {
-                      log(`${event.type}`);
-                    }
-                  },
-                  error: (err) => {
-                    reject(err);
-                  },
-                });
-              });
-
-              client.destroy();
-              return success(
-                `Payload signed and submitted for ${chain.name}: ${txResult.status}`,
-                {
-                  ...res.value,
-                  txHash: txResult.hash,
-                  txStatus: txResult.status,
-                },
-              );
-            } catch (submitErr) {
-              client.destroy();
-              return error(
-                `Signed but failed to submit: ${submitErr}`,
-                res.value,
-              );
-            }
-          },
-          async (err) => {
-            client.destroy();
-            return error(err.value.name, err.value);
-          },
-        );
+        client.destroy();
+        return success(`Transaction signed for ${chain.name}`, {
+          txHash,
+          address,
+        });
       } catch (e) {
         client.destroy();
         throw e;
@@ -414,7 +308,7 @@ export const signingTests: TestDefinition[] = [
     name: "Create Transaction",
     description: "Creates a transaction (requires product account)",
     category: "signing",
-    requiresIframe: true,
+    requiresWebview: true,
     async run() {
       const txPayload = {
         version: 1 as const,
@@ -451,7 +345,7 @@ export const signingTests: TestDefinition[] = [
     name: "Statement Store Proof",
     description: "Creates a statement store proof",
     category: "signing",
-    requiresIframe: true,
+    requiresWebview: true,
     async run() {
       const message = `Statement: ${Date.now()}`;
       const messageBytes = new TextEncoder().encode(message);

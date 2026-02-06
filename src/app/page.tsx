@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useState } from "react";
 import { AlertTriangle, RotateCcw } from "lucide-react";
 import { Button } from "@/src/components/button";
 import { Card, CardContent } from "@/src/components/card";
@@ -17,9 +17,11 @@ import {
   type TestCategory,
 } from "@/src/lib/types";
 import { useLogs } from "@/src/lib/use-logs";
+import { useAccounts } from "@/src/lib/use-accounts";
+import { useConnectionStatus } from "@/src/lib/use-connection-status";
 import { stringify } from "@/src/lib/utils";
 
-const SDK_VERSION = "0.5.4-7";
+const SDK_VERSION = "0.5.4-9";
 
 const categoryInfo: Record<
   TestCategory,
@@ -64,12 +66,12 @@ function NotInHostScreen() {
               Not Running Inside Host
             </h1>
             <p className="text-base text-muted-foreground leading-relaxed">
-              This application must be run inside a Spektr iframe to function
+              This application must be run inside a Host webview to function
               properly. The SDK requires the host environment to communicate
-              with the Spektr wallet.
+              with the Polakdot App.
             </p>
             <p className="text-base text-muted-foreground mt-5 leading-relaxed">
-              Please open this application through the Spektr wallet interface.
+              Please open this application through the Host interface.
             </p>
           </div>
         </CardContent>
@@ -81,14 +83,20 @@ function NotInHostScreen() {
 export default function SdkTestPage() {
   const { logs, log, updateLog, clearLogs, exportLogs } = useLogs();
   const [runningTest, setRunningTest] = useState<string | null>(null);
-  const [selectedChain, setSelectedChain] = useState<ChainId>("PASSET_HUB");
-  const [isInIframe, setIsInIframe] = useState<boolean | null>(null);
-
-  useEffect(() => {
-    setIsInIframe(window !== window.top);
-  }, []);
+  const [selectedChain, setSelectedChain] =
+    useState<ChainId>("PASEO_ASSET_HUB");
 
   const currentChain: ChainConfig = CHAINS[selectedChain];
+
+  // Use hooks for connection and accounts (like coin-flip)
+  // connectionStatus starts as null until subscribeConnectionStatus responds
+  const connectionStatus = useConnectionStatus();
+  const { accounts, isLoading: accountsLoading, isReady } = useAccounts();
+
+  // App is only usable once the connection status subscription has responded
+  // AND the extension readiness check has completed
+  const isTransportReady = connectionStatus !== null;
+  const isInWebview = isTransportReady ? isReady : null;
 
   const runTest = useCallback(
     async (test: TestDefinition) => {
@@ -118,8 +126,8 @@ export default function SdkTestPage() {
     [log, updateLog, currentChain],
   );
 
-  // Show loading state while checking iframe status
-  if (isInIframe === null) {
+  // Show loading state while checking webview status
+  if (isInWebview === null) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
         <div className="text-lg text-muted-foreground">Loading...</div>
@@ -127,8 +135,8 @@ export default function SdkTestPage() {
     );
   }
 
-  // Show not in host screen if not in iframe
-  if (!isInIframe) {
+  // Show not in host screen if not in webview
+  if (!isInWebview) {
     return <NotInHostScreen />;
   }
 
@@ -154,7 +162,10 @@ export default function SdkTestPage() {
               <Button
                 variant="ghost"
                 size="default"
-                onClick={() => window.location.reload()}
+                onClick={() => {
+                  clearLogs();
+                  setRunningTest(null);
+                }}
               >
                 <RotateCcw className="h-5 w-5 mr-2" />
                 Reset
@@ -170,7 +181,12 @@ export default function SdkTestPage() {
           {/* Left Column: Tests */}
           <div className="space-y-6">
             {/* Environment Info */}
-            <EnvironmentInfo selectedChain={currentChain} />
+            <EnvironmentInfo
+              selectedChain={currentChain}
+              connectionStatus={connectionStatus!}
+              accounts={accounts}
+              accountsLoading={accountsLoading}
+            />
 
             {/* Test Categories */}
             <div className="space-y-6">
