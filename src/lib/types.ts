@@ -57,6 +57,13 @@ export const CHAINS = {
       "0x68d56f15f85d3136970ec16946040bc1752654e906147f7e43e9d539d7c3de2f" as const,
     wsUrl: "wss://sys.ibp.network/asset-hub-polkadot",
   },
+  PREVIEWNET_ASSET_HUB: {
+    name: "Previewnet Hub",
+    network: "Testnet",
+    genesis:
+      "0x4bad3ce960c32a1d55005d258883d14fc6eca4486af35500bed93c314fbdb192" as const,
+    wsUrl: "wss://previewnet.substrate.dev/asset-hub",
+  },
 } as const;
 
 export type ChainId = keyof typeof CHAINS;
