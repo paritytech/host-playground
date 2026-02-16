@@ -26,9 +26,7 @@ export const useAccounts = () => {
     setError(null);
 
     try {
-      console.log("[useAccounts] Injecting extension...");
       const ready = await injectSpektrExtension();
-      console.log("[useAccounts] Extension ready:", ready);
       setIsReady(ready);
 
       if (!ready) {
@@ -36,17 +34,13 @@ export const useAccounts = () => {
         return null;
       }
 
-      console.log("[useAccounts] Connecting to:", SpektrExtensionName);
       const extension = await connectInjectedExtension(SpektrExtensionName);
-      console.log("[useAccounts] Connected");
-
       // Store extension on window for tests to reuse
       (
         window as unknown as { __sdkExtension?: StoredExtension }
       ).__sdkExtension = extension;
 
       const accounts = extension.getAccounts();
-      console.log("[useAccounts] Accounts:", JSON.stringify(accounts, null, 2));
 
       setAccounts(accounts);
       return accounts;

@@ -8,7 +8,6 @@ export const useConnectionStatus = () => {
 
   useEffect(() => {
     const unsubscribe = metaProvider.subscribeConnectionStatus((s) => {
-      console.log("[Connection] Status update:", s);
       setStatus(s);
     });
     return unsubscribe;
