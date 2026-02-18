@@ -1,8 +1,7 @@
 "use client";
 
-import { AlertCircle, CheckCircle2, Loader2, User } from "lucide-react";
+import { AlertCircle, AlertTriangle, CheckCircle2, Loader2, User } from "lucide-react";
 import { SpektrExtensionName } from "@novasamatech/product-sdk";
-import { type InjectedPolkadotAccount } from "@polkadot-api/pjs-signer";
 import { Badge } from "@/src/components/badge";
 import {
   Card,
@@ -11,6 +10,7 @@ import {
   CardTitle,
 } from "@/src/components/card";
 import { type ChainConfig } from "@/src/lib/types";
+import { type SdkAccount } from "@/src/lib/use-accounts";
 import { truncateHash } from "@/src/lib/utils";
 
 type ConnectionStatus = "connecting" | "connected" | "disconnected";
@@ -18,7 +18,7 @@ type ConnectionStatus = "connecting" | "connected" | "disconnected";
 interface EnvironmentInfoProps {
   selectedChain: ChainConfig;
   connectionStatus: ConnectionStatus;
-  accounts: InjectedPolkadotAccount[] | null;
+  accounts: SdkAccount[] | null;
   accountsLoading: boolean;
 }
 
@@ -90,11 +90,11 @@ export function EnvironmentInfo({
               <div className="flex items-center gap-2 text-sm">
                 <User className="h-4 w-4 text-muted-foreground" />
                 <span className="font-medium text-foreground">
-                  {accounts[0].name}
+                  {accounts[0].name ?? "Unnamed"}
                 </span>
               </div>
               <div className="font-mono text-xs text-muted-foreground mt-1">
-                {truncateHash(accounts[0].address)}
+                {truncateHash(accounts[0].publicKey)}
               </div>
             </>
           ) : (
@@ -118,17 +118,12 @@ export function EnvironmentInfo({
           </div>
         </div>
 
-        {isInWebview === false && (
-          <div className="pt-4 border-t border-border/60">
-            <div className="flex items-start gap-2 text-xs text-warning">
-              <AlertCircle className="h-4 w-4 shrink-0 mt-0.5" />
-              <span>
-                Some tests require running inside a Nova Wallet webview. Tests marked
-                with ⚠️ may hang or fail when not in a webview context.
-              </span>
-            </div>
+        <div className="pt-4 border-t border-border/60">
+          <div className="flex items-center gap-2 text-xs text-warning">
+            <AlertTriangle className="h-4 w-4 shrink-0" />
+            <span>Not working with Polkadot Desktop version &lt;= 0.0.14</span>
           </div>
-        )}
+        </div>
       </CardContent>
     </Card>
   );

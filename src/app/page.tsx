@@ -21,7 +21,7 @@ import { useAccounts } from "@/src/lib/use-accounts";
 import { useConnectionStatus } from "@/src/lib/use-connection-status";
 import { stringify } from "@/src/lib/utils";
 
-const SDK_VERSION = "0.5.4-9";
+const SDK_VERSION = "0.5.5";
 
 const categoryInfo: Record<
   TestCategory,
@@ -49,7 +49,15 @@ const categoryInfo: Record<
   },
   chat: {
     title: "Chat",
-    description: "Create contacts and send messages",
+    description: "Register rooms, bots, and send messages",
+  },
+  statements: {
+    title: "Statement Store",
+    description: "Create proofs and subscribe to statements",
+  },
+  preimage: {
+    title: "Preimage",
+    description: "Submit and lookup preimages",
   },
 };
 

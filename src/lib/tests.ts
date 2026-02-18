@@ -1,5 +1,4 @@
 import {
-  createChat,
   createNonProductExtensionEnableFactory,
   createMetaProvider,
   createPapiProvider,
@@ -7,11 +6,18 @@ import {
   hostApi,
   injectSpektrExtension,
   metaProvider,
+  createProductChatManager,
+  createAccountsProvider,
+  createStatementStore,
+  createLocalStorage,
+  hostLocalStorage,
+  createPreimageManager,
+  preimageManager,
+  WellKnownChain,
 } from "@novasamatech/product-sdk";
 import { Binary, createClient } from "polkadot-api";
 import { toHex } from "polkadot-api/utils";
 import { getWsProvider } from "polkadot-api/ws-provider";
-import { type StoredExtension } from "./use-accounts";
 import {
   type ChainConfig,
   type TestDefinition,
@@ -34,6 +40,7 @@ export const extensionTests: TestDefinition[] = [
     name: "Inject Extension",
     description: "Injects the Spektr extension into the page",
     category: "extension",
+    isWorking: true,
     async run() {
       const result = await injectSpektrExtension();
       return result
@@ -46,6 +53,7 @@ export const extensionTests: TestDefinition[] = [
     name: "Extension Enable Factory",
     description: "Creates and enables the extension factory",
     category: "extension",
+    isWorking: true,
     async run() {
       const enableFactory =
         await createNonProductExtensionEnableFactory(sandboxTransport);
@@ -63,6 +71,7 @@ export const extensionTests: TestDefinition[] = [
     name: "Connection Status",
     description: "Subscribes to connection status changes (10s)",
     category: "extension",
+    isWorking: true,
     async run() {
       return new Promise((resolve) => {
         const statuses: string[] = [];
@@ -87,6 +96,7 @@ export const extensionTests: TestDefinition[] = [
     name: "Meta Provider",
     description: "Creates a meta provider instance",
     category: "extension",
+    isWorking: true,
     async run() {
       const provider = createMetaProvider();
       return provider
@@ -99,11 +109,29 @@ export const extensionTests: TestDefinition[] = [
     name: "PAPI Provider",
     description: "Creates a PAPI provider for the selected chain",
     category: "extension",
+    isWorking: true,
     async run(chain: ChainConfig) {
       const provider = createPapiProvider(chain.genesis);
       return success(`PAPI provider created for ${chain.name}`, {
         provider: typeof provider,
       });
+    },
+  },
+  {
+    id: "well-known-chains",
+    name: "Well-Known Chains",
+    description: "Verifies WellKnownChain constant exports",
+    category: "extension",
+    isWorking: true,
+    async run() {
+      const chains = Object.entries(WellKnownChain);
+      const chainNames = chains.map(
+        ([name, genesis]) => `${name}: ${genesis.slice(0, 10)}...`,
+      );
+      return success(
+        `${chains.length} well-known chains available`,
+        chainNames,
+      );
     },
   },
 ];
@@ -112,37 +140,33 @@ export const extensionTests: TestDefinition[] = [
 export const accountTests: TestDefinition[] = [
   {
     id: "account-get",
-    name: "Get Account",
-    description: "Gets accounts from injected extension",
+    name: "Get Accounts (Provider)",
+    description: "Gets non-product accounts via createAccountsProvider",
     category: "accounts",
-    requiresWebview: true,
+    isWorking: true,
     async run() {
-      try {
-        // Use the extension that was connected on mount (stored on window)
-        const extension = (
-          window as unknown as { __sdkExtension?: StoredExtension }
-        ).__sdkExtension;
+      const accountsProvider = createAccountsProvider();
+      const result = await accountsProvider.getNonProductAccounts();
 
-        if (!extension) {
-          return error(
-            "Extension not connected",
-            "Extension should be connected on page load",
-          );
-        }
-
-        const accounts = extension.getAccounts();
-        return success(`Found ${accounts.length} accounts`, accounts);
-      } catch (e) {
-        return error("Exception", e instanceof Error ? e.message : String(e));
-      }
+      return result.match(
+        (accounts) =>
+          success(
+            `Found ${accounts.length} accounts`,
+            accounts.map((a) => ({
+              publicKey: toHex(a.publicKey),
+              name: a.name,
+            })),
+          ),
+        (err) => error(`${err.name}`, err),
+      );
     },
   },
   {
     id: "non-product-accounts",
-    name: "Non-Product Accounts",
-    description: "Gets all non-product accounts via hostApi",
+    name: "Non-Product Accounts (hostApi)",
+    description: "Gets all non-product accounts via legacy hostApi",
     category: "accounts",
-    requiresWebview: true,
+    isWorking: true,
     async run() {
       const result = await hostApi.getNonProductAccounts({
         tag: "v1",
@@ -162,6 +186,125 @@ export const accountTests: TestDefinition[] = [
       );
     },
   },
+  {
+    id: "accounts-provider-non-product",
+    name: "Non-Product Accounts (Provider)",
+    description: "Gets non-product accounts via createAccountsProvider",
+    category: "accounts",
+    isWorking: true,
+    async run() {
+      const accountsProvider = createAccountsProvider();
+      const result = await accountsProvider.getNonProductAccounts();
+
+      return result.match(
+        (accounts) =>
+          success(
+            `Found ${accounts.length} non-product accounts`,
+            accounts.map((a) => ({
+              ...a,
+              publicKey: toHex(a.publicKey),
+            })),
+          ),
+        (err) => error(`${err.name}`, err),
+      );
+    },
+  },
+  {
+    id: "accounts-provider-product",
+    name: "Get Product Account",
+    description: "Gets a product account via createAccountsProvider",
+    category: "accounts",
+    isWorking: false,
+    async run() {
+      const accountsProvider = createAccountsProvider();
+      const result = await accountsProvider.getProductAccount("spektr.app");
+
+      return result.match(
+        (account) =>
+          success(`Product account: ${account.name ?? "unnamed"}`, {
+            ...account,
+            publicKey: toHex(account.publicKey),
+          }),
+        (err) => error(`${err.name}`, err),
+      );
+    },
+  },
+  {
+    id: "accounts-provider-alias",
+    name: "Get Product Account Alias",
+    description: "Gets a product account alias via createAccountsProvider",
+    category: "accounts",
+    isWorking: false,
+    async run() {
+      const accountsProvider = createAccountsProvider();
+      const result =
+        await accountsProvider.getProductAccountAlias("spektr.app");
+
+      return result.match(
+        (alias) =>
+          success("Account alias retrieved", {
+            context: toHex(alias.context),
+            alias: toHex(alias.alias),
+          }),
+        (err) => error(`${err.name}`, err),
+      );
+    },
+  },
+  {
+    id: "accounts-provider-product-signer",
+    name: "Product Account Signer",
+    description: "Creates a PolkadotSigner for a product account",
+    category: "accounts",
+    isWorking: false,
+    async run() {
+      const accountsProvider = createAccountsProvider();
+      const accountResult =
+        await accountsProvider.getProductAccount("spektr.app");
+
+      return accountResult.match(
+        (account) => {
+          const signer = accountsProvider.getProductAccountSigner({
+            dotNsIdentifier: "spektr.app",
+            derivationIndex: 0,
+            publicKey: account.publicKey,
+          });
+          return success("Product account signer created", {
+            publicKey: toHex(signer.publicKey),
+          });
+        },
+        (err) => error(`${err.name}`, err),
+      );
+    },
+  },
+  {
+    id: "accounts-provider-non-product-signer",
+    name: "Non-Product Account Signer",
+    description: "Creates a PolkadotSigner for a non-product account",
+    category: "accounts",
+    isWorking: false,
+    async run() {
+      const accountsProvider = createAccountsProvider();
+      const accountsResult = await accountsProvider.getNonProductAccounts();
+
+      return accountsResult.match(
+        (accounts) => {
+          if (accounts.length === 0) {
+            return error("No non-product accounts available");
+          }
+          const account = accounts[0];
+          const signer = accountsProvider.getNonProductAccountSigner({
+            dotNsIdentifier: "",
+            derivationIndex: 0,
+            publicKey: account.publicKey,
+          });
+          return success("Non-product account signer created", {
+            publicKey: toHex(signer.publicKey),
+          });
+        },
+        (err) => error(`${err.name}`, err),
+      );
+    },
+  },
 ];
 
 // Signing Tests
@@ -171,6 +314,7 @@ export const signingTests: TestDefinition[] = [
     name: "Sign Raw Message",
     description: "Signs a raw message with a non-product account",
     category: "signing",
+    isWorking: false,
     async run() {
       const accountResult = await hostApi.getNonProductAccounts({
         tag: "v1",
@@ -214,6 +358,7 @@ export const signingTests: TestDefinition[] = [
     description:
       "Signs a transaction payload and submits it to the selected chain (using non-product account signer)",
     category: "signing",
+    isWorking: true,
     async run(chain: ChainConfig, logger?: TestLogger) {
       const log = logger || (() => {});
 
@@ -275,7 +420,8 @@ export const signingTests: TestDefinition[] = [
         // Sign using the injected signer
         const signResult = await signer.signPayload({
           address,
-          blockHash: "0x0000000000000000000000000000000000000000000000000000000000000000",
+          blockHash:
+            "0x0000000000000000000000000000000000000000000000000000000000000000",
           blockNumber: "0x00000000",
           era: "0x00",
           genesisHash: chain.genesis,
@@ -308,7 +454,7 @@ export const signingTests: TestDefinition[] = [
     name: "Create Transaction",
     description: "Creates a transaction (requires product account)",
     category: "signing",
-    requiresWebview: true,
+    isWorking: false,
     async run() {
       const txPayload = {
         version: 1 as const,
@@ -340,57 +486,125 @@ export const signingTests: TestDefinition[] = [
       );
     },
   },
-  {
-    id: "statement-store",
-    name: "Statement Store Proof",
-    description: "Creates a statement store proof",
-    category: "signing",
-    requiresWebview: true,
-    async run() {
-      const message = `Statement: ${Date.now()}`;
-      const messageBytes = new TextEncoder().encode(message);
-
-      const result = await hostApi.statementStoreCreateProof({
-        tag: "v1",
-        value: [
-          ["spektr.app", 0],
-          {
-            proof: undefined,
-            decryptionKey: undefined,
-            priority: undefined,
-            channel: undefined,
-            topics: [],
-            data: messageBytes,
-          },
-        ],
-      });
-
-      return result.match(
-        (res) => {
-          const proofValue = res.value.value as { signature?: Uint8Array };
-          const sig = proofValue.signature
-            ? toHex(proofValue.signature).slice(0, 20)
-            : "onchain";
-          return success(`Proof type: ${res.value.tag}, sig: ${sig}...`);
-        },
-        (err) => {
-          const payload = err.value.payload as { reason?: string } | undefined;
-          return error(
-            err.value.name + (payload?.reason ? ` - ${payload.reason}` : ""),
-          );
-        },
-      );
-    },
-  },
 ];
 
 // Storage Tests
 export const storageTests: TestDefinition[] = [
   {
-    id: "storage-write-read",
-    name: "Storage Write and Read",
-    description: "Writes a value to storage and reads it back",
+    id: "storage-string-write-read",
+    name: "String Write & Read",
+    description: "Writes and reads a string via hostLocalStorage",
     category: "storage",
+    isWorking: true,
+    async run() {
+      const key = "sdk_test_string";
+      const value = `test_value_${Date.now()}`;
+
+      await hostLocalStorage.writeString(key, value);
+      const readValue = await hostLocalStorage.readString(key);
+
+      return readValue === value
+        ? success(`Write: "${value}"\nRead: "${readValue}"`)
+        : error(`Mismatch: wrote "${value}", read "${readValue}"`);
+    },
+  },
+  {
+    id: "storage-bytes-write-read",
+    name: "Bytes Write & Read",
+    description: "Writes and reads raw bytes via hostLocalStorage",
+    category: "storage",
+    isWorking: true,
+    async run() {
+      const key = "sdk_test_bytes";
+      const value = new TextEncoder().encode(`bytes_${Date.now()}`);
+
+      await hostLocalStorage.writeBytes(key, value);
+      const readValue = await hostLocalStorage.readBytes(key);
+
+      if (!readValue) {
+        return error("Read returned undefined after write");
+      }
+
+      const match = toHex(value) === toHex(readValue);
+      return match
+        ? success(`Bytes round-trip OK (${value.length} bytes)`, {
+            written: toHex(value),
+            read: toHex(readValue),
+          })
+        : error("Bytes mismatch", {
+            written: toHex(value),
+            read: toHex(readValue),
+          });
+    },
+  },
+  {
+    id: "storage-json-write-read",
+    name: "JSON Write & Read",
+    description: "Writes and reads JSON via hostLocalStorage",
+    category: "storage",
+    isWorking: true,
+    async run() {
+      const key = "sdk_test_json";
+      const value = {
+        timestamp: Date.now(),
+        nested: { foo: "bar", nums: [1, 2, 3] },
+      };
+
+      await hostLocalStorage.writeJSON(key, value);
+      const readValue = await hostLocalStorage.readJSON(key);
+
+      const match = JSON.stringify(value) === JSON.stringify(readValue);
+      return match
+        ? success("JSON round-trip OK", readValue)
+        : error("JSON mismatch", { written: value, read: readValue });
+    },
+  },
+  {
+    id: "storage-clear",
+    name: "Storage Clear",
+    description: "Clears a storage key via hostLocalStorage",
+    category: "storage",
+    isWorking: true,
+    async run() {
+      const key = "sdk_test_string";
+
+      // Write a value first to ensure the key exists
+      await hostLocalStorage.writeString(key, "to_be_cleared");
+      await hostLocalStorage.clear(key);
+
+      const readValue = await hostLocalStorage.readString(key);
+      return !readValue || readValue === ""
+        ? success("Storage key cleared successfully")
+        : error(`Key still has value after clear: "${readValue}"`);
+    },
+  },
+  {
+    id: "storage-factory",
+    name: "Storage Factory",
+    description:
+      "Creates a custom localStorage instance via createLocalStorage",
+    category: "storage",
+    isWorking: true,
+    async run() {
+      const storage = createLocalStorage();
+      const key = "sdk_test_factory";
+      const value = `factory_${Date.now()}`;
+
+      await storage.writeString(key, value);
+      const readValue = await storage.readString(key);
+      await storage.clear(key);
+
+      return readValue === value
+        ? success(`Factory storage round-trip OK: "${value}"`)
+        : error(`Mismatch: wrote "${value}", read "${readValue}"`);
+    },
+  },
+  {
+    id: "storage-legacy-write-read",
+    name: "Legacy Storage (hostApi)",
+    description: "Writes and reads via legacy hostApi.localStorageWrite/Read",
+    category: "storage",
+    isWorking: true,
     async run() {
       const key = "0x746573745f6b6579";
       const value = `test_value_${Date.now()}`;
@@ -434,42 +648,25 @@ export const storageTests: TestDefinition[] = [
       );
     },
   },
-  {
-    id: "storage-clear",
-    name: "Storage Clear",
-    description: "Clears a storage key",
-    category: "storage",
-    async run() {
-      const result = await hostApi.localStorageClear({
-        tag: "v1",
-        value: "0x746573745f6b6579",
-      });
-
-      return result.match(
-        () => success("Storage cleared"),
-        (err) => error(err.value.name),
-      );
-    },
-  },
 ];
 
 // Permission Tests
 export const permissionTests: TestDefinition[] = [
-  // Note: permissionRequest API has been removed from the SDK
   {
     id: "feature-check",
     name: "Feature Check",
     description: "Checks if the selected chain is supported",
     category: "permissions",
+    isWorking: true,
     async run(chain: ChainConfig) {
-      const result = await hostApi.feature({
+      const result = await hostApi.featureSupported({
         tag: "v1",
         value: { tag: "Chain", value: chain.genesis },
       });
 
       return result.match(
         (res) => success(`${chain.name} supported: ${res.value}`),
-        (err) => error(err.value.name),
+        (err) => error(err.value.name, err.value),
       );
     },
   },
@@ -478,43 +675,126 @@ export const permissionTests: TestDefinition[] = [
 // Chat Tests
 export const chatTests: TestDefinition[] = [
   {
-    id: "create-chat",
-    name: "Create Chat and Send Message",
-    description: "Creates a chat instance, registers, and sends a message",
+    id: "chat-manager-register-room",
+    name: "Register Room",
+    description: "Registers a chat room via createProductChatManager",
     category: "chat",
+    isWorking: false,
     async run() {
-      const chat = createChat();
-      if (!chat) {
-        return error("Failed to create chat");
-      }
+      const chatManager = createProductChatManager();
 
-      try {
-        // Register the product as a chat contact
-        const registrationStatus = await chat.register({
-          roomId: "test-room",
-          name: "SDK Test Product",
-          icon: "",
-        });
+      const result = await chatManager.registerRoom({
+        roomId: "test-room",
+        name: "SDK Test Room",
+        icon: "",
+      });
 
-        // Send a test message
-        const result = await chat.sendMessage("test-room", {
-          tag: "Text",
-          value: `SDK Test: ${new Date().toISOString()}`,
-        });
-
-        return success(
-          `Chat registered (status: ${registrationStatus}), message sent (ID: ${result.messageId})`,
-        );
-      } catch (e) {
-        return error("Chat operation failed", e);
-      }
+      return success(`Room registration: ${result}`);
     },
   },
   {
-    id: "chat-create-room",
-    name: "Create Room",
-    description: "Creates a chat room",
+    id: "chat-manager-register-bot",
+    name: "Register Bot",
+    description: "Registers a chat bot via createProductChatManager",
     category: "chat",
+    isWorking: false,
+    async run() {
+      const chatManager = createProductChatManager();
+
+      const result = await chatManager.registerBot({
+        botId: "test-bot",
+        name: "SDK Test Bot",
+        icon: "",
+      });
+
+      return success(`Bot registration: ${result}`);
+    },
+  },
+  {
+    id: "chat-manager-send-message",
+    name: "Send Message",
+    description:
+      "Registers a room and sends a message via createProductChatManager",
+    category: "chat",
+    isWorking: false,
+    async run() {
+      const chatManager = createProductChatManager();
+
+      // Ensure room exists first
+      await chatManager.registerRoom({
+        roomId: "test-room",
+        name: "SDK Test Room",
+        icon: "",
+      });
+
+      const result = await chatManager.sendMessage("test-room", {
+        tag: "Text",
+        value: `SDK Test: ${new Date().toISOString()}`,
+      });
+
+      return success(`Message sent (ID: ${result.messageId})`);
+    },
+  },
+  {
+    id: "chat-manager-subscribe-list",
+    name: "Subscribe Chat List",
+    description: "Subscribes to chat list updates (5s)",
+    category: "chat",
+    isWorking: false,
+    async run() {
+      const chatManager = createProductChatManager();
+
+      return new Promise((resolve) => {
+        const rooms: unknown[] = [];
+        const subscription = chatManager.subscribeChatList((chatRooms) => {
+          rooms.push(...chatRooms);
+        });
+
+        setTimeout(() => {
+          subscription.unsubscribe();
+          resolve(
+            success(
+              `Received ${rooms.length} room updates in 5s`,
+              rooms.slice(-5),
+            ),
+          );
+        }, 5000);
+      });
+    },
+  },
+  {
+    id: "chat-manager-subscribe-action",
+    name: "Subscribe Chat Actions",
+    description: "Subscribes to incoming chat actions (5s)",
+    category: "chat",
+    isWorking: false,
+    async run() {
+      const chatManager = createProductChatManager();
+
+      return new Promise((resolve) => {
+        const actions: unknown[] = [];
+        const subscription = chatManager.subscribeAction((action) => {
+          actions.push(action);
+        });
+
+        setTimeout(() => {
+          subscription.unsubscribe();
+          resolve(
+            success(
+              `Received ${actions.length} actions in 5s`,
+              actions.slice(-5),
+            ),
+          );
+        }, 5000);
+      });
+    },
+  },
+  {
+    id: "chat-legacy-create-room",
+    name: "Create Room (hostApi)",
+    description: "Creates a chat room via legacy hostApi",
+    category: "chat",
+    isWorking: false,
     async run() {
       const result = await hostApi.chatCreateRoom({
         tag: "v1",
@@ -532,10 +812,11 @@ export const chatTests: TestDefinition[] = [
     },
   },
   {
-    id: "chat-post-message",
-    name: "Post Message",
-    description: "Posts a message to the chat",
+    id: "chat-legacy-post-message",
+    name: "Post Message (hostApi)",
+    description: "Posts a message via legacy hostApi",
     category: "chat",
+    isWorking: false,
     async run() {
       const result = await hostApi.chatPostMessage({
         tag: "v1",
@@ -556,6 +837,186 @@ export const chatTests: TestDefinition[] = [
   },
 ];
 
+// Statement Store Tests
+export const statementTests: TestDefinition[] = [
+  {
+    id: "statement-store-create-proof",
+    name: "Create Proof",
+    description: "Creates a statement store proof via createStatementStore",
+    category: "statements",
+    isWorking: false,
+    async run() {
+      const statementStore = createStatementStore();
+      const messageBytes = new TextEncoder().encode(`Statement: ${Date.now()}`);
+
+      const proof = await statementStore.createProof(["spektr.app", 0], {
+        proof: undefined,
+        decryptionKey: undefined,
+        priority: undefined,
+        channel: undefined,
+        topics: [],
+        data: messageBytes,
+      });
+
+      const proofValue = proof.value as { signature?: Uint8Array };
+      const sig = proofValue.signature
+        ? toHex(proofValue.signature).slice(0, 20)
+        : "onchain";
+      return success(`Proof type: ${proof.tag}, sig: ${sig}...`);
+    },
+  },
+  {
+    id: "statement-store-subscribe",
+    name: "Subscribe Statements",
+    description: "Subscribes to statement store topics (5s)",
+    category: "statements",
+    isWorking: false,
+    async run() {
+      const statementStore = createStatementStore();
+
+      return new Promise((resolve) => {
+        const received: unknown[] = [];
+        const subscription = statementStore.subscribe([], (statements) => {
+          received.push(...statements);
+        });
+
+        setTimeout(() => {
+          subscription.unsubscribe();
+          resolve(
+            success(
+              `Received ${received.length} statements in 5s`,
+              received.slice(-5),
+            ),
+          );
+        }, 5000);
+      });
+    },
+  },
+  {
+    id: "statement-store-legacy",
+    name: "Create Proof (hostApi)",
+    description: "Creates a statement store proof via legacy hostApi",
+    category: "statements",
+    isWorking: false,
+    async run() {
+      const message = `Statement: ${Date.now()}`;
+      const messageBytes = new TextEncoder().encode(message);
+
+      const result = await hostApi.statementStoreCreateProof({
+        tag: "v1",
+        value: [
+          ["spektr.app", 0],
+          {
+            proof: undefined,
+            decryptionKey: undefined,
+            priority: undefined,
+            channel: undefined,
+            topics: [],
+            data: messageBytes,
+          },
+        ],
+      });
+
+      return result.match(
+        (res) => {
+          const proofValue = res.value.value as { signature?: Uint8Array };
+          const sig = proofValue.signature
+            ? toHex(proofValue.signature).slice(0, 20)
+            : "onchain";
+          return success(`Proof type: ${res.value.tag}, sig: ${sig}...`);
+        },
+        (err) => {
+          const payload = err.value.payload as { reason?: string } | undefined;
+          return error(
+            err.value.name + (payload?.reason ? ` - ${payload.reason}` : ""),
+          );
+        },
+      );
+    },
+  },
+];
+
+// Preimage Tests
+export const preimageTests: TestDefinition[] = [
+  {
+    id: "preimage-submit",
+    name: "Submit Preimage",
+    description: "Submits a preimage and gets its hash back",
+    category: "preimage",
+    isWorking: false,
+    async run() {
+      const data = new TextEncoder().encode(`preimage_${Date.now()}`);
+      const hash = await preimageManager.submit(data);
+
+      return success(`Preimage submitted, hash: ${hash.slice(0, 20)}...`, {
+        hash,
+        dataLength: data.length,
+      });
+    },
+  },
+  {
+    id: "preimage-lookup",
+    name: "Lookup Preimage",
+    description: "Submits a preimage then looks it up by hash (5s)",
+    category: "preimage",
+    isWorking: false,
+    async run() {
+      const data = new TextEncoder().encode(`lookup_${Date.now()}`);
+      const hash = await preimageManager.submit(data);
+
+      return new Promise((resolve) => {
+        let found = false;
+        const subscription = preimageManager.lookup(hash, (preimage) => {
+          found = true;
+          subscription.unsubscribe();
+          if (preimage) {
+            resolve(
+              success(`Preimage found (${preimage.length} bytes)`, {
+                hash,
+                preimage: toHex(preimage),
+              }),
+            );
+          } else {
+            resolve(
+              success(`Lookup returned null for hash ${hash.slice(0, 20)}...`),
+            );
+          }
+        });
+
+        setTimeout(() => {
+          if (!found) {
+            subscription.unsubscribe();
+            resolve(
+              success(
+                `No lookup callback in 5s for hash ${hash.slice(0, 20)}...`,
+              ),
+            );
+          }
+        }, 5000);
+      });
+    },
+  },
+  {
+    id: "preimage-factory",
+    name: "Preimage Factory",
+    description: "Creates a preimage manager via createPreimageManager",
+    category: "preimage",
+    isWorking: false,
+    async run() {
+      const manager = createPreimageManager();
+      const data = new TextEncoder().encode(`factory_${Date.now()}`);
+      const hash = await manager.submit(data);
+
+      return success(
+        `Factory preimage submitted, hash: ${hash.slice(0, 20)}...`,
+        {
+          hash,
+        },
+      );
+    },
+  },
+];
+
 export const testsByCategory = {
   extension: extensionTests,
   accounts: accountTests,
@@ -563,4 +1024,6 @@ export const testsByCategory = {
   storage: storageTests,
   permissions: permissionTests,
   chat: chatTests,
+  statements: statementTests,
+  preimage: preimageTests,
 };

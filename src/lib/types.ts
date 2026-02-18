@@ -23,7 +23,9 @@ export type TestCategory =
   | "signing"
   | "storage"
   | "permissions"
-  | "chat";
+  | "chat"
+  | "statements"
+  | "preimage";
 
 export interface ChainConfig {
   name: string;
@@ -37,7 +39,7 @@ export interface TestDefinition {
   name: string;
   description: string;
   category: TestCategory;
-  requiresWebview?: boolean;
+  isWorking?: boolean;
   run: (chain: ChainConfig, logger?: TestLogger) => Promise<TestResult>;
 }
 

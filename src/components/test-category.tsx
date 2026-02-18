@@ -26,6 +26,8 @@ const categoryIcons: Record<TestCategory, string> = {
   storage: "💾",
   permissions: "🔐",
   chat: "💬",
+  statements: "📜",
+  preimage: "🔎",
 };
 
 export function TestCategoryCard({

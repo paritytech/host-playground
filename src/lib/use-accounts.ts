@@ -1,24 +1,19 @@
 import {
-  SpektrExtensionName,
   injectSpektrExtension,
+  createAccountsProvider,
 } from "@novasamatech/product-sdk";
-import {
-  type InjectedPolkadotAccount,
-  connectInjectedExtension,
-} from "@polkadot-api/pjs-signer";
+import { toHex } from "polkadot-api/utils";
 import { useCallback, useEffect, useState } from "react";
 
-// Type for the extension stored on window
-export type StoredExtension = Awaited<
-  ReturnType<typeof connectInjectedExtension>
->;
+export interface SdkAccount {
+  publicKey: string; // hex-encoded
+  name: string | undefined;
+}
 
 export const useAccounts = () => {
-  const [accounts, setAccounts] = useState<InjectedPolkadotAccount[] | null>(
-    null,
-  );
+  const [accounts, setAccounts] = useState<SdkAccount[] | null>(null);
   const [isLoading, setIsLoading] = useState(true);
-  const [isReady, setIsReady] = useState<boolean | null>(null); // Extension ready state
+  const [isReady, setIsReady] = useState<boolean | null>(null);
   const [error, setError] = useState<Error | null>(null);
 
   const connect = useCallback(async () => {
@@ -34,16 +29,20 @@ export const useAccounts = () => {
         return null;
       }
 
-      const extension = await connectInjectedExtension(SpektrExtensionName);
-      // Store extension on window for tests to reuse
-      (
-        window as unknown as { __sdkExtension?: StoredExtension }
-      ).__sdkExtension = extension;
+      const accountsProvider = createAccountsProvider();
+      const result = await accountsProvider.getNonProductAccounts();
 
-      const accounts = extension.getAccounts();
+      const mapped = result.match(
+        (accs) =>
+          accs.map((a) => ({
+            publicKey: toHex(a.publicKey),
+            name: a.name,
+          })),
+        () => null,
+      );
 
-      setAccounts(accounts);
-      return accounts;
+      setAccounts(mapped);
+      return mapped;
     } catch (err) {
       console.error("[useAccounts] Error:", err);
       setError(err instanceof Error ? err : new Error("Failed to connect"));
