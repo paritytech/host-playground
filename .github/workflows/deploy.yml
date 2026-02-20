@@ -1,0 +1,114 @@
+name: Deploy
+
+on:
+  push:
+    branches:
+      - master
+  pull_request:
+    branches:
+      - master
+  workflow_dispatch:
+    inputs:
+      skip-cache:
+        description: 'Skip deployment cache and force redeploy'
+        type: boolean
+        default: false
+
+permissions:
+  contents: read
+  statuses: write
+  id-token: write
+  pull-requests: write
+
+concurrency:
+  group: deploy-test-sdk-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    name: Check for changes
+    outputs:
+      source-hash: ${{ steps.source-hash.outputs.hash }}
+      cache-hit: ${{ steps.cache-check.outputs.cache-hit }}
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v6
+
+      - name: Compute source hash
+        id: source-hash
+        run: echo "hash=$(git ls-files sdk-test/ .github/workflows/deploy-test-sdk.yml | xargs sha256sum | sha256sum | cut -d' ' -f1)" >> "$GITHUB_OUTPUT"
+
+      - name: Check deployment cache
+        id: cache-check
+        uses: actions/cache@v5
+        with:
+          path: .deployment-marker
+          key: deployment-${{ steps.source-hash.outputs.hash }}
+          lookup-only: true
+
+  build:
+    needs: check
+    if: needs.check.outputs.cache-hit != 'true' || inputs.skip-cache
+    runs-on: ubuntu-latest
+    name: Build
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v6
+
+      - name: Setup node
+        uses: ./.github/actions/setup-node
+        with:
+          NODEJS_VERSION: '22'
+
+      - name: Install dependencies
+        working-directory: sdk-test
+        run: yarn install --immutable
+
+      - name: Cache build
+        id: cache-build
+        uses: actions/cache@v5
+        with:
+          path: sdk-test/out
+          key: build-${{ needs.check.outputs.source-hash }}
+
+      - name: Build app
+        if: steps.cache-build.outputs.cache-hit != 'true'
+        working-directory: sdk-test
+        run: yarn build
+
+      - name: Upload build artifact
+        uses: actions/upload-artifact@v6
+        with:
+          name: test-sdk-build
+          path: sdk-test/out
+          retention-days: 1
+
+  deploy:
+    needs: [check, build]
+    if: needs.check.outputs.cache-hit != 'true' || inputs.skip-cache
+    name: Deploy
+    uses: ./.github/workflows/deploy-to-triangle.yml
+    with:
+      dotns-domain: ${{ github.event_name == 'push' && 'test-product-sdk33.dot' || format('sdk-test-{0}-{1}00.dot', github.event.repository.name, github.event.pull_request.head.ref) }}
+      artifact-name: test-sdk-build
+      skip-cache: ${{ inputs.skip-cache || false }}
+      comment-on-pr: true
+      max-retries: 3
+    secrets:
+      mnemonic: ${{ 'bottom drive obey lake curtain smoke basket hold race lonely fit walk' }}
+
+  post-deploy:
+    needs: [check, deploy]
+    if: needs.deploy.result == 'success'
+    runs-on: ubuntu-latest
+    name: Mark as deployed
+    steps:
+      - name: Create deployment marker
+        run: echo "deployed" > .deployment-marker
+
+      - name: Cache deployment marker
+        uses: actions/cache/save@v5
+        with:
+          path: .deployment-marker
+          key: deployment-${{ needs.check.outputs.source-hash }}

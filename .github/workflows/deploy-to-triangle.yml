@@ -1,0 +1,977 @@
+name: Deploy on Polkadot
+
+on:
+  workflow_call:
+    inputs:
+      dotns-domain:
+        description: 'DotNS domain name (with .dot extension)'
+        required: false
+        type: string
+        default: ''
+      artifact-name:
+        description: 'Name of the build artifact to download'
+        required: true
+        type: string
+      skip-cache:
+        description: 'Skip deployment cache and force redeploy'
+        type: boolean
+        default: false
+      comment-on-pr:
+        description: 'Post a comment on the PR with the deployment summary'
+        type: boolean
+        default: false
+      max-retries:
+        description: 'Maximum number of deployment retry attempts (default: 1 = no retry)'
+        type: number
+        default: 1
+    secrets:
+      mnemonic:
+        description: 'Mnemonic (DotNS domain owner)'
+        required: true
+    outputs:
+      cid:
+        description: 'Content CID'
+        value: ${{ jobs.deploy.outputs.cid }}
+      domain:
+        description: 'Full domain name (with .dot)'
+        value: ${{ jobs.deploy.outputs.domain }}
+      url:
+        description: 'Primary URL'
+        value: ${{ jobs.deploy.outputs.url }}
+      alt_url:
+        description: 'Alternative URL'
+        value: ${{ jobs.deploy.outputs.alt_url }}
+
+jobs:
+  deploy:
+    name: Deploy on Polkadot
+    runs-on: ubuntu-latest
+    outputs:
+      cid: ${{ steps.final.outputs.cid }}
+      domain: ${{ steps.final.outputs.domain }}
+      url: ${{ steps.final.outputs.url }}
+      alt_url: ${{ steps.final.outputs.alt_url }}
+    steps:
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Download build artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: ${{ inputs.artifact-name }}
+          path: build
+
+      - name: Compute build hash
+        id: hash
+        run: echo "hash=$(find build -type f -exec sha256sum {} \; | sort | sha256sum | cut -d' ' -f1)" >> "$GITHUB_OUTPUT"
+
+      - name: Check deployment cache
+        id: cache
+        if: inputs.skip-cache != true
+        uses: actions/cache@v4
+        with:
+          path: .deploy-cache
+          key: deploy-${{ steps.hash.outputs.hash }}
+
+      - name: Load cached CID
+        id: cached-deploy
+        if: steps.cache.outputs.cache-hit == 'true'
+        run: |
+          echo "cid=$(cat .deploy-cache/cid)" >> "$GITHUB_OUTPUT"
+          echo "::notice::Found cached CID: $(cat .deploy-cache/cid)"
+
+      - name: Setup IPFS Kubo
+        if: steps.cache.outputs.cache-hit != 'true'
+        uses: ipfs/download-ipfs-distribution-action@v1
+        with:
+          name: kubo
+          version: v0.33.0
+
+      - name: Initialize IPFS
+        if: steps.cache.outputs.cache-hit != 'true'
+        run: ipfs init
+
+      - name: Create deployment scripts
+        if: steps.cache.outputs.cache-hit != 'true'
+        run: |
+          echo "::group::Creating deployment scripts"
+          mkdir -p deploy-frontend
+
+          # Create package.json
+          cat > deploy-frontend/package.json << 'PACKAGE_EOF'
+          {
+            "name": "deploy-frontend",
+            "version": "1.0.0",
+            "type": "module",
+            "dependencies": {
+              "@ipld/dag-pb": "^4.1.3",
+              "@noble/hashes": "^1.7.2",
+              "@polkadot-api/substrate-bindings": "^0.16.5",
+              "@polkadot-labs/hdkd": "^0.0.25",
+              "@polkadot-labs/hdkd-helpers": "^0.0.26",
+              "@polkadot/keyring": "^13.0.0",
+              "@polkadot/util-crypto": "^13.0.0",
+              "ipfs-unixfs": "^11.2.0",
+              "multiformats": "^13.4.1",
+              "polkadot-api": "^1.23.1",
+              "viem": "^2.30.5"
+            }
+          }
+          PACKAGE_EOF
+
+          # Create dotns.js
+          cat > deploy-frontend/dotns.js << 'DOTNS_EOF'
+          import crypto from "crypto";
+          import { createClient } from "polkadot-api";
+          import { getPolkadotSigner } from "polkadot-api/signer";
+          import { getWsProvider } from "polkadot-api/ws-provider";
+          import { Keyring } from "@polkadot/keyring";
+          import { cryptoWaitReady } from "@polkadot/util-crypto";
+          import { Binary } from "polkadot-api";
+          import {
+            encodeFunctionData,
+            decodeFunctionResult,
+            keccak256,
+            toBytes,
+            formatEther,
+            isAddress,
+            bytesToHex,
+            isHex,
+            toHex,
+            zeroAddress,
+            namehash,
+            concatHex,
+          } from "viem";
+          import { CID } from "multiformats/cid";
+
+          export const RPC_ENDPOINTS = [
+            "wss://asset-hub-paseo.dotters.network",
+            "wss://sys.ibp.network/asset-hub-paseo",
+            "wss://pas-rpc.stakeworld.io/assethub",
+          ];
+
+          export const CONTRACTS = {
+            DOTNS_REGISTRAR: "0x329aAA5b6bEa94E750b2dacBa74Bf41291E6c2BD",
+            DOTNS_REGISTRAR_CONTROLLER: "0xd09e0F1c1E6CE8Cf40df929ef4FC778629573651",
+            DOTNS_REGISTRY: "0x4Da0d37aBe96C06ab19963F31ca2DC0412057a6f",
+            DOTNS_RESOLVER: "0x95645C7fD0fF38790647FE13F87Eb11c1DCc8514",
+            DOTNS_CONTENT_RESOLVER: "0x7756DF72CBc7f062e7403cD59e45fBc78bed1cD7",
+            DOTNS_REVERSE_RESOLVER: "0x95D57363B491CF743970c640fe419541386ac8BF",
+            STORE_FACTORY: "0x030296782F4d3046B080BcB017f01837561D9702",
+            POP_RULES: "0x4e8920B1E69d0cEA9b23CBFC87A17Ee6fE02d2d3",
+          };
+
+          export const DECIMALS = 12n;
+          export const NATIVE_TO_ETH_RATIO = 1_000_000n;
+          export const OPERATION_TIMEOUT_MS = 300_000;
+          export const DEFAULT_MNEMONIC = "bottom drive obey lake curtain smoke basket hold race lonely fit walk";
+
+          export const ProofOfPersonhoodStatus = {
+            NoStatus: 0,
+            ProofOfPersonhoodLite: 1,
+            ProofOfPersonhoodFull: 2,
+            Reserved: 3,
+          };
+
+          const DOTNS_REGISTRAR_CONTROLLER_ABI = [
+            { inputs: [{ name: "registration", type: "tuple", components: [{ name: "label", type: "string" }, { name: "owner", type: "address" }, { name: "secret", type: "bytes32" }, { name: "reserved", type: "bool" }] }], name: "makeCommitment", outputs: [{ name: "", type: "bytes32" }], stateMutability: "view", type: "function" },
+            { inputs: [{ name: "commitment", type: "bytes32" }], name: "commit", outputs: [], stateMutability: "nonpayable", type: "function" },
+            { inputs: [], name: "minCommitmentAge", outputs: [{ name: "", type: "uint256" }], stateMutability: "view", type: "function" },
+            { inputs: [{ name: "registration", type: "tuple", components: [{ name: "label", type: "string" }, { name: "owner", type: "address" }, { name: "secret", type: "bytes32" }, { name: "reserved", type: "bool" }] }], name: "register", outputs: [], stateMutability: "payable", type: "function" },
+          ];
+
+          const DOTNS_REGISTRAR_ABI = [
+            { inputs: [{ name: "tokenId", type: "uint256" }], name: "ownerOf", outputs: [{ name: "", type: "address" }], stateMutability: "view", type: "function" },
+          ];
+
+          const POP_RULES_ABI = [
+            { inputs: [{ name: "name", type: "string" }], name: "classifyName", outputs: [{ name: "requirement", type: "uint8" }, { name: "message", type: "string" }], stateMutability: "pure", type: "function" },
+            { inputs: [{ name: "name", type: "string" }], name: "price", outputs: [{ name: "", type: "uint256" }], stateMutability: "view", type: "function" },
+            { inputs: [{ name: "", type: "address" }], name: "userPopStatus", outputs: [{ name: "", type: "uint8" }], stateMutability: "view", type: "function" },
+            { inputs: [{ name: "status", type: "uint8" }], name: "setUserPopStatus", outputs: [], stateMutability: "nonpayable", type: "function" },
+            { inputs: [{ name: "baseName", type: "string" }], name: "isBaseNameReserved", outputs: [{ name: "isReserved", type: "bool" }, { name: "reservationOwner", type: "address" }, { name: "expiryTimestamp", type: "uint64" }], stateMutability: "view", type: "function" },
+          ];
+
+          const DOTNS_CONTENT_RESOLVER_ABI = [
+            { inputs: [{ name: "node", type: "bytes32" }, { name: "hash", type: "bytes" }], name: "setContenthash", outputs: [], stateMutability: "nonpayable", type: "function" },
+            { inputs: [{ name: "node", type: "bytes32" }], name: "contenthash", outputs: [{ name: "", type: "bytes" }], stateMutability: "view", type: "function" },
+          ];
+
+          function convertToHexString(value) {
+            if (!value) return "0x";
+            if (typeof value?.asHex === "function") return value.asHex();
+            if (typeof value?.toHex === "function") return value.toHex();
+            if (typeof value === "string" && isHex(value)) return value;
+            if (value instanceof Uint8Array) return bytesToHex(value);
+            try { return toHex(value); } catch { return "0x"; }
+          }
+
+          function convertToBigInt(value, fallback = 0n) {
+            try {
+              if (typeof value === "bigint") return value;
+              if (typeof value === "number") return BigInt(value);
+              if (typeof value === "string") return BigInt(value);
+              if (value && typeof value.toString === "function") return BigInt(value.toString());
+              return fallback;
+            } catch { return fallback; }
+          }
+
+          function normalizeWeight(weight) {
+            const referenceTime = weight?.ref_time ?? weight?.refTime ?? 0;
+            const proofSize = weight?.proof_size ?? weight?.proofSize ?? 0;
+            return { referenceTime: convertToBigInt(referenceTime, 0n), proofSize: convertToBigInt(proofSize, 0n) };
+          }
+
+          function extractStorageDepositCharge(rawStorageDeposit) {
+            if (!rawStorageDeposit) return 0n;
+            if (typeof rawStorageDeposit?.isCharge === "boolean") {
+              if (rawStorageDeposit.isCharge && rawStorageDeposit.asCharge != null) return convertToBigInt(rawStorageDeposit.asCharge, 0n);
+              return 0n;
+            }
+            if (rawStorageDeposit.charge != null) return convertToBigInt(rawStorageDeposit.charge, 0n);
+            if (rawStorageDeposit.Charge != null) return convertToBigInt(rawStorageDeposit.Charge, 0n);
+            if (rawStorageDeposit.value != null) return convertToBigInt(rawStorageDeposit.value, 0n);
+            return 0n;
+          }
+
+          function unwrapExecutionResult(rawResult) {
+            if (!rawResult) return { ok: null, err: null, successFlag: null };
+            if (typeof rawResult.success === "boolean") {
+              return rawResult.success ? { ok: rawResult.value ?? null, err: null, successFlag: true } : { ok: null, err: rawResult.error ?? rawResult.value ?? null, successFlag: false };
+            }
+            if (typeof rawResult.isOk === "boolean") {
+              return rawResult.isOk ? { ok: rawResult.value ?? null, err: null, successFlag: true } : { ok: null, err: rawResult.value ?? null, successFlag: false };
+            }
+            if (rawResult.ok != null) return { ok: rawResult.ok, err: null, successFlag: true };
+            if (rawResult.err != null) return { ok: null, err: rawResult.err, successFlag: false };
+            return { ok: null, err: rawResult, successFlag: null };
+          }
+
+          function withTimeout(promise, timeoutMs, operationName) {
+            const timeoutPromise = new Promise((_, reject) => {
+              setTimeout(() => reject(new Error(`${operationName} timed out after ${timeoutMs}ms`)), timeoutMs);
+            });
+            return Promise.race([promise, timeoutPromise]);
+          }
+
+          export const DOT_NODE = "0x3fce7d1364a893e213bc4212792b517ffc88f5b13b86c8ef9c8d390c3a1370ce";
+
+          export function convertWeiToNative(weiValue) { return weiValue / NATIVE_TO_ETH_RATIO; }
+          export function computeDomainTokenId(label) {
+            const labelhash = keccak256(toBytes(label));
+            const node = keccak256(concatHex([DOT_NODE, labelhash]));
+            return BigInt(node);
+          }
+          export function countTrailingDigits(label) { let count = 0; for (let i = label.length - 1; i >= 0; i--) { const code = label.charCodeAt(i); if (code >= 48 && code <= 57) count++; else break; } return count; }
+          export function stripTrailingDigits(label) { return label.replace(/\d+$/, ""); }
+
+          export function validateDomainLabel(label) {
+            if (!/^[a-z0-9-]{3,}$/.test(label)) throw new Error("Invalid domain label: must contain only lowercase letters, digits, and hyphens, min 3 chars");
+            if (label.startsWith("-") || label.endsWith("-")) throw new Error("Invalid domain label: cannot start or end with hyphen");
+            const trailingDigitCount = countTrailingDigits(label);
+            if (trailingDigitCount > 2) throw new Error(`Invalid domain label: max 2 trailing digits allowed, found ${trailingDigitCount}`);
+          }
+
+          export function parseProofOfPersonhoodStatus(status) {
+            const s = (status ?? "none").toLowerCase();
+            if (s === "none" || s === "nostatus") return ProofOfPersonhoodStatus.NoStatus;
+            if (s === "lite" || s === "poplite") return ProofOfPersonhoodStatus.ProofOfPersonhoodLite;
+            if (s === "full" || s === "popfull") return ProofOfPersonhoodStatus.ProofOfPersonhoodFull;
+            throw new Error("Invalid status. Use none, lite, or full");
+          }
+
+          class ReviveClientWrapper {
+            static DRY_RUN_STORAGE_LIMIT = 18446744073709551615n;
+            static DRY_RUN_WEIGHT_LIMIT = { ref_time: 18446744073709551615n, proof_size: 18446744073709551615n };
+
+            constructor(client) { this.client = client; this.mappedAccounts = new Set(); }
+
+            async getEvmAddress(substrateAddress) {
+              if (isAddress(substrateAddress)) return substrateAddress;
+              const address = await this.client.apis.ReviveApi.address(substrateAddress);
+              return address.asHex();
+            }
+
+            async performDryRunCall(originSubstrateAddress, contractAddress, value, encodedData) {
+              if (isAddress(originSubstrateAddress)) throw new Error("performDryRunCall requires SS58 Substrate address, not EVM H160 address");
+              const executionResults = await this.client.apis.ReviveApi.call(originSubstrateAddress, Binary.fromHex(contractAddress), value, ReviveClientWrapper.DRY_RUN_WEIGHT_LIMIT, ReviveClientWrapper.DRY_RUN_STORAGE_LIMIT, Binary.fromHex(encodedData));
+              const { ok, err, successFlag } = unwrapExecutionResult(executionResults.result);
+              const flags = ok?.flags ? convertToBigInt(ok.flags, 0n) : 0n;
+              const returnData = convertToHexString(ok?.data);
+              const didRevert = ok ? (flags & 1n) === 1n : true;
+              const gasConsumed = normalizeWeight(executionResults.weight_consumed);
+              const gasRequired = normalizeWeight(executionResults.weight_required ?? executionResults.weight_consumed);
+              const storageDepositValue = extractStorageDepositCharge(executionResults.storage_deposit);
+              const isOk = !!ok && !didRevert;
+              const isErr = !ok || didRevert || !!err || (typeof successFlag === "boolean" ? !successFlag : false);
+              return { gasConsumed, gasRequired, storageDeposit: { value: storageDepositValue }, result: { isOk, isErr, value: { data: ok ? returnData : "0x", flags: ok ? flags : 1n } } };
+            }
+
+            async estimateGasForCall(originSubstrateAddress, contractAddress, value, encodedData) {
+              const result = await this.performDryRunCall(originSubstrateAddress, contractAddress, value, encodedData);
+              if (!result.result.isOk) return { success: false, gasConsumed: result.gasConsumed, storageDeposit: result.storageDeposit.value, gasRequired: result.gasRequired, revertData: result.result.value.data, revertFlags: result.result.value.flags };
+              return { success: true, gasConsumed: result.gasConsumed, storageDeposit: result.storageDeposit.value, gasRequired: result.gasRequired };
+            }
+
+            async checkIfAccountMapped(substrateAddress) {
+              try {
+                const evmAddress = await this.getEvmAddress(substrateAddress);
+                const key = Binary.fromHex(evmAddress);
+                const mappedAccount = await this.client.query.Revive.OriginalAccount.getValue(key);
+                return mappedAccount !== null && mappedAccount !== undefined;
+              } catch { return false; }
+            }
+
+            async ensureAccountMapped(substrateAddress, signer) {
+              if (isAddress(substrateAddress)) throw new Error("ensureAccountMapped requires SS58 Substrate address, not EVM H160 address");
+              if (this.mappedAccounts.has(substrateAddress)) return;
+              const isMapped = await this.checkIfAccountMapped(substrateAddress);
+              if (isMapped) { this.mappedAccounts.add(substrateAddress); return; }
+              const mappingExtrinsic = this.client.tx.Revive.map_account();
+              try {
+                await this.signAndSubmitExtrinsic(mappingExtrinsic, signer, () => {});
+                this.mappedAccounts.add(substrateAddress);
+              } catch (error) {
+                const errorMessage = error?.message || String(error);
+                if (errorMessage.includes("AccountAlreadyMapped")) { this.mappedAccounts.add(substrateAddress); return; }
+                throw error;
+              }
+            }
+
+            signAndSubmitExtrinsic(extrinsic, signer, statusCallback) {
+              return new Promise((resolve, reject) => {
+                try {
+                  extrinsic.signSubmitAndWatch(signer, { mortality: { mortal: true, period: 256 } }).subscribe({
+                    next: (event) => {
+                      const transactionHash = event.txHash?.toString();
+                      switch (event.type) {
+                        case "signed": statusCallback("signing"); break;
+                        case "broadcasted": statusCallback("broadcasting"); break;
+                        case "txBestBlocksState": statusCallback("included"); break;
+                        case "finalized":
+                          if (event.dispatchError) { statusCallback("failed"); reject(new Error(`Transaction failed: ${event.dispatchError.toString()}`)); return; }
+                          statusCallback("finalized"); resolve(transactionHash); return;
+                        case "invalid": case "dropped": statusCallback("failed"); reject(new Error(`Transaction ${event.type}`)); return;
+                      }
+                    },
+                    error: (error) => { statusCallback("failed"); reject(error); },
+                  });
+                } catch (error) { statusCallback("failed"); reject(error); }
+              });
+            }
+
+            async submitTransaction(contractAddress, value, encodedData, signerSubstrateAddress, signer, statusCallback) {
+              await this.ensureAccountMapped(signerSubstrateAddress, signer);
+              const gasEstimate = await this.estimateGasForCall(signerSubstrateAddress, contractAddress, value, encodedData);
+              if (!gasEstimate.success) throw new Error(`Contract execution would revert: ${gasEstimate.revertData ?? "0x"}`);
+              const weightLimit = { proof_size: gasEstimate.gasRequired.proofSize, ref_time: gasEstimate.gasRequired.referenceTime };
+              const minimumStorageDeposit = 2_000_000_000_000n;
+              let storageDepositLimit = gasEstimate.storageDeposit === 0n ? minimumStorageDeposit : (gasEstimate.storageDeposit * 120n) / 100n;
+              if (storageDepositLimit < minimumStorageDeposit) storageDepositLimit = minimumStorageDeposit;
+              const callExtrinsic = this.client.tx.Revive.call({ dest: Binary.fromHex(contractAddress), value, weight_limit: weightLimit, storage_deposit_limit: storageDepositLimit, data: Binary.fromHex(encodedData) });
+              return await this.signAndSubmitExtrinsic(callExtrinsic, signer, statusCallback);
+            }
+          }
+
+          export class DotNS {
+            constructor() { this.client = null; this.clientWrapper = null; this.substrateAddress = null; this.evmAddress = null; this.signer = null; this.connected = false; }
+
+            async connect(options = {}) {
+              const rpc = options.rpc || process.env.DOTNS_RPC || RPC_ENDPOINTS[0];
+              const source = options.keyUri || options.mnemonic || process.env.DOTNS_KEY_URI || process.env.DOTNS_MNEMONIC || process.env.MNEMONIC || DEFAULT_MNEMONIC;
+              const isKeyUri = Boolean(options.keyUri || process.env.DOTNS_KEY_URI);
+              console.log(`   Connecting to: ${rpc}`);
+              this.client = createClient(getWsProvider(rpc));
+              const unsafeApi = this.client.getUnsafeApi();
+              this.clientWrapper = new ReviveClientWrapper(unsafeApi);
+              await cryptoWaitReady();
+              const keyring = new Keyring({ type: "sr25519" });
+              const account = isKeyUri ? keyring.addFromUri(source) : keyring.addFromMnemonic(source);
+              this.substrateAddress = account.address;
+              this.evmAddress = await this.clientWrapper.getEvmAddress(this.substrateAddress);
+              this.signer = getPolkadotSigner(account.publicKey, "Sr25519", async (input) => account.sign(input));
+              this.connected = true;
+              console.log(`   SS58 Address: ${this.substrateAddress}`);
+              console.log(`   H160 Address: ${this.evmAddress}`);
+              return this;
+            }
+
+            ensureConnected() { if (!this.connected) throw new Error("Not connected. Call connect() first."); }
+
+            async contractCall(contractAddress, contractAbi, functionName, args = []) {
+              this.ensureConnected();
+              const encodedCallData = encodeFunctionData({ abi: contractAbi, functionName, args });
+              const callResult = await this.clientWrapper.performDryRunCall(this.substrateAddress, contractAddress, 0n, encodedCallData);
+              if (!callResult.result.isOk) {
+                const errorData = callResult.result.value;
+                const flags = errorData?.flags ?? 0n;
+                const revertData = errorData?.data ?? "0x";
+                const isRevert = (flags & 1n) === 1n;
+                if (isRevert) throw new Error(`Contract reverted (flags=${flags}) with data: ${revertData}`);
+                throw new Error(`Contract call failed (flags=${flags}) with data: ${revertData}`);
+              }
+              return decodeFunctionResult({ abi: contractAbi, functionName, data: callResult.result.value.data });
+            }
+
+            async contractTransaction(contractAddress, value, contractAbi, functionName, args = [], statusCallback = () => {}) {
+              this.ensureConnected();
+              await this.clientWrapper.ensureAccountMapped(this.substrateAddress, this.signer);
+              const encodedCallData = encodeFunctionData({ abi: contractAbi, functionName, args });
+              return await withTimeout(this.clientWrapper.submitTransaction(contractAddress, value, encodedCallData, this.substrateAddress, this.signer, statusCallback), OPERATION_TIMEOUT_MS, functionName);
+            }
+
+            async checkOwnership(label, ownerAddress = null) {
+              this.ensureConnected();
+              const checkAddress = ownerAddress || this.evmAddress;
+              const tokenId = computeDomainTokenId(label);
+              try {
+                const owner = await withTimeout(this.contractCall(CONTRACTS.DOTNS_REGISTRAR, DOTNS_REGISTRAR_ABI, "ownerOf", [tokenId]), 30000, "ownerOf");
+                const owned = owner.toLowerCase() === checkAddress.toLowerCase();
+                return { owned, owner };
+              } catch { return { owned: false, owner: null }; }
+            }
+
+            async classifyName(label) {
+              this.ensureConnected();
+              console.log(`\n   Classifying name via PopOracle...`);
+              const result = await withTimeout(this.contractCall(CONTRACTS.POP_RULES, POP_RULES_ABI, "classifyName", [label]), 30000, "classifyName");
+              const requiredStatus = typeof result[0] === "bigint" ? Number(result[0]) : result[0];
+              const message = result[1];
+              console.log(`   Required status: ${Object.keys(ProofOfPersonhoodStatus).find((k) => ProofOfPersonhoodStatus[k] === requiredStatus)}`);
+              console.log(`   Message: ${message}`);
+              return { requiredStatus, message };
+            }
+
+            async getUserPopStatus(ownerAddress = null) {
+              this.ensureConnected();
+              const checkAddress = ownerAddress || this.evmAddress;
+              const result = await withTimeout(this.contractCall(CONTRACTS.POP_RULES, POP_RULES_ABI, "userPopStatus", [checkAddress]), 30000, "userPopStatus");
+              return typeof result === "bigint" ? Number(result) : result;
+            }
+
+            async setUserPopStatus(status) {
+              this.ensureConnected();
+              console.log(`\n   Checking current PoP status...`);
+              const currentStatus = await this.getUserPopStatus();
+              const currentStatusName = Object.keys(ProofOfPersonhoodStatus).find((k) => ProofOfPersonhoodStatus[k] === currentStatus);
+              const desiredStatusName = Object.keys(ProofOfPersonhoodStatus).find((k) => ProofOfPersonhoodStatus[k] === status);
+              console.log(`   Current: ${currentStatusName}`);
+              console.log(`   Desired: ${desiredStatusName}`);
+              if (currentStatus === status) { console.log(`   Status already set, skipping update`); return; }
+              console.log(`   Setting PoP status to ${desiredStatusName}...`);
+              const txHash = await this.contractTransaction(CONTRACTS.POP_RULES, 0n, POP_RULES_ABI, "setUserPopStatus", [status], (s) => console.log(`      ${s}`));
+              console.log(`   Tx: ${txHash}`);
+            }
+
+            async ensureNotRegistered(label) {
+              this.ensureConnected();
+              console.log(`\n   Checking availability of ${label}.dot...`);
+              const tokenId = computeDomainTokenId(label);
+              try {
+                const owner = await withTimeout(this.contractCall(CONTRACTS.DOTNS_REGISTRAR, DOTNS_REGISTRAR_ABI, "ownerOf", [tokenId]), 30000, "Availability check");
+                if (owner !== zeroAddress) throw new Error(`Domain ${label}.dot already owned by ${owner}`);
+              } catch (error) {
+                const errorMessage = error instanceof Error ? error.message : String(error);
+                if (errorMessage.includes("already owned")) throw error;
+              }
+              console.log(`   ${label}.dot is available`);
+            }
+
+            async generateCommitment(label, includeReverse = false) {
+              this.ensureConnected();
+              console.log(`\n   Generating commitment hash...`);
+              validateDomainLabel(label);
+              const secret = `0x${crypto.randomBytes(32).toString("hex")}`;
+              const registration = { label, owner: this.evmAddress, secret, reserved: includeReverse };
+              const commitment = await withTimeout(this.contractCall(CONTRACTS.DOTNS_REGISTRAR_CONTROLLER, DOTNS_REGISTRAR_CONTROLLER_ABI, "makeCommitment", [registration]), 30000, "Commitment generation");
+              console.log(`   Commitment: ${commitment}`);
+              return { commitment, registration };
+            }
+
+            async submitCommitment(commitment) {
+              this.ensureConnected();
+              console.log(`\n   Submitting commitment...`);
+              const txHash = await this.contractTransaction(CONTRACTS.DOTNS_REGISTRAR_CONTROLLER, 0n, DOTNS_REGISTRAR_CONTROLLER_ABI, "commit", [commitment], (s) => console.log(`      ${s}`));
+              console.log(`   Tx: ${txHash}`);
+              console.log(`   Committed at: ${new Date().toISOString()}`);
+            }
+
+            async waitForCommitmentAge() {
+              this.ensureConnected();
+              console.log(`\n   Reading minimum commitment age...`);
+              const minimumAge = await withTimeout(this.contractCall(CONTRACTS.DOTNS_REGISTRAR_CONTROLLER, DOTNS_REGISTRAR_CONTROLLER_ABI, "minCommitmentAge", []), 30000, "minCommitmentAge");
+              const minimumAgeSeconds = typeof minimumAge === "bigint" ? Number(minimumAge) : minimumAge;
+              const waitSeconds = minimumAgeSeconds + 10;
+              console.log(`   Minimum commitment age: ${minimumAgeSeconds}s`);
+              console.log(`   Waiting ${waitSeconds}s for commitment to mature...`);
+              await new Promise((resolve) => setTimeout(resolve, waitSeconds * 1000));
+              console.log(`   Commitment age requirement met`);
+            }
+
+            async getPriceAndValidate(label) {
+              this.ensureConnected();
+              console.log(`\n   Checking price and eligibility...`);
+              validateDomainLabel(label);
+              const baseName = stripTrailingDigits(label);
+              const reservationInfo = await withTimeout(this.contractCall(CONTRACTS.POP_RULES, POP_RULES_ABI, "isBaseNameReserved", [baseName]), 30000, "isBaseNameReserved");
+              const [isReserved, reservationOwner] = reservationInfo;
+              if (isReserved && reservationOwner.toLowerCase() !== this.evmAddress.toLowerCase()) throw new Error("Base name reserved for original Lite registrant");
+              const classificationResult = await withTimeout(this.contractCall(CONTRACTS.POP_RULES, POP_RULES_ABI, "classifyName", [label]), 30000, "classifyName");
+              const requiredStatus = typeof classificationResult[0] === "bigint" ? Number(classificationResult[0]) : classificationResult[0];
+              const message = classificationResult[1];
+              const userStatus = await this.getUserPopStatus();
+              if (requiredStatus === ProofOfPersonhoodStatus.Reserved) throw new Error(message);
+              if (requiredStatus === ProofOfPersonhoodStatus.ProofOfPersonhoodFull) {
+                if (userStatus !== ProofOfPersonhoodStatus.ProofOfPersonhoodFull) throw new Error("Requires Full Personhood verification");
+              } else if (requiredStatus === ProofOfPersonhoodStatus.ProofOfPersonhoodLite) {
+                if (userStatus !== ProofOfPersonhoodStatus.ProofOfPersonhoodLite && userStatus !== ProofOfPersonhoodStatus.ProofOfPersonhoodFull) throw new Error("Requires Personhood Lite verification");
+              } else {
+                const trailingDigitCount = countTrailingDigits(label);
+                if (trailingDigitCount === 0 || userStatus === ProofOfPersonhoodStatus.ProofOfPersonhoodLite) throw new Error("Personhood Lite cannot register base names");
+              }
+              const priceRaw = await withTimeout(this.contractCall(CONTRACTS.POP_RULES, POP_RULES_ABI, "price", [label]), 30000, "price");
+              const priceWei = typeof priceRaw === "bigint" ? priceRaw : BigInt(priceRaw);
+              const requiredStatusName = Object.keys(ProofOfPersonhoodStatus).find((k) => ProofOfPersonhoodStatus[k] === requiredStatus);
+              const userStatusName = Object.keys(ProofOfPersonhoodStatus).find((k) => ProofOfPersonhoodStatus[k] === userStatus);
+              console.log(`   Required status: ${requiredStatusName}`);
+              console.log(`   User status: ${userStatusName}`);
+              console.log(`   Price: ${formatEther(priceWei)} PAS`);
+              return { priceWei, requiredStatus, userStatus, message };
+            }
+
+            async finalizeRegistration(registration, priceWei) {
+              this.ensureConnected();
+              console.log(`\n   Finalizing registration for ${registration.label}.dot...`);
+              const bufferedPaymentWei = (priceWei * 110n) / 100n;
+              const bufferedPaymentNative = convertWeiToNative(bufferedPaymentWei);
+              console.log(`   Oracle price: ${formatEther(priceWei)} PAS`);
+              console.log(`   Paying: ${formatEther(bufferedPaymentWei)} PAS`);
+              const txHash = await this.contractTransaction(CONTRACTS.DOTNS_REGISTRAR_CONTROLLER, bufferedPaymentNative, DOTNS_REGISTRAR_CONTROLLER_ABI, "register", [registration], (s) => console.log(`      ${s}`));
+              console.log(`   Tx: ${txHash}`);
+            }
+
+            async verifyOwnership(label) {
+              this.ensureConnected();
+              console.log(`\n   Verifying ownership...`);
+              const tokenId = computeDomainTokenId(label);
+              const actualOwner = await withTimeout(this.contractCall(CONTRACTS.DOTNS_REGISTRAR, DOTNS_REGISTRAR_ABI, "ownerOf", [tokenId]), 30000, "ownerOf");
+              if (actualOwner.toLowerCase() !== this.evmAddress.toLowerCase()) {
+                console.log(`   Expected: ${this.evmAddress}`);
+                console.log(`   Actual: ${actualOwner}`);
+                throw new Error(`Owner mismatch for ${label}.dot`);
+              }
+              console.log(`   Owner: ${actualOwner}`);
+            }
+
+            async setContenthash(domainName, contenthashHex) {
+              this.ensureConnected();
+              const node = namehash(`${domainName}.dot`);
+              let ipfsCid = null;
+              if (contenthashHex && contenthashHex !== "0x") {
+                const bytes = Buffer.from(contenthashHex.slice(2), "hex");
+                if (bytes[0] === 0xe3 && bytes.length >= 4) {
+                  const cidBytes = bytes.slice(2);
+                  ipfsCid = CID.decode(cidBytes).toString();
+                }
+              }
+              console.log(`   Setting contenthash: ${ipfsCid || contenthashHex}`);
+              const txHash = await this.contractTransaction(CONTRACTS.DOTNS_CONTENT_RESOLVER, 0n, DOTNS_CONTENT_RESOLVER_ABI, "setContenthash", [node, contenthashHex], (s) => console.log(`      ${s}`));
+              console.log(`   Tx: ${txHash}`);
+              console.log(`   Contenthash set successfully!\n`);
+              return { node };
+            }
+
+            async register(label, options = {}) {
+              const status = parseProofOfPersonhoodStatus(options.status || process.env.DOTNS_STATUS);
+              const reverse = options.reverse ?? (process.env.DOTNS_REVERSE ?? "false").toLowerCase() === "true";
+              if (!this.connected) await this.connect(options);
+              validateDomainLabel(label);
+              await this.classifyName(label);
+              await this.setUserPopStatus(status);
+              await this.ensureNotRegistered(label);
+              const { commitment, registration } = await this.generateCommitment(label, reverse);
+              await this.submitCommitment(commitment);
+              await this.waitForCommitmentAge();
+              const pricing = await this.getPriceAndValidate(label);
+              await this.finalizeRegistration(registration, pricing.priceWei);
+              await this.verifyOwnership(label);
+              console.log(`\n   Registration complete!`);
+              return { label, owner: this.evmAddress };
+            }
+
+            disconnect() {
+              if (this.client) { this.client.destroy(); this.client = null; this.clientWrapper = null; this.connected = false; }
+            }
+          }
+
+          export const dotns = new DotNS();
+          DOTNS_EOF
+
+          # Create deploy.js
+          cat > deploy-frontend/deploy.js << 'DEPLOY_EOF'
+          import { Buffer } from "buffer";
+          import * as fs from "fs";
+          import * as path from "path";
+          import { execSync } from "child_process";
+          import { sha256 } from "@noble/hashes/sha256";
+          import { blake2b } from "@noble/hashes/blake2b";
+          import { sr25519CreateDerive } from "@polkadot-labs/hdkd";
+          import { DEV_PHRASE, entropyToMiniSecret, mnemonicToEntropy } from "@polkadot-labs/hdkd-helpers";
+          import { createClient as createPolkadotClient } from "polkadot-api";
+          import { Binary } from "@polkadot-api/substrate-bindings";
+          import { getPolkadotSigner } from "polkadot-api/signer";
+          import { getWsProvider } from "polkadot-api/ws-provider";
+          import { withPolkadotSdkCompat } from "polkadot-api/polkadot-sdk-compat";
+          import { CID } from "multiformats/cid";
+          import { create as createMultihash } from "multiformats/hashes/digest";
+          import { base32 } from "multiformats/bases/base32";
+          import { base58btc } from "multiformats/bases/base58";
+          import * as dagPB from "@ipld/dag-pb";
+          import { UnixFS } from "ipfs-unixfs";
+          import { DotNS } from "./dotns.js";
+
+          const BULLETIN_RPC = process.env.BULLETIN_RPC || "wss://bulletin.dotspark.app";
+          const CHUNK_SIZE = 1 * 1024 * 1024;
+          const MAX_FILE_SIZE = 8 * 1024 * 1024;
+          const CID_CONFIG = { version: 1, codec: 0x55, hashCode: 0x12, hashLength: 32 };
+
+          export function createCID(data, codec = CID_CONFIG.codec, hashCode = CID_CONFIG.hashCode) {
+            let hash;
+            if (hashCode === 0xb220) hash = blake2b(data, { dkLen: CID_CONFIG.hashLength });
+            else if (hashCode === 0x12) hash = sha256(data);
+            else throw new Error(`Unsupported hash code: 0x${hashCode.toString(16)}`);
+            return CID.createV1(codec, createMultihash(hashCode, hash));
+          }
+
+          export function encodeContenthash(cidString) {
+            const decoder = cidString.startsWith("Qm") ? base58btc : base32;
+            const cid = CID.parse(cidString, decoder);
+            const contenthash = new Uint8Array(cid.bytes.length + 2);
+            contenthash[0] = 0xe3;
+            contenthash[1] = 0x01;
+            contenthash.set(cid.bytes, 2);
+            return Buffer.from(contenthash).toString("hex");
+          }
+
+          function toHashingEnum(mhCode) {
+            switch (mhCode) {
+              case 0xb220: return { type: "Blake2b256", value: undefined };
+              case 0x12: return { type: "Sha2_256", value: undefined };
+              case 0x1b: return { type: "Keccak256", value: undefined };
+              default: throw new Error(`Unhandled multihash code: ${mhCode}`);
+            }
+          }
+
+          function createSigner(mnemonic, derivePath = "") {
+            const entropy = mnemonicToEntropy(mnemonic);
+            const miniSecret = entropyToMiniSecret(entropy);
+            const derive = sr25519CreateDerive(miniSecret);
+            const keyPair = derive(derivePath);
+            return getPolkadotSigner(keyPair.publicKey, "Sr25519", keyPair.sign);
+          }
+
+          async function getProvider() {
+            console.log(`   Connecting to Bulletin: ${BULLETIN_RPC}`);
+            const client = createPolkadotClient(withPolkadotSdkCompat(getWsProvider(BULLETIN_RPC)));
+            const unsafeApi = client.getUnsafeApi();
+            const signer = createSigner(DEV_PHRASE, "//Alice");
+            const aliceSS58 = "5GrwvaEF5zXb26Fz9rcQpDWS57CtERHpNehXCPcNoHGKutQY";
+            console.log(`   SS58 Address: ${aliceSS58}`);
+            return { client, unsafeApi, signer };
+          }
+
+          async function ensureAuthorization(unsafeApi, signer) {
+            if (!BULLETIN_RPC.includes("127.0.0.1") && !BULLETIN_RPC.includes("localhost")) return;
+            console.log(`   Local chain - authorizing storage via sudo...`);
+            const aliceSS58 = "5GrwvaEF5zXb26Fz9rcQpDWS57CtERHpNehXCPcNoHGKutQY";
+            const sudoTx = unsafeApi.tx.Sudo.sudo({ call: { type: "TransactionStorage", value: { type: "authorize_account", value: { who: aliceSS58, transactions: 1000, bytes: BigInt(100 * 1024 * 1024) } } } });
+            try {
+              await new Promise((resolve, reject) => {
+                const sub = sudoTx.signSubmitAndWatch(signer, { mortality: { mortal: true, period: 256 } }).subscribe({
+                  next: (event) => { if (event.type === "txBestBlocksState" && event.found) { console.log(`   Authorization granted: 1000 txs, 100 MB`); sub.unsubscribe(); resolve(); } },
+                  error: (e) => { sub.unsubscribe(); reject(e); },
+                });
+              });
+            } catch (e) {
+              const msg = e.message || String(e);
+              if (msg.includes("AlreadyAuthorized") || msg.includes("Sudid")) { console.log(`   Already authorized`); return; }
+              console.log(`   Authorization warning: ${msg.split("\n")[0]}`);
+              console.log(`   Proceeding - if not authorized, store will fail with Payment error`);
+            }
+          }
+
+          async function storeChunk(unsafeApi, signer, chunkBytes) {
+            const hashCode = 0x12;
+            const cid = createCID(chunkBytes, CID_CONFIG.codec, hashCode);
+            console.log(`      codec: 0x${CID_CONFIG.codec.toString(16)}, hash: 0x${hashCode.toString(16)}`);
+            const tx = unsafeApi.tx.TransactionStorage.store({ data: Binary.fromBytes(chunkBytes) });
+            const txOpts = { mortality: { mortal: true, period: 256 }, customSignedExtensions: { ProvideCidConfig: { value: { codec: BigInt(CID_CONFIG.codec), hashing: toHashingEnum(hashCode) } } } };
+            return new Promise((resolve, reject) => {
+              const sub = tx.signSubmitAndWatch(signer, txOpts).subscribe({
+                next: (event) => { if (event.type === "finalized") { console.log(`      CID: ${cid.toString()}`); sub.unsubscribe(); resolve({ cid, bytes: chunkBytes, len: chunkBytes.length }); } },
+                error: (e) => { sub.unsubscribe(); reject(e); },
+              });
+            });
+          }
+
+          export async function storeFile(contentBytes) {
+            console.log(`\n   Size: ${(contentBytes.length / 1024).toFixed(2)} KB`);
+            if (contentBytes.length > MAX_FILE_SIZE) throw new Error(`File exceeds 8MB limit. Use chunked deployment.`);
+            const hashCode = 0x12;
+            const cid = createCID(contentBytes, CID_CONFIG.codec, hashCode);
+            console.log(`   CID: ${cid.toString()}`);
+            const { client, unsafeApi, signer } = await getProvider();
+            try {
+              await ensureAuthorization(unsafeApi, signer);
+              const tx = unsafeApi.tx.TransactionStorage.store({ data: Binary.fromBytes(contentBytes) });
+              const txOpts = { mortality: { mortal: true, period: 256 }, customSignedExtensions: { ProvideCidConfig: { value: { codec: BigInt(CID_CONFIG.codec), hashing: toHashingEnum(hashCode) } } } };
+              console.log(`   Submitting...`);
+              return new Promise((resolve, reject) => {
+                const sub = tx.signSubmitAndWatch(signer, txOpts).subscribe({
+                  next: (event) => { if (event.type === "txBestBlocksState" && event.found) { console.log(`   Block: ${event.block.hash}\n`); sub.unsubscribe(); client.destroy(); resolve(cid.toString()); } },
+                  error: (e) => { sub.unsubscribe(); client.destroy(); reject(e); },
+                });
+              });
+            } catch (e) { client.destroy(); throw e; }
+          }
+
+          export async function storeChunkedContent(chunks) {
+            console.log(`\n   Chunks: ${chunks.length}`);
+            const totalBytes = chunks.reduce((s, c) => s + c.length, 0);
+            console.log(`   Total: ${(totalBytes / 1024).toFixed(2)} KB`);
+            const { client, unsafeApi, signer } = await getProvider();
+            try {
+              await ensureAuthorization(unsafeApi, signer);
+              console.log(`\n   Storing ${chunks.length} chunks...`);
+              const stored = [];
+              for (let i = 0; i < chunks.length; i++) {
+                const chunkSize = (chunks[i].length / 1024 / 1024).toFixed(2);
+                console.log(`   [${i + 1}/${chunks.length}] ${chunkSize} MB`);
+                stored.push(await storeChunk(unsafeApi, signer, chunks[i]));
+              }
+              console.log(`\n   Building DAG-PB...`);
+              const fileData = new UnixFS({ type: "file", blockSizes: stored.map((c) => BigInt(c.len)) });
+              const dagNode = dagPB.prepare({ Data: fileData.marshal(), Links: stored.map((c) => ({ Name: "", Tsize: c.len, Hash: c.cid })) });
+              const dagBytes = dagPB.encode(dagNode);
+              const hashCode = 0x12;
+              const rootCid = createCID(dagBytes, 0x70, hashCode);
+              console.log(`   Storing root node...`);
+              const tx = unsafeApi.tx.TransactionStorage.store({ data: Binary.fromBytes(dagBytes) });
+              const txOpts = { mortality: { mortal: true, period: 256 }, customSignedExtensions: { ProvideCidConfig: { value: { codec: BigInt(0x70), hashing: toHashingEnum(hashCode) } } } };
+              return new Promise((resolve, reject) => {
+                const sub = tx.signSubmitAndWatch(signer, txOpts).subscribe({
+                  next: (event) => { if (event.type === "finalized") { console.log(`   Root CID: ${rootCid.toString()}\n`); sub.unsubscribe(); client.destroy(); resolve(rootCid.toString()); } },
+                  error: (e) => { sub.unsubscribe(); client.destroy(); reject(e); },
+                });
+              });
+            } catch (e) { client.destroy(); throw e; }
+          }
+
+          export function chunk(data, size = CHUNK_SIZE) {
+            const chunks = [];
+            let offset = 0;
+            while (offset < data.length) { const end = Math.min(offset + size, data.length); chunks.push(new Uint8Array(data.subarray(offset, end))); offset = end; }
+            return chunks;
+          }
+
+          export function hasIPFS() { try { execSync("ipfs version", { stdio: "ignore" }); return true; } catch { return false; } }
+
+          export async function merkleize(directoryPath, outputCarPath) {
+            if (!hasIPFS()) throw new Error("IPFS CLI not installed. Install from: https://docs.ipfs.tech/install/");
+            if (!fs.existsSync(directoryPath)) throw new Error(`Directory not found: ${directoryPath}`);
+            console.log(`   Merkleizing: ${directoryPath}`);
+            const cid = execSync(`ipfs add -Q -r --cid-version=1 --raw-leaves --pin=false "${directoryPath}"`, { encoding: "utf-8" }).trim();
+            if (!cid) throw new Error("Failed to get CID from IPFS");
+            execSync(`ipfs dag export ${cid} > "${outputCarPath}"`);
+            if (!fs.existsSync(outputCarPath)) throw new Error("Failed to create CAR file");
+            const size = fs.statSync(outputCarPath).size;
+            console.log(`   CAR: ${(size / 1024 / 1024).toFixed(2)} MB`);
+            return { carPath: outputCarPath, cid };
+          }
+
+          export async function storeDirectory(directoryPath) {
+            const carPath = path.join(path.dirname(directoryPath), `${path.basename(directoryPath)}.car`);
+            const { cid: ipfsCid } = await merkleize(directoryPath, carPath);
+            const carBuffer = fs.readFileSync(carPath);
+            const CHUNK_SIZE_1_5MB = 1.5 * 1024 * 1024;
+            const carChunks = chunk(carBuffer, CHUNK_SIZE_1_5MB);
+            const storageCid = await storeChunkedContent(carChunks);
+            return { storageCid, ipfsCid };
+          }
+
+          export async function deploy(content, domainName = null) {
+            let cid;
+            let ipfsCid;
+            const randomSuffix = Math.floor(Math.random() * 100).toString().padStart(2, "0");
+            const name = domainName ? domainName.replace(".dot", "") : `test-domain-${Date.now().toString(36)}${randomSuffix}`;
+            console.log("\n" + "=".repeat(60));
+            console.log("DEPLOYING TO TESTNET");
+            console.log("=".repeat(60));
+            console.log(`   Domain: ${name}.dot`);
+            if (typeof content === "string") console.log(`   Build dir: ${path.resolve(content)}`);
+            console.log("\n" + "=".repeat(60));
+            console.log("Storage");
+            console.log("=".repeat(60));
+            if (process.env.IPFS_CID) {
+              cid = process.env.IPFS_CID;
+              ipfsCid = cid;
+              console.log(`\n   Using CID: ${cid}`);
+            } else if (Array.isArray(content)) {
+              console.log(`\n   Mode: Multi-chunk (${content.length} chunks)`);
+              cid = await storeChunkedContent(content);
+            } else if (typeof content === "string") {
+              const contentPath = path.resolve(content);
+              if (!fs.existsSync(contentPath)) throw new Error(`Path not found: ${contentPath}`);
+              const stats = fs.statSync(contentPath);
+              if (stats.isDirectory()) {
+                console.log(`\n   Mode: Directory`);
+                console.log(`   Path: ${contentPath}`);
+                const result = await storeDirectory(contentPath);
+                cid = result.storageCid;
+                ipfsCid = result.ipfsCid;
+              } else {
+                console.log(`\n   Mode: File`);
+                console.log(`   Path: ${contentPath}`);
+                const fileContent = fs.readFileSync(contentPath);
+                if (fileContent.length > MAX_FILE_SIZE) {
+                  console.log(`   Exceeds 8MB, chunking...`);
+                  cid = await storeChunkedContent(chunk(fileContent));
+                } else {
+                  cid = await storeFile(new Uint8Array(fileContent));
+                }
+              }
+            } else if (content instanceof Uint8Array) {
+              console.log(`\n   Mode: Bytes`);
+              if (content.length > MAX_FILE_SIZE) {
+                console.log(`   Exceeds 8MB, chunking...`);
+                cid = await storeChunkedContent(chunk(content));
+              } else {
+                cid = await storeFile(content);
+              }
+            } else {
+              throw new Error("Invalid content: must be path, Uint8Array, or Array<Uint8Array>");
+            }
+            console.log("\n" + "=".repeat(60));
+            console.log("DotNS");
+            console.log("=".repeat(60));
+            const dotns = new DotNS();
+            await dotns.connect();
+            const { owned, owner } = await dotns.checkOwnership(name);
+            if (owned) {
+              console.log(`   Status: Already owned`);
+            } else if (owner && owner !== "0x0000000000000000000000000000000000000000") {
+              throw new Error(`Domain ${name}.dot is owned by ${owner}, not ${dotns.evmAddress}`);
+            } else {
+              console.log(`   Status: Registering...`);
+              await dotns.register(name, { status: "none" });
+            }
+            const contenthashHex = `0x${encodeContenthash(cid)}`;
+            await dotns.setContenthash(name, contenthashHex);
+            dotns.disconnect();
+            console.log("\n" + "=".repeat(60));
+            console.log("DEPLOYMENT COMPLETE!");
+            console.log("=".repeat(60));
+            console.log("\n🔺 Polkadot Triangle");
+            console.log(`   - Polkadot Browser: https://polkadot-browser.novasama-technologies.workers.dev/#/product/${name}.dot`);
+            console.log("\n🌐 Standalone");
+            console.log(`   - Main: https://${name}.paseo.li`);
+            console.log(`   - Alternative: https://${name}.bigtava.online`);
+            console.log("\n" + "=".repeat(60) + "\n");
+            return { domainName: name, fullDomain: `${name}.dot`, cid, ipfsCid, url: `https://${name}.paseo.li`, altUrl: `https://${name}.bigtava.online` };
+          }
+          DEPLOY_EOF
+          echo "::endgroup::"
+
+      - name: Install deployment dependencies
+        if: steps.cache.outputs.cache-hit != 'true'
+        working-directory: deploy-frontend
+        run: npm install
+
+      - name: Deploying
+        id: deploy
+        if: steps.cache.outputs.cache-hit != 'true'
+        uses: nick-fields/retry@v3
+        with:
+          timeout_minutes: 15
+          max_attempts: ${{ inputs.max-retries }}
+          retry_wait_seconds: 30
+          command: |
+            export MNEMONIC='${{ secrets.mnemonic }}'
+            export IPFS_CID='${{ steps.cached-deploy.outputs.cid }}'
+            node --input-type=module -e "
+            import { deploy } from './deploy-frontend/deploy.js';
+
+            const domain = '${{ inputs.dotns-domain }}';
+            const buildDir = 'build';
+
+            try {
+              const result = await deploy(buildDir, domain);
+
+              const fs = await import('fs');
+              const output = process.env.GITHUB_OUTPUT;
+              fs.appendFileSync(output, \`cid=\${result.cid}\n\`);
+              fs.appendFileSync(output, \`domain=\${result.domainName}\n\`);
+              fs.appendFileSync(output, \`url=\${result.url}\n\`);
+              fs.appendFileSync(output, \`alt_url=\${result.altUrl}\n\`);
+            } catch (error) {
+              console.error('Deployment failed:', error.message);
+              process.exit(1);
+            }
+            "
+
+      - name: Save deployment to cache
+        if: steps.cache.outputs.cache-hit != 'true'
+        run: |
+          mkdir -p .deploy-cache
+          echo "${{ steps.deploy.outputs.cid }}" > .deploy-cache/cid
+
+      - name: Set deployment outputs
+        id: final
+        run: |
+          if [ "${{ steps.cache.outputs.cache-hit }}" == "true" ]; then
+            echo "cid=${{ steps.cached-deploy.outputs.cid }}" >> "$GITHUB_OUTPUT"
+            echo "domain=${{ inputs.dotns-domain }}" >> "$GITHUB_OUTPUT"
+            echo "url=https://${{ inputs.dotns-domain }}.paseo.li" >> "$GITHUB_OUTPUT"
+            echo "alt_url=https://${{ inputs.dotns-domain }}.bigtava.online" >> "$GITHUB_OUTPUT"
+          else
+            echo "cid=${{ steps.deploy.outputs.cid }}" >> "$GITHUB_OUTPUT"
+            echo "domain=${{ steps.deploy.outputs.domain }}" >> "$GITHUB_OUTPUT"
+            echo "url=${{ steps.deploy.outputs.url }}" >> "$GITHUB_OUTPUT"
+            echo "alt_url=${{ steps.deploy.outputs.alt_url }}" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Deployment summary
+        run: |
+          if [ "${{ steps.cache.outputs.cache-hit }}" == "true" ]; then
+            echo "## Domain Updated (CID Cached)! :rocket:" >> $GITHUB_STEP_SUMMARY
+          else
+            echo "## Deployment Complete! :rocket:" >> $GITHUB_STEP_SUMMARY
+          fi
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "| Property | Value |" >> $GITHUB_STEP_SUMMARY
+          echo "| -------- | ----- |" >> $GITHUB_STEP_SUMMARY
+          echo "| Domain | \`${{ steps.final.outputs.domain }}.dot\` |" >> $GITHUB_STEP_SUMMARY
+          echo "| CID | \`${{ steps.final.outputs.cid }}\` |" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "### Polkadot Triangle" >> $GITHUB_STEP_SUMMARY
+          echo "- **Polkadot Browser:** [https://polkadot-browser.novasama-technologies.workers.dev/#/product/${{ steps.final.outputs.domain }}](https://polkadot-browser.novasama-technologies.workers.dev/#/product/${{ steps.final.outputs.domain }})" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "### Standalone" >> $GITHUB_STEP_SUMMARY
+          echo "- **Main:** [https://${{ steps.final.outputs.domain }}.paseo.li](https://${{ steps.final.outputs.domain }}.paseo.li)" >> $GITHUB_STEP_SUMMARY
+          echo "- **Alternative:** [https://${{ steps.final.outputs.domain }}.bigtava.online](https://${{ steps.final.outputs.domain }}.bigtava.online)" >> $GITHUB_STEP_SUMMARY
+          echo "- **IPFS Gateway:** [https://ipfs.dotspark.app/ipfs/${{ steps.final.outputs.cid }}](https://ipfs.dotspark.app/ipfs/${{ steps.final.outputs.cid }})" >> $GITHUB_STEP_SUMMARY
+
+      - name: Comment on PR
+        if: inputs.comment-on-pr && github.event.pull_request
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const runUrl = `${process.env.GITHUB_SERVER_URL}/${process.env.GITHUB_REPOSITORY}/actions/runs/${process.env.GITHUB_RUN_ID}`;
+            await github.rest.issues.createComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.issue.number,
+              body: `Deployed to \`${{ steps.final.outputs.domain }}.dot\` — [View Summary](${runUrl})`
+            });
