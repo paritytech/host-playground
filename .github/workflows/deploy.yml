@@ -21,7 +21,7 @@ permissions:
   pull-requests: write
 
 concurrency:
-  group: deploy-test-sdk-${{ github.event.pull_request.number || github.ref }}
+  group: deploy-${{ github.event.pull_request.number || github.ref }}
   cancel-in-progress: true
 
 jobs:
@@ -37,7 +37,7 @@ jobs:
 
       - name: Compute source hash
         id: source-hash
-        run: echo "hash=$(git ls-files sdk-test/ .github/workflows/deploy-test-sdk.yml | xargs sha256sum | sha256sum | cut -d' ' -f1)" >> "$GITHUB_OUTPUT"
+        run: echo "hash=$(git ls-files src/ public/ package.json next.config.js .github/workflows/deploy.yml | xargs sha256sum | sha256sum | cut -d' ' -f1)" >> "$GITHUB_OUTPUT"
 
       - name: Check deployment cache
         id: cache-check
@@ -57,31 +57,29 @@ jobs:
         uses: actions/checkout@v6
 
       - name: Setup node
-        uses: ./.github/actions/setup-node
+        uses: actions/setup-node@v4
         with:
-          NODEJS_VERSION: '22'
+          node-version: '22'
 
       - name: Install dependencies
-        working-directory: sdk-test
         run: yarn install --immutable
 
       - name: Cache build
         id: cache-build
         uses: actions/cache@v5
         with:
-          path: sdk-test/out
+          path: out
           key: build-${{ needs.check.outputs.source-hash }}
 
       - name: Build app
         if: steps.cache-build.outputs.cache-hit != 'true'
-        working-directory: sdk-test
         run: yarn build
 
       - name: Upload build artifact
         uses: actions/upload-artifact@v6
         with:
-          name: test-sdk-build
-          path: sdk-test/out
+          name: frontend-build
+          path: out
           retention-days: 1
 
   deploy:
@@ -91,7 +89,7 @@ jobs:
     uses: ./.github/workflows/deploy-to-triangle.yml
     with:
       dotns-domain: ${{ github.event_name == 'push' && 'test-product-sdk33.dot' || format('sdk-test-{0}-{1}00.dot', github.event.repository.name, github.event.pull_request.head.ref) }}
-      artifact-name: test-sdk-build
+      artifact-name: frontend-build
       skip-cache: ${{ inputs.skip-cache || false }}
       comment-on-pr: true
       max-retries: 3
