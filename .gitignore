@@ -16,6 +16,7 @@ build
 
 # Misc
 .DS_Store
+.idea
 *.pem
 ngrok.yml
 
