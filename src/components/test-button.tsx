@@ -1,5 +1,6 @@
 "use client";
 
+import { useMemo, useState } from "react";
 import { AlertTriangle, Play } from "lucide-react";
 import { Button } from "@/src/components/button";
 import type { TestDefinition } from "@/src/lib/types";
@@ -7,7 +8,7 @@ import type { TestDefinition } from "@/src/lib/types";
 interface TestButtonProps {
   test: TestDefinition;
   isRunning: boolean;
-  onRun: () => void;
+  onRun: (args?: Record<string, string>) => void;
   disabled?: boolean;
 }
 
@@ -20,27 +21,66 @@ export function TestButton({
   const isCurrentlyRunning = isRunning;
   const isDisabled = disabled || isCurrentlyRunning;
 
+  const hasArgs = test.args && test.args.length > 0;
+
+  const initialArgs = useMemo(() => {
+    if (!test.args) return {};
+    return Object.fromEntries(
+      test.args.map((arg) => [arg.name, arg.defaultValue]),
+    );
+  }, [test.args]);
+
+  const [argValues, setArgValues] = useState<Record<string, string>>(initialArgs);
+
+  const handleRun = () => {
+    onRun(hasArgs ? argValues : undefined);
+  };
+
   return (
-    <Button
-      variant="outline"
-      size="sm"
-      onClick={onRun}
-      disabled={isDisabled}
-      loading={isCurrentlyRunning}
-      className="justify-start text-left h-auto py-2 px-3"
-    >
-      {!isCurrentlyRunning && <Play className="h-3 w-3 shrink-0" />}
-      <div className="flex flex-col items-start gap-0.5 min-w-0">
-        <div className="flex items-center gap-1.5">
-          <span className="font-medium truncate">{test.name}</span>
-          {!test.isWorking && (
-            <AlertTriangle className="h-3 w-3 text-warning shrink-0" />
-          )}
+    <div className="border border-border rounded-md overflow-hidden">
+      <Button
+        variant="ghost"
+        size="sm"
+        onClick={handleRun}
+        disabled={isDisabled}
+        loading={isCurrentlyRunning}
+        className="justify-start text-left h-auto py-2 px-3 w-full rounded-none hover:bg-accent"
+      >
+        {!isCurrentlyRunning && <Play className="h-3 w-3 shrink-0" />}
+        <div className="flex flex-col items-start gap-0.5 min-w-0">
+          <div className="flex items-center gap-1.5">
+            <span className="font-medium truncate">{test.name}</span>
+            {!test.isWorking && (
+              <AlertTriangle className="h-3 w-3 text-warning shrink-0" />
+            )}
+          </div>
+          <span className="text-xs text-muted-foreground truncate w-full">
+            {test.description}
+          </span>
         </div>
-        <span className="text-xs text-muted-foreground truncate w-full">
-          {test.description}
-        </span>
-      </div>
-    </Button>
+      </Button>
+      {hasArgs && (
+        <div className="px-3 pb-2 space-y-1.5">
+          {test.args!.map((arg) => (
+            <div key={arg.name} className="flex items-center gap-2">
+              <label className="text-xs text-muted-foreground shrink-0 w-24 text-right">
+                {arg.label}
+              </label>
+              <input
+                type="text"
+                value={argValues[arg.name] ?? arg.defaultValue}
+                onChange={(e) =>
+                  setArgValues((prev) => ({
+                    ...prev,
+                    [arg.name]: e.target.value,
+                  }))
+                }
+                className="text-xs border-b border-border bg-transparent text-foreground flex-1 min-w-0 px-1 py-0.5 outline-none focus:border-foreground"
+              />
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
   );
 }

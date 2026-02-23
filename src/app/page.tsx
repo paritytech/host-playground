@@ -21,7 +21,7 @@ import { useAccounts } from "@/src/lib/use-accounts";
 import { useConnectionStatus } from "@/src/lib/use-connection-status";
 import { stringify } from "@/src/lib/utils";
 
-const SDK_VERSION = "0.5.5";
+const SDK_VERSION = "0.6.1";
 
 const categoryInfo: Record<
   TestCategory,
@@ -107,7 +107,7 @@ export default function SdkTestPage() {
   const isInWebview = isTransportReady ? isReady : null;
 
   const runTest = useCallback(
-    async (test: TestDefinition) => {
+    async (test: TestDefinition, args?: Record<string, string>) => {
       setRunningTest(test.id);
       const logId = log(test.name, "pending", "Running...");
 
@@ -117,7 +117,7 @@ export default function SdkTestPage() {
       };
 
       try {
-        const result = await test.run(currentChain, testLogger);
+        const result = await test.run(currentChain, testLogger, args);
         updateLog(
           logId,
           result.success ? "success" : "error",

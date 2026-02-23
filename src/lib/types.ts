@@ -34,13 +34,25 @@ export interface ChainConfig {
   wsUrl: string;
 }
 
+export interface TestArg {
+  name: string;
+  label: string;
+  defaultValue: string;
+}
+
 export interface TestDefinition {
   id: string;
   name: string;
   description: string;
+  api: string;
+  args?: TestArg[];
   category: TestCategory;
   isWorking?: boolean;
-  run: (chain: ChainConfig, logger?: TestLogger) => Promise<TestResult>;
+  run: (
+    chain: ChainConfig,
+    logger?: TestLogger,
+    args?: Record<string, string>,
+  ) => Promise<TestResult>;
 }
 
 // Chain configurations

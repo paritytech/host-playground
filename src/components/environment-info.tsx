@@ -1,6 +1,12 @@
 "use client";
 
-import { AlertCircle, AlertTriangle, CheckCircle2, Loader2, User } from "lucide-react";
+import {
+  AlertCircle,
+  AlertTriangle,
+  CheckCircle2,
+  Loader2,
+  User,
+} from "lucide-react";
 import { SpektrExtensionName } from "@novasamatech/product-sdk";
 import { Badge } from "@/src/components/badge";
 import {
@@ -121,7 +127,7 @@ export function EnvironmentInfo({
         <div className="pt-4 border-t border-border/60">
           <div className="flex items-center gap-2 text-xs text-warning">
             <AlertTriangle className="h-4 w-4 shrink-0" />
-            <span>Not working with Polkadot Desktop version &lt;= 0.0.14</span>
+            <span>Not working with Polkadot Desktop version &lt;= 0.1.0</span>
           </div>
         </div>
       </CardContent>

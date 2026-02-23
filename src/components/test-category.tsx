@@ -16,7 +16,7 @@ interface TestCategoryProps {
   category: TestCategory;
   tests: TestDefinition[];
   runningTest: string | null;
-  onRunTest: (test: TestDefinition) => void;
+  onRunTest: (test: TestDefinition, args?: Record<string, string>) => void;
 }
 
 const categoryIcons: Record<TestCategory, string> = {
@@ -55,7 +55,7 @@ export function TestCategoryCard({
               test={test}
               isRunning={runningTest === test.id}
               disabled={runningTest !== null && runningTest !== test.id}
-              onRun={() => onRunTest(test)}
+              onRun={(args) => onRunTest(test, args)}
             />
           ))}
         </div>
