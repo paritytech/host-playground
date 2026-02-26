@@ -50,7 +50,7 @@ jobs:
     with:
       basename: test-product-sdk33
       mode: preview
-      subname-format: pr-name
+      subname-format: branch
       artifact-name: web-dist
       register-base: true
       max-retries: 5
