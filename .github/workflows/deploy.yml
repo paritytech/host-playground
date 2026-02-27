@@ -1,112 +1,109 @@
-name: Deploy
+name: Deploy to DotNS
 
 on:
   push:
-    branches:
-      - main
+    branches: [main]
   pull_request:
-    branches:
-      - main
-  workflow_dispatch:
-    inputs:
-      skip-cache:
-        description: 'Skip deployment cache and force redeploy'
-        type: boolean
-        default: false
-
-permissions:
-  contents: read
-  statuses: write
-  id-token: write
-  pull-requests: write
+    branches: [main]
 
 concurrency:
-  group: deploy-${{ github.event.pull_request.number || github.ref }}
+  group: deploy-${{ github.event_name == 'pull_request' && github.event.pull_request.number || 'production' }}
   cancel-in-progress: true
 
 jobs:
-  check:
-    runs-on: ubuntu-latest
-    name: Check for changes
-    outputs:
-      source-hash: ${{ steps.source-hash.outputs.hash }}
-      cache-hit: ${{ steps.cache-check.outputs.cache-hit }}
-    steps:
-      - name: Checkout repository
-        uses: actions/checkout@v6
-
-      - name: Compute source hash
-        id: source-hash
-        run: echo "hash=$(git ls-files src/ public/ package.json next.config.js .github/workflows/deploy.yml | xargs sha256sum | sha256sum | cut -d' ' -f1)" >> "$GITHUB_OUTPUT"
-
-      - name: Check deployment cache
-        id: cache-check
-        uses: actions/cache@v5
-        with:
-          path: .deployment-marker
-          key: deployment-${{ steps.source-hash.outputs.hash }}
-          lookup-only: true
-
   build:
-    needs: check
-    if: needs.check.outputs.cache-hit != 'true' || inputs.skip-cache
     runs-on: ubuntu-latest
-    name: Build
     steps:
-      - name: Checkout repository
-        uses: actions/checkout@v6
+      - uses: actions/checkout@v4
 
-      - name: Setup node
-        uses: actions/setup-node@v4
+      - uses: actions/setup-node@v4
         with:
-          node-version: '22'
+          node-version: 22
 
       - name: Install dependencies
         run: yarn install --immutable
 
-      - name: Cache build
-        id: cache-build
-        uses: actions/cache@v5
-        with:
-          path: out
-          key: build-${{ needs.check.outputs.source-hash }}
-
-      - name: Build app
-        if: steps.cache-build.outputs.cache-hit != 'true'
+      - name: Build
         run: yarn build
 
-      - name: Upload build artifact
-        uses: actions/upload-artifact@v6
+      - uses: actions/upload-artifact@v4
         with:
-          name: frontend-build
-          path: out
-          retention-days: 1
+          name: web-dist
+          path: out/
 
-  deploy:
-    needs: [check, build]
-    if: needs.check.outputs.cache-hit != 'true' || inputs.skip-cache
-    name: Deploy
-    uses: ./.github/workflows/deploy-to-triangle.yml
+  deploy-production:
+    if: github.event_name == 'push'
+    needs: build
+    uses: paritytech/dotns-sdk/.github/workflows/deploy.yml@main
     with:
-      dotns-domain: ${{ github.event_name == 'push' && 'test-product-sdk33.dot' || format('sdk-test-{0}-{1}00.dot', github.event.repository.name, github.event.pull_request.head.ref) }}
-      artifact-name: frontend-build
-      skip-cache: ${{ inputs.skip-cache || false }}
-      comment-on-pr: true
-      max-retries: 3
+      basename: test-product-sdk33
+      mode: production
+      artifact-name: web-dist
+      register-base: true
     secrets:
-      mnemonic: ${{ 'bottom drive obey lake curtain smoke basket hold race lonely fit walk' }}
+      dotns-mnemonic: ${{ secrets.PASEO_DEPLOYER_MNEMONIC }}
 
-  post-deploy:
-    needs: [check, deploy]
-    if: needs.deploy.result == 'success'
+  deploy-preview:
+    if: github.event_name == 'pull_request'
+    needs: build
+    uses: paritytech/dotns-sdk/.github/workflows/deploy.yml@main
+    with:
+      basename: test-product-sdk33
+      mode: preview
+      subname-format: branch
+      artifact-name: web-dist
+      register-base: true
+      max-retries: 5
+    secrets:
+      dotns-mnemonic: ${{ secrets.PASEO_DEPLOYER_MNEMONIC }}
+
+  comment:
+    if: github.event_name == 'pull_request'
     runs-on: ubuntu-latest
-    name: Mark as deployed
+    needs: deploy-preview
+    permissions:
+      pull-requests: write
     steps:
-      - name: Create deployment marker
-        run: echo "deployed" > .deployment-marker
-
-      - name: Cache deployment marker
-        uses: actions/cache/save@v5
+      - uses: actions/github-script@v7
         with:
-          path: .deployment-marker
-          key: deployment-${{ needs.check.outputs.source-hash }}
+          script: |
+            const url = '${{ needs.deploy-preview.outputs.url }}'
+            const fqdn = '${{ needs.deploy-preview.outputs.fqdn }}'
+            const cid = '${{ needs.deploy-preview.outputs.cid }}'
+
+            const body = [
+              '### Preview Deploy',
+              '',
+              `| | |`,
+              `|---|---|`,
+              `| **Preview** | [${fqdn}](${url}) |`,
+              `| **CID** | \`${cid}\` |`,
+              '',
+              '_Deployed to Bulletin Chain via DotNS_',
+            ].join('\n')
+
+            const { data: comments } = await github.rest.issues.listComments({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.issue.number,
+            })
+
+            const existing = comments.find(c =>
+              c.user.type === 'Bot' && c.body.includes('### Preview Deploy')
+            )
+
+            if (existing) {
+              await github.rest.issues.updateComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                comment_id: existing.id,
+                body,
+              })
+            } else {
+              await github.rest.issues.createComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: context.issue.number,
+                body,
+              })
+            }
