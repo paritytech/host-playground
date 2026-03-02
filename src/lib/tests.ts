@@ -1410,6 +1410,36 @@ export const preimageTests: TestDefinition[] = [
   },
 ];
 
+// Notification Tests
+export const notificationTests: TestDefinition[] = [
+  {
+    id: "push-notification",
+    name: "Push Notification",
+    description: "Send a push notification to the host",
+    api: "hostApi.pushNotification({ tag: 'v1', value: { text, deeplink } })",
+    args: [
+      { name: "text", label: "Text", defaultValue: "Hello from demo product!" },
+      { name: "deeplink", label: "Deeplink (optional)", defaultValue: "" },
+    ],
+    category: "notifications",
+    isWorking: true,
+    async run(_chain, _logger, args) {
+      const text = args?.text ?? "Hello from demo product!";
+      const deeplink = args?.deeplink?.trim() || undefined;
+
+      const result = await hostApi.pushNotification({
+        tag: "v1",
+        value: { text, deeplink },
+      });
+
+      return result.match(
+        () => success(`Notification sent: "${text}"${deeplink ? ` → ${deeplink}` : ""}`),
+        (err) => error(err.value.name, err.value),
+      );
+    },
+  },
+];
+
 export const testsByCategory = {
   accounts: accountTests,
   signing: signingTests,
@@ -1419,4 +1449,5 @@ export const testsByCategory = {
   chat: chatTests,
   statements: statementTests,
   preimage: preimageTests,
+  notifications: notificationTests,
 };
