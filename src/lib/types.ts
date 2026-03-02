@@ -26,7 +26,8 @@ export type TestCategory =
   | "chat"
   | "statements"
   | "preimage"
-  | "notifications";
+  | "notifications"
+  | "jsonrpc";
 
 export interface ChainConfig {
   name: string;

@@ -1127,12 +1127,12 @@ export const chatTests: TestDefinition[] = [
         let requestCount = 0;
 
         const unsubscribe = chatManager.onCustomMessageRenderingRequest(
-          (messageType, _payload, render) => {
+          ({ messageType }, render) => {
             requestCount++;
             render({
               tag: "Text",
               value: {
-                modifiers: undefined,
+                modifiers: [],
                 props: { style: undefined, color: undefined },
                 children: [
                   { tag: "String", value: `Rendered: ${messageType}` },
@@ -1232,7 +1232,7 @@ export const statementTests: TestDefinition[] = [
       const proof = await statementStore.createProof([dotNsIdentifier, 0], {
         proof: undefined,
         decryptionKey: undefined,
-        priority: undefined,
+        expiry: undefined,
         channel: undefined,
         topics: [],
         data: messageBytes,
@@ -1299,7 +1299,7 @@ export const statementTests: TestDefinition[] = [
           {
             proof: undefined,
             decryptionKey: undefined,
-            priority: undefined,
+            expiry: undefined,
             channel: undefined,
             topics: [],
             data: messageBytes,
@@ -1440,6 +1440,258 @@ export const notificationTests: TestDefinition[] = [
   },
 ];
 
+// JSON RPC Method Tests
+export const jsonRpcTests: TestDefinition[] = [
+  {
+    id: "jsonrpc-chainspec-data",
+    name: "ChainSpec Data",
+    description:
+      "Tests chainSpec_v1_genesisHash, chainSpec_v1_chainName, chainSpec_v1_properties via getChainSpecData()",
+    api: "client.getChainSpecData()",
+    category: "jsonrpc",
+    isWorking: true,
+    async run(chain: ChainConfig) {
+      const provider = createPapiProvider(chain.genesis);
+      const client = createClient(provider);
+      try {
+        const data = await client.getChainSpecData();
+        return success("ChainSpec data retrieved", {
+          genesisHash: data.genesisHash,
+          chainName: data.name,
+          properties: data.properties,
+        });
+      } finally {
+        client.destroy();
+      }
+    },
+  },
+  {
+    id: "jsonrpc-chainhead-follow",
+    name: "ChainHead Follow / Unfollow",
+    description:
+      "Tests chainHead_v1_follow (subscribe) and chainHead_v1_unfollow (destroy) via getFinalizedBlock()",
+    api: "client.getFinalizedBlock()",
+    category: "jsonrpc",
+    isWorking: true,
+    async run(chain: ChainConfig) {
+      const provider = createPapiProvider(chain.genesis);
+      const client = createClient(provider);
+      try {
+        const block = await client.getFinalizedBlock();
+        return success("Follow/unfollow OK", {
+          hash: block.hash,
+          number: block.number,
+        });
+      } finally {
+        client.destroy();
+      }
+    },
+  },
+  {
+    id: "jsonrpc-chainhead-header",
+    name: "ChainHead Header",
+    description: "Tests chainHead_v1_header via getBlockHeader(hash)",
+    api: "client.getBlockHeader(hash)",
+    category: "jsonrpc",
+    isWorking: true,
+    async run(chain: ChainConfig) {
+      const provider = createPapiProvider(chain.genesis);
+      const client = createClient(provider);
+      try {
+        const block = await client.getFinalizedBlock();
+        const header = await client.getBlockHeader(block.hash);
+        return success("Header retrieved", {
+          number: header.number,
+          parentHash: header.parentHash,
+          stateRoot: header.stateRoot,
+          extrinsicRoot: header.extrinsicRoot,
+        });
+      } finally {
+        client.destroy();
+      }
+    },
+  },
+  {
+    id: "jsonrpc-chainhead-body",
+    name: "ChainHead Body",
+    description: "Tests chainHead_v1_body via getBlockBody(hash)",
+    api: "client.getBlockBody(hash)",
+    category: "jsonrpc",
+    isWorking: true,
+    async run(chain: ChainConfig) {
+      const provider = createPapiProvider(chain.genesis);
+      const client = createClient(provider);
+      try {
+        const block = await client.getFinalizedBlock();
+        const body = await client.getBlockBody(block.hash);
+        return success("Body retrieved", {
+          hash: block.hash,
+          extrinsicsCount: body.length,
+        });
+      } finally {
+        client.destroy();
+      }
+    },
+  },
+  {
+    id: "jsonrpc-chainhead-storage",
+    name: "ChainHead Storage",
+    description:
+      "Tests chainHead_v1_storage (and continue/stopOperation) via System.Number query",
+    api: "unsafeApi.query.System.Number.getValue()",
+    category: "jsonrpc",
+    isWorking: true,
+    async run(chain: ChainConfig) {
+      const provider = createPapiProvider(chain.genesis);
+      const client = createClient(provider);
+      try {
+        const unsafeApi = client.getUnsafeApi();
+        const blockNumber = await unsafeApi.query.System.Number.getValue();
+        return success("Storage query OK", { blockNumber });
+      } finally {
+        client.destroy();
+      }
+    },
+  },
+  {
+    id: "jsonrpc-chainhead-call",
+    name: "ChainHead Call",
+    description: "Tests chainHead_v1_call via Core.version() runtime call",
+    api: "unsafeApi.apis.Core.version()",
+    category: "jsonrpc",
+    isWorking: true,
+    async run(chain: ChainConfig) {
+      const provider = createPapiProvider(chain.genesis);
+      const client = createClient(provider);
+      try {
+        const unsafeApi = client.getUnsafeApi();
+        const version = await unsafeApi.apis.Core.version();
+        return success("Runtime call OK", {
+          specName: version.spec_name,
+          specVersion: version.spec_version,
+          implVersion: version.impl_version,
+        });
+      } finally {
+        client.destroy();
+      }
+    },
+  },
+  {
+    id: "jsonrpc-chainhead-unpin",
+    name: "ChainHead Unpin",
+    description:
+      "Tests chainHead_v1_unpin — polkadot-api auto-unpins pinned blocks. Subscribes to finalizedBlock$ for 15s.",
+    api: "client.finalizedBlock$.subscribe()",
+    category: "jsonrpc",
+    isWorking: true,
+    async run(chain: ChainConfig) {
+      const provider = createPapiProvider(chain.genesis);
+      const client = createClient(provider);
+      return new Promise<TestResult>((resolve) => {
+        const blocks: { hash: string; number: number }[] = [];
+        let resolved = false;
+
+        const subscription = client.finalizedBlock$.subscribe({
+          next: block => {
+            blocks.push({ hash: block.hash, number: block.number });
+          },
+          error: (err: unknown) => {
+            if (!resolved) {
+              resolved = true;
+              client.destroy();
+              resolve(
+                error(`Subscription error: ${err instanceof Error ? err.message : String(err)}`),
+              );
+            }
+          },
+        });
+
+        setTimeout(() => {
+          if (!resolved) {
+            resolved = true;
+            subscription.unsubscribe();
+            client.destroy();
+            resolve(
+              success(`Received ${blocks.length} finalized blocks in 15s`, {
+                blocksReceived: blocks.length,
+                latestBlock: blocks.at(-1),
+              }),
+            );
+          }
+        }, 15000);
+      });
+    },
+  },
+  {
+    id: "jsonrpc-transaction-broadcast",
+    name: "Transaction Broadcast",
+    description:
+      "Tests transaction_v1_broadcast and transaction_v1_stop via signSubmitAndWatch (requires funded account)",
+    api: "tx.signSubmitAndWatch(signer)",
+    category: "jsonrpc",
+    isWorking: false,
+    async run(chain: ChainConfig, logger?: TestLogger) {
+      const log = logger || (() => {});
+
+      log("Fetching non-product accounts...");
+      const accountsProvider = createAccountsProvider();
+      const accountsResult = await accountsProvider.getNonProductAccounts();
+
+      let account: { publicKey: Uint8Array; name?: string } | null = null;
+      accountsResult.match(
+        accounts => {
+          if (accounts.length > 0) account = accounts[0];
+        },
+        () => {},
+      );
+
+      if (!account) {
+        return error("No non-product accounts available");
+      }
+
+      const signer = accountsProvider.getNonProductAccountSigner({
+        dotNsIdentifier: "",
+        derivationIndex: 0,
+        publicKey: (account as { publicKey: Uint8Array }).publicKey,
+      });
+
+      log(`Using account: ${toHex((account as { publicKey: Uint8Array }).publicKey).slice(0, 20)}...`);
+
+      const provider = createPapiProvider(chain.genesis);
+      const client = createClient(provider);
+      try {
+        log("Connecting to chain...");
+        await client.getFinalizedBlock();
+
+        const unsafeApi = client.getUnsafeApi();
+        const message = `JSON-RPC test: ${new Date().toISOString()}`;
+        const tx = unsafeApi.tx.System.remark({
+          remark: Binary.fromBytes(new TextEncoder().encode(message)),
+        });
+
+        log("Submitting transaction...");
+        return await new Promise<TestResult>((resolve) => {
+          const subscription = tx.signSubmitAndWatch(signer).subscribe({
+            next: event => {
+              if (event.type === "broadcasted") {
+                subscription.unsubscribe();
+                resolve(success("Transaction broadcast OK", { txHash: event.txHash }));
+              }
+            },
+            error: (err: unknown) => {
+              resolve(
+                error(`signSubmitAndWatch failed: ${err instanceof Error ? err.message : String(err)}`),
+              );
+            },
+          });
+        });
+      } finally {
+        client.destroy();
+      }
+    },
+  },
+];
+
 export const testsByCategory = {
   accounts: accountTests,
   signing: signingTests,
@@ -1450,4 +1702,5 @@ export const testsByCategory = {
   statements: statementTests,
   preimage: preimageTests,
   notifications: notificationTests,
+  jsonrpc: jsonRpcTests,
 };

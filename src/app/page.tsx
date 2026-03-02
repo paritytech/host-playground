@@ -63,6 +63,10 @@ const categoryInfo: Record<
     title: "Notifications",
     description: "Send push notifications to the host",
   },
+  jsonrpc: {
+    title: "JSON RPC Methods",
+    description: "Exercise each JSON-RPC method through the PAPI provider layer",
+  },
 };
 
 function NotInHostScreen() {
