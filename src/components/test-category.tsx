@@ -28,6 +28,7 @@ const categoryIcons: Record<TestCategory, string> = {
   chat: "💬",
   statements: "📜",
   preimage: "🔎",
+  notifications: "🔔",
 };
 
 export function TestCategoryCard({

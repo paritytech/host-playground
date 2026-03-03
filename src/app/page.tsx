@@ -59,6 +59,10 @@ const categoryInfo: Record<
     title: "Preimage",
     description: "Submit and lookup preimages",
   },
+  notifications: {
+    title: "Notifications",
+    description: "Send push notifications to the host",
+  },
 };
 
 function NotInHostScreen() {

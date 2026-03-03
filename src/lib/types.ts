@@ -25,7 +25,8 @@ export type TestCategory =
   | "permissions"
   | "chat"
   | "statements"
-  | "preimage";
+  | "preimage"
+  | "notifications";
 
 export interface ChainConfig {
   name: string;
