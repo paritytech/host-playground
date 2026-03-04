@@ -471,32 +471,10 @@ export const signingTests: TestDefinition[] = [
         // increment() selector = 0xd09de08a
         const incrementData = Binary.fromHex("0xd09de08a");
 
-        // Dry run to estimate gas (passing undefined = let runtime decide)
-        const dryRun = await contractApi.apis.ReviveApi.call(
-          address,
-          dest,
-          BigInt(0),
-          undefined,
-          undefined,
-          incrementData,
-        );
-
-        log(
-          "Dry run result: " +
-            JSON.stringify(dryRun, (_: string, v: unknown) =>
-              typeof v === "bigint" ? v.toString() : v,
-            ),
-        );
-        if (!dryRun.result?.success) {
-          contractClient.destroy();
-          client.destroy();
-          return error("Dry run failed", dryRun);
-        }
-
-        const weightLimit = dryRun.weight_required;
-        const storageDeposit = dryRun.storage_deposit;
-        const storageDepositLimit =
-          storageDeposit?.type === "Charge" ? storageDeposit.value : BigInt(0);
+        // Skip dry run — ReviveApi.call requires a mapped account, use generous gas values instead
+        // (unused gas is refunded by the runtime)
+        const weightLimit = { ref_time: BigInt(50_000_000_000), proof_size: BigInt(1_000_000) };
+        const storageDepositLimit = BigInt(10_000_000_000);
 
         log("Preparing 2 increment calls...");
         const txDest = FixedSizeBinary.fromHex(contractAddr);
@@ -514,10 +492,13 @@ export const signingTests: TestDefinition[] = [
 
         contractClient.destroy();
 
-        // 3. Batch all three calls
-        log("Preparing batch of 3 calls (1 remark + 2 increments)...");
+        // 3. Batch: map_account (wrapped in batch() to handle AlreadyMapped) + remark + 2 increments
+        log("Preparing batch...");
+        const mapAccountCall = api.tx.Utility.batch({
+          calls: [api.tx.Revive.map_account().decodedCall],
+        }).decodedCall;
         const batchTx = api.tx.Utility.batch_all({
-          calls: [remarkCall, incrementCall1, incrementCall2],
+          calls: [mapAccountCall, remarkCall, incrementCall1, incrementCall2],
         });
 
         // 4. Sign, submit, and wait for finalization
