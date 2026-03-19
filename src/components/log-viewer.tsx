@@ -1,6 +1,6 @@
 "use client";
 
-import { Download, Trash2 } from "lucide-react";
+import { Download, RotateCcw, Trash2 } from "lucide-react";
 import { Badge } from "@/src/components/badge";
 import { Button } from "@/src/components/button";
 import {
@@ -16,6 +16,7 @@ interface LogViewerProps {
   logs: LogEntry[];
   onClear: () => void;
   onExport: () => void;
+  onReset?: () => void;
 }
 
 const statusVariant: Record<string, "success" | "error" | "info" | "warning"> =
@@ -26,12 +27,18 @@ const statusVariant: Record<string, "success" | "error" | "info" | "warning"> =
     pending: "warning",
   };
 
-export function LogViewer({ logs, onClear, onExport }: LogViewerProps) {
+export function LogViewer({ logs, onClear, onExport, onReset }: LogViewerProps) {
   return (
     <Card className="flex flex-col h-full">
       <CardHeader className="flex flex-row items-center justify-between space-y-0">
         <CardTitle className="text-base font-semibold">Logs</CardTitle>
         <div className="flex gap-2">
+          {onReset && (
+            <Button variant="ghost" size="sm" onClick={onReset}>
+              <RotateCcw className="h-4 w-4" />
+              Reset
+            </Button>
+          )}
           <Button
             variant="ghost"
             size="sm"

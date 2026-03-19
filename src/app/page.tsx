@@ -1,12 +1,11 @@
 "use client";
 
 import { useCallback, useState } from "react";
-import { AlertTriangle, RotateCcw } from "lucide-react";
-import { Button } from "@/src/components/button";
+import { AlertTriangle } from "lucide-react";
 import { Card, CardContent } from "@/src/components/card";
-import { EnvironmentInfo } from "@/src/components/environment-info";
 import { LogViewer } from "@/src/components/log-viewer";
 import { TestCategoryCard } from "@/src/components/test-category";
+import { SidebarNav } from "@/src/components/sidebar-nav";
 import { ChainSelector } from "@/src/components/chain-selector";
 import { testsByCategory } from "@/src/lib/tests";
 import {
@@ -22,6 +21,18 @@ import { useConnectionStatus } from "@/src/lib/use-connection-status";
 import { stringify } from "@/src/lib/utils";
 
 const SDK_VERSION = "0.6.1";
+
+const categoryIcons: Record<TestCategory, string> = {
+  extension: "🔌",
+  accounts: "👤",
+  signing: "✍️",
+  storage: "💾",
+  permissions: "🔐",
+  chat: "💬",
+  statements: "📜",
+  preimage: "🔎",
+  notifications: "🔔",
+};
 
 const categoryInfo: Record<
   TestCategory,
@@ -44,7 +55,7 @@ const categoryInfo: Record<
     description: "Read, write, and clear storage",
   },
   permissions: {
-    title: "Permissions & Features",
+    title: "Permissions",
     description: "Request permissions and check features",
   },
   chat: {
@@ -103,7 +114,7 @@ export default function SdkTestPage() {
   // Use hooks for connection and accounts (like coin-flip)
   // connectionStatus starts as null until subscribeConnectionStatus responds
   const connectionStatus = useConnectionStatus();
-  const { accounts, isLoading: accountsLoading, isReady } = useAccounts();
+  const { isReady } = useAccounts();
 
   // App is only usable once the connection status subscription has responded
   // AND the extension readiness check has completed
@@ -156,71 +167,68 @@ export default function SdkTestPage() {
     <div className="min-h-screen bg-background">
       {/* Header */}
       <header className="border-b border-border/40 bg-background/95 backdrop-blur-2xl sticky top-0 z-50">
-        <div className="max-w-7xl mx-auto px-8 py-6">
-          <div className="flex items-center justify-between">
-            <div>
-              <h1 className="text-3xl font-semibold tracking-tight text-foreground">
+        <div className="max-w-400 mx-auto px-8 h-(--header-height) flex items-center">
+          <div className="flex items-center justify-between w-full">
+            <div className="flex items-baseline gap-3">
+              <h1 className="text-2xl font-semibold tracking-tight text-foreground">
                 Product SDK Test
               </h1>
-              <p className="text-base text-muted-foreground mt-2">
-                @novasamatech/product-sdk v{SDK_VERSION}
-              </p>
+              <span className="text-sm text-muted-foreground">
+                v{SDK_VERSION}
+              </span>
             </div>
-            <div className="flex items-center gap-4">
-              <ChainSelector
-                selectedChain={selectedChain}
-                onChainChange={setSelectedChain}
-              />
-              <Button
-                variant="ghost"
-                size="default"
-                onClick={() => {
-                  clearLogs();
-                  setRunningTest(null);
-                }}
-              >
-                <RotateCcw className="h-5 w-5 mr-2" />
-                Reset
-              </Button>
-            </div>
+            <ChainSelector
+              selectedChain={selectedChain}
+              onChainChange={setSelectedChain}
+            />
           </div>
         </div>
       </header>
 
-      {/* Main Content - Two Column Layout */}
-      <main className="max-w-7xl mx-auto px-8 py-8">
-        <div className="grid grid-cols-1 lg:grid-cols-[1fr_500px] gap-8">
-          {/* Left Column: Tests */}
+      {/* Main Content - Three Column Layout */}
+      <main className="max-w-400 mx-auto px-8 py-8">
+        <div className="grid grid-cols-1 lg:grid-cols-[200px_1fr_500px] gap-8">
+          {/* Left Column: Sidebar Nav */}
+          <div className="hidden lg:block">
+            <div className="sticky top-(--header-height)">
+              <SidebarNav
+                categories={(
+                  Object.keys(testsByCategory) as TestCategory[]
+                ).map((category) => ({
+                  id: category,
+                  title: categoryInfo[category].title,
+                  icon: categoryIcons[category],
+                  count: testsByCategory[category].length,
+                }))}
+              />
+            </div>
+          </div>
+
+          {/* Center Column: Tests */}
           <div className="space-y-6">
-            {/* Environment Info */}
-            <EnvironmentInfo
-              selectedChain={currentChain}
-              connectionStatus={connectionStatus!}
-              accounts={accounts}
-              accountsLoading={accountsLoading}
-            />
 
             {/* Test Categories */}
             <div className="space-y-6">
               {(Object.keys(testsByCategory) as TestCategory[]).map(
                 (category) => (
-                  <TestCategoryCard
-                    key={category}
-                    title={categoryInfo[category].title}
-                    description={categoryInfo[category].description}
-                    category={category}
-                    tests={testsByCategory[category]}
-                    runningTest={runningTest}
-                    onRunTest={runTest}
-                  />
+                  <div key={category} id={`section-${category}`} className="scroll-mt-(--header-height)">
+                    <TestCategoryCard
+                      title={categoryInfo[category].title}
+                      description={categoryInfo[category].description}
+                      icon={categoryIcons[category]}
+                      tests={testsByCategory[category]}
+                      runningTest={runningTest}
+                      onRunTest={runTest}
+                    />
+                  </div>
                 ),
               )}
             </div>
           </div>
 
           {/* Right Column: Logs (Sticky) */}
-          <div className="lg:sticky lg:top-28 lg:self-start">
-            <LogViewer logs={logs} onClear={clearLogs} onExport={exportLogs} />
+          <div className="lg:sticky lg:top-(--header-height) lg:self-start">
+            <LogViewer logs={logs} onClear={clearLogs} onExport={exportLogs} onReset={() => { clearLogs(); setRunningTest(null); }} />
           </div>
         </div>
       </main>

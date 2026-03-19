@@ -38,97 +38,51 @@ export function EnvironmentInfo({
 
   return (
     <Card>
-      <CardHeader>
-        <CardTitle className="text-base font-semibold">Environment</CardTitle>
-      </CardHeader>
-      <CardContent className="space-y-4">
-        <div className="flex items-center justify-between">
-          <span className="text-sm text-muted-foreground">Extension</span>
-          <Badge variant="outline">{SpektrExtensionName}</Badge>
-        </div>
-
-        <div className="flex items-center justify-between">
-          <span className="text-sm text-muted-foreground">Webview Context</span>
-          {isInWebview === null ? (
-            <Badge variant="outline">Checking...</Badge>
-          ) : isInWebview ? (
-            <Badge variant="success" className="flex items-center gap-1">
-              <CheckCircle2 className="h-3 w-3" />
-              Yes
-            </Badge>
+      <CardContent className="p-4 space-y-2.5">
+        <div className="flex items-center gap-2 text-sm">
+          {accountsLoading ? (
+            <Loader2 className="h-3.5 w-3.5 animate-spin text-muted-foreground" />
+          ) : accounts && accounts.length > 0 ? (
+            <>
+              <User className="h-3.5 w-3.5 text-muted-foreground" />
+              <span className="font-medium text-foreground truncate">
+                {accounts[0].name ?? "Unnamed"}
+              </span>
+            </>
           ) : (
-            <Badge variant="warning" className="flex items-center gap-1">
-              <AlertCircle className="h-3 w-3" />
-              No
-            </Badge>
+            <span className="text-muted-foreground">No accounts</span>
           )}
         </div>
 
-        <div className="flex items-center justify-between">
-          <span className="text-sm text-muted-foreground">Connection</span>
+        {accounts && accounts.length > 0 && (
+          <div className="font-mono text-[10px] text-muted-foreground truncate">
+            {truncateHash(accounts[0].publicKey)}
+          </div>
+        )}
+
+        <div className="flex items-center justify-between text-xs pt-1.5 border-t border-border/60">
+          <span className="text-muted-foreground">{selectedChain.name}</span>
           {connectionStatus === "connected" ? (
-            <Badge variant="success" className="flex items-center gap-1">
-              <CheckCircle2 className="h-3 w-3" />
+            <Badge variant="success" className="flex items-center gap-1 text-[10px] px-1.5 py-0">
+              <CheckCircle2 className="h-2.5 w-2.5" />
               Connected
             </Badge>
           ) : connectionStatus === "connecting" ? (
-            <Badge variant="outline" className="flex items-center gap-1">
-              <Loader2 className="h-3 w-3 animate-spin" />
+            <Badge variant="outline" className="flex items-center gap-1 text-[10px] px-1.5 py-0">
+              <Loader2 className="h-2.5 w-2.5 animate-spin" />
               Connecting
             </Badge>
           ) : (
-            <Badge variant="warning" className="flex items-center gap-1">
-              <AlertCircle className="h-3 w-3" />
+            <Badge variant="warning" className="flex items-center gap-1 text-[10px] px-1.5 py-0">
+              <AlertCircle className="h-2.5 w-2.5" />
               Disconnected
             </Badge>
           )}
         </div>
 
-        <div className="pt-4 border-t border-border/60">
-          <div className="text-sm font-medium mb-3">Connected Account</div>
-          {accountsLoading ? (
-            <div className="flex items-center gap-2 text-sm text-muted-foreground">
-              <Loader2 className="h-4 w-4 animate-spin" />
-              Loading...
-            </div>
-          ) : accounts && accounts.length > 0 ? (
-            <>
-              <div className="flex items-center gap-2 text-sm">
-                <User className="h-4 w-4 text-muted-foreground" />
-                <span className="font-medium text-foreground">
-                  {accounts[0].name ?? "Unnamed"}
-                </span>
-              </div>
-              <div className="font-mono text-xs text-muted-foreground mt-1">
-                {truncateHash(accounts[0].publicKey)}
-              </div>
-            </>
-          ) : (
-            <div className="text-sm text-muted-foreground">No accounts</div>
-          )}
-        </div>
-
-        <div className="pt-4 border-t border-border/60">
-          <div className="text-sm font-medium mb-3">Selected Chain</div>
-          <div className="text-sm">
-            <span className="font-medium text-foreground">
-              {selectedChain.name}
-            </span>
-            <span className="mx-2 text-muted-foreground">·</span>
-            <span className="text-muted-foreground">
-              {selectedChain.network}
-            </span>
-          </div>
-          <div className="font-mono text-xs text-muted-foreground mt-1">
-            {truncateHash(selectedChain.genesis)}
-          </div>
-        </div>
-
-        <div className="pt-4 border-t border-border/60">
-          <div className="flex items-center gap-2 text-xs text-warning">
-            <AlertTriangle className="h-4 w-4 shrink-0" />
-            <span>Not working with Polkadot Desktop version &lt;= 0.1.0</span>
-          </div>
+        <div className="flex items-center gap-1.5 text-[10px] text-warning pt-1.5 border-t border-border/60">
+          <AlertTriangle className="h-3 w-3 shrink-0" />
+          <span>Not working with Desktop &lt;= 0.1.0</span>
         </div>
       </CardContent>
     </Card>
