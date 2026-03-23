@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useState } from "react";
+import { useRouter } from "next/navigation";
 import { AlertTriangle } from "lucide-react";
 import { Card, CardContent } from "@/src/components/card";
 import { LogViewer } from "@/src/components/log-viewer";
@@ -32,6 +33,7 @@ const categoryIcons: Record<TestCategory, string> = {
   statements: "📜",
   preimage: "🔎",
   notifications: "🔔",
+  navigation: "🧭",
 };
 
 const categoryInfo: Record<
@@ -74,6 +76,10 @@ const categoryInfo: Record<
     title: "Notifications",
     description: "Send push notifications to the host",
   },
+  navigation: {
+    title: "Navigation",
+    description: "Test deeplinks with paths, query params, and fragments",
+  },
 };
 
 function NotInHostScreen() {
@@ -104,6 +110,7 @@ function NotInHostScreen() {
 }
 
 export default function SdkTestPage() {
+  const { push: navigate } = useRouter();
   const { logs, log, updateLog, clearLogs, exportLogs } = useLogs();
   const [runningTest, setRunningTest] = useState<string | null>(null);
   const [selectedChain, setSelectedChain] =
@@ -132,7 +139,7 @@ export default function SdkTestPage() {
       };
 
       try {
-        const result = await test.run(currentChain, testLogger, args);
+        const result = await test.run(currentChain, testLogger, args, navigate);
         updateLog(
           logId,
           result.success ? "success" : "error",
@@ -146,7 +153,7 @@ export default function SdkTestPage() {
         setRunningTest(null);
       }
     },
-    [log, updateLog, currentChain],
+    [log, updateLog, currentChain, navigate],
   );
 
   // Show loading state while checking webview status
@@ -171,10 +178,10 @@ export default function SdkTestPage() {
           <div className="flex items-center justify-between w-full">
             <div className="flex items-baseline gap-3">
               <h1 className="text-2xl font-semibold tracking-tight text-foreground">
-                Product SDK Test
+                Host Playground
               </h1>
               <span className="text-sm text-muted-foreground">
-                v{SDK_VERSION}
+                @novasamatech/product-sdk {SDK_VERSION}
               </span>
             </div>
             <ChainSelector
@@ -224,6 +231,7 @@ export default function SdkTestPage() {
                 ),
               )}
             </div>
+            <div className="h-[calc(100vh+300px)]" aria-hidden />
           </div>
 
           {/* Right Column: Logs (Sticky) */}
@@ -236,7 +244,7 @@ export default function SdkTestPage() {
       {/* Footer */}
       <footer className="border-t border-border/40 mt-16 py-8">
         <div className="max-w-7xl mx-auto px-8 text-center text-sm text-muted-foreground">
-          Built for testing the Polkadot Product SDK
+          Host Playground — @novasamatech/product-sdk
         </div>
       </footer>
     </div>

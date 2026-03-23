@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { AlertTriangle, Play } from "lucide-react";
+import { Play } from "lucide-react";
 import { Button } from "@/src/components/button";
 import type { TestDefinition } from "@/src/lib/types";
 
@@ -50,9 +50,6 @@ export function TestButton({
         <div className="flex flex-col items-start gap-0.5 min-w-0">
           <div className="flex items-center gap-1.5">
             <span className="font-medium truncate">{test.name}</span>
-            {!test.isWorking && (
-              <AlertTriangle className="h-3 w-3 text-warning shrink-0" />
-            )}
           </div>
           <span className="text-xs text-muted-foreground truncate w-full">
             {test.description}

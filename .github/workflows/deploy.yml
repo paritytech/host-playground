@@ -36,7 +36,7 @@ jobs:
     needs: build
     uses: paritytech/dotns-sdk/.github/workflows/deploy.yml@main
     with:
-      basename: test-product-sdk33
+      basename: host-playground
       mode: production
       artifact-name: web-dist
       register-base: true
@@ -48,7 +48,7 @@ jobs:
     needs: build
     uses: paritytech/dotns-sdk/.github/workflows/deploy.yml@main
     with:
-      basename: test-product-sdk33
+      basename: host-playground
       mode: preview
       subname-format: branch
       artifact-name: web-dist

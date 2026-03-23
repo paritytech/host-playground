@@ -36,12 +36,34 @@ function error(message: string, details?: unknown): TestResult {
 // Account Tests
 export const accountTests: TestDefinition[] = [
   {
+    id: "accounts-provider-non-product",
+    name: "Non-Product Accounts",
+    description: "Gets non-product accounts via createAccountsProvider",
+    api: "accountsProvider.getNonProductAccounts()",
+    category: "accounts",
+    async run() {
+      const accountsProvider = createAccountsProvider();
+      const result = await accountsProvider.getNonProductAccounts();
+
+      return result.match(
+        (accounts) =>
+          success(
+            `Found ${accounts.length} non-product accounts`,
+            accounts.map((a) => ({
+              ...a,
+              publicKey: toHex(a.publicKey),
+            })),
+          ),
+        (err) => error(`${err.name}`, err),
+      );
+    },
+  },
+  {
     id: "non-product-accounts",
-    name: "Non-Product Accounts (hostApi)",
+    name: "Non-Product Accounts (Legacy)",
     description: "Gets all non-product accounts via legacy hostApi",
     api: "hostApi.getNonProductAccounts({ tag, value })",
     category: "accounts",
-    isWorking: true,
     async run() {
       const result = await hostApi.getNonProductAccounts({
         tag: "v1",
@@ -62,30 +84,6 @@ export const accountTests: TestDefinition[] = [
     },
   },
   {
-    id: "accounts-provider-non-product",
-    name: "Non-Product Accounts (Provider)",
-    description: "Gets non-product accounts via createAccountsProvider",
-    api: "accountsProvider.getNonProductAccounts()",
-    category: "accounts",
-    isWorking: true,
-    async run() {
-      const accountsProvider = createAccountsProvider();
-      const result = await accountsProvider.getNonProductAccounts();
-
-      return result.match(
-        (accounts) =>
-          success(
-            `Found ${accounts.length} non-product accounts`,
-            accounts.map((a) => ({
-              ...a,
-              publicKey: toHex(a.publicKey),
-            })),
-          ),
-        (err) => error(`${err.name}`, err),
-      );
-    },
-  },
-  {
     id: "accounts-provider-product",
     name: "Get Product Account",
     description: "Gets a product account via createAccountsProvider",
@@ -94,13 +92,12 @@ export const accountTests: TestDefinition[] = [
       {
         name: "dotNsIdentifier",
         label: "DotNS ID",
-        defaultValue: "test-product-sdk33.dot",
+        defaultValue: "host-playground.dot",
       },
     ],
     category: "accounts",
-    isWorking: false,
     async run(_chain, _logger, args) {
-      const dotNsIdentifier = args?.dotNsIdentifier ?? "test-product-sdk33.dot";
+      const dotNsIdentifier = args?.dotNsIdentifier ?? "host-playground.dot";
       const accountsProvider = createAccountsProvider();
       const result = await accountsProvider.getProductAccount(dotNsIdentifier);
 
@@ -123,13 +120,12 @@ export const accountTests: TestDefinition[] = [
       {
         name: "dotNsIdentifier",
         label: "DotNS ID",
-        defaultValue: "test-product-sdk33.dot",
+        defaultValue: "host-playground.dot",
       },
     ],
     category: "accounts",
-    isWorking: false,
     async run(_chain, _logger, args) {
-      const dotNsIdentifier = args?.dotNsIdentifier ?? "test-product-sdk33.dot";
+      const dotNsIdentifier = args?.dotNsIdentifier ?? "host-playground.dot";
       const accountsProvider = createAccountsProvider();
       const result =
         await accountsProvider.getProductAccountAlias(dotNsIdentifier);
@@ -153,13 +149,12 @@ export const accountTests: TestDefinition[] = [
       {
         name: "dotNsIdentifier",
         label: "DotNS ID",
-        defaultValue: "test-product-sdk33.dot",
+        defaultValue: "host-playground.dot",
       },
     ],
     category: "accounts",
-    isWorking: false,
     async run(_chain, _logger, args) {
-      const dotNsIdentifier = args?.dotNsIdentifier ?? "test-product-sdk33.dot";
+      const dotNsIdentifier = args?.dotNsIdentifier ?? "host-playground.dot";
       const accountsProvider = createAccountsProvider();
       const accountResult =
         await accountsProvider.getProductAccount(dotNsIdentifier);
@@ -185,7 +180,6 @@ export const accountTests: TestDefinition[] = [
     description: "Creates a PolkadotSigner for a non-product account",
     api: "accountsProvider.getNonProductAccountSigner(account)",
     category: "accounts",
-    isWorking: true,
     async run() {
       const accountsProvider = createAccountsProvider();
       const accountsResult = await accountsProvider.getNonProductAccounts();
@@ -215,7 +209,6 @@ export const accountTests: TestDefinition[] = [
     description: "Subscribes to account connection status changes (5s)",
     api: "accountsProvider.subscribeAccountConnectionStatus(callback)",
     category: "accounts",
-    isWorking: true,
     async run() {
       const accountsProvider = createAccountsProvider();
 
@@ -246,10 +239,9 @@ export const signingTests: TestDefinition[] = [
     description: "Signs a raw message with a non-product account",
     api: "hostApi.signRaw({ tag, value: { address, data } })",
     args: [
-      { name: "message", label: "Message", defaultValue: "SDK Test Message" },
+      { name: "message", label: "Message", defaultValue: "Hello from Host Playground!" },
     ],
     category: "signing",
-    isWorking: true,
     async run(_chain, _logger, args) {
       const accountResult = await hostApi.getNonProductAccounts({
         tag: "v1",
@@ -270,7 +262,7 @@ export const signingTests: TestDefinition[] = [
         return error("No accounts available for signing");
       }
 
-      const message = args?.message ?? `SDK Test: ${new Date().toISOString()}`;
+      const message = args?.message ?? `Hello from Host Playground! ${new Date().toLocaleString()}`;
       const messageBytes = new TextEncoder().encode(message);
 
       const result = await hostApi.signRaw({
@@ -297,11 +289,10 @@ export const signingTests: TestDefinition[] = [
       {
         name: "message",
         label: "Remark",
-        defaultValue: "Test remark from SDK Test",
+        defaultValue: "Remark from Host Playground",
       },
     ],
     category: "signing",
-    isWorking: true,
     async run(chain: ChainConfig, logger?: TestLogger, args?) {
       const log = logger || (() => {});
 
@@ -341,7 +332,7 @@ export const signingTests: TestDefinition[] = [
         const api = client.getUnsafeApi();
 
         log("Preparing transaction...");
-        const message = args?.message ?? "Test remark from SDK Test";
+        const message = args?.message ?? "Remark from Host Playground";
         const tx = api.tx.System.remark({
           remark: Binary.fromBytes(new TextEncoder().encode(message)),
         });
@@ -406,7 +397,6 @@ export const signingTests: TestDefinition[] = [
       },
     ],
     category: "signing",
-    isWorking: true,
     async run(chain: ChainConfig, logger?: TestLogger, args?) {
       const log = logger || (() => {});
 
@@ -599,13 +589,12 @@ export const signingTests: TestDefinition[] = [
       {
         name: "dotNsIdentifier",
         label: "DotNS ID",
-        defaultValue: "test-product-sdk33.dot",
+        defaultValue: "host-playground.dot",
       },
     ],
     category: "signing",
-    isWorking: false,
     async run(_chain, _logger, args) {
-      const dotNsIdentifier = args?.dotNsIdentifier ?? "test-product-sdk33.dot";
+      const dotNsIdentifier = args?.dotNsIdentifier ?? "host-playground.dot";
       const txPayload = {
         version: 1 as const,
         signer: null,
@@ -646,7 +635,6 @@ export const extensionTests: TestDefinition[] = [
     description: "Injects the Spektr extension into the page",
     api: "injectSpektrExtension()",
     category: "extension",
-    isWorking: true,
     async run() {
       const result = await injectSpektrExtension();
       return result
@@ -660,7 +648,6 @@ export const extensionTests: TestDefinition[] = [
     description: "Creates and enables the extension factory",
     api: "createNonProductExtensionEnableFactory(transport)",
     category: "extension",
-    isWorking: true,
     async run() {
       const enableFactory =
         await createNonProductExtensionEnableFactory(sandboxTransport);
@@ -679,7 +666,6 @@ export const extensionTests: TestDefinition[] = [
     description: "Subscribes to connection status changes (10s)",
     api: "metaProvider.subscribeConnectionStatus(callback)",
     category: "extension",
-    isWorking: true,
     async run() {
       return new Promise((resolve) => {
         const statuses: string[] = [];
@@ -705,7 +691,6 @@ export const extensionTests: TestDefinition[] = [
     description: "Creates a meta provider instance",
     api: "createMetaProvider()",
     category: "extension",
-    isWorking: true,
     async run() {
       const provider = createMetaProvider();
       return provider
@@ -719,7 +704,6 @@ export const extensionTests: TestDefinition[] = [
     description: "Creates a PAPI provider for the selected chain",
     api: "createPapiProvider(genesisHash)",
     category: "extension",
-    isWorking: true,
     async run(chain: ChainConfig) {
       const provider = createPapiProvider(chain.genesis);
       return success(`PAPI provider created for ${chain.name}`, {
@@ -733,7 +717,6 @@ export const extensionTests: TestDefinition[] = [
     description: "Verifies WellKnownChain constant exports",
     api: "WellKnownChain",
     category: "extension",
-    isWorking: true,
     async run() {
       const chains = Object.entries(WellKnownChain);
       const chainNames = chains.map(
@@ -754,11 +737,10 @@ export const storageTests: TestDefinition[] = [
     name: "String Write & Read",
     description: "Writes and reads a string via hostLocalStorage",
     api: "hostLocalStorage.writeString(key, value) / readString(key)",
-    args: [{ name: "key", label: "Key", defaultValue: "sdk_test_string" }],
+    args: [{ name: "key", label: "Key", defaultValue: "host_playground_string" }],
     category: "storage",
-    isWorking: true,
     async run(_chain, _logger, args) {
-      const key = args?.key ?? "sdk_test_string";
+      const key = args?.key ?? "host_playground_string";
       const value = `test_value_${Date.now()}`;
 
       await hostLocalStorage.writeString(key, value);
@@ -774,11 +756,10 @@ export const storageTests: TestDefinition[] = [
     name: "Bytes Write & Read",
     description: "Writes and reads raw bytes via hostLocalStorage",
     api: "hostLocalStorage.writeBytes(key, value) / readBytes(key)",
-    args: [{ name: "key", label: "Key", defaultValue: "sdk_test_bytes" }],
+    args: [{ name: "key", label: "Key", defaultValue: "host_playground_bytes" }],
     category: "storage",
-    isWorking: true,
     async run(_chain, _logger, args) {
-      const key = args?.key ?? "sdk_test_bytes";
+      const key = args?.key ?? "host_playground_bytes";
       const value = new TextEncoder().encode(`bytes_${Date.now()}`);
 
       await hostLocalStorage.writeBytes(key, value);
@@ -805,11 +786,10 @@ export const storageTests: TestDefinition[] = [
     name: "JSON Write & Read",
     description: "Writes and reads JSON via hostLocalStorage",
     api: "hostLocalStorage.writeJSON(key, value) / readJSON(key)",
-    args: [{ name: "key", label: "Key", defaultValue: "sdk_test_json" }],
+    args: [{ name: "key", label: "Key", defaultValue: "host_playground_json" }],
     category: "storage",
-    isWorking: true,
     async run(_chain, _logger, args) {
-      const key = args?.key ?? "sdk_test_json";
+      const key = args?.key ?? "host_playground_json";
       const value = {
         timestamp: Date.now(),
         nested: { foo: "bar", nums: [1, 2, 3] },
@@ -829,11 +809,10 @@ export const storageTests: TestDefinition[] = [
     name: "Storage Clear",
     description: "Clears a storage key via hostLocalStorage",
     api: "hostLocalStorage.clear(key)",
-    args: [{ name: "key", label: "Key", defaultValue: "sdk_test_string" }],
+    args: [{ name: "key", label: "Key", defaultValue: "host_playground_string" }],
     category: "storage",
-    isWorking: true,
     async run(_chain, _logger, args) {
-      const key = args?.key ?? "sdk_test_string";
+      const key = args?.key ?? "host_playground_string";
 
       // Write a value first to ensure the key exists
       await hostLocalStorage.writeString(key, "to_be_cleared");
@@ -851,11 +830,10 @@ export const storageTests: TestDefinition[] = [
     description:
       "Creates a custom localStorage instance via createLocalStorage",
     api: "createLocalStorage()",
-    args: [{ name: "key", label: "Key", defaultValue: "sdk_test_factory" }],
+    args: [{ name: "key", label: "Key", defaultValue: "host_playground_factory" }],
     category: "storage",
-    isWorking: true,
     async run(_chain, _logger, args) {
-      const key = args?.key ?? "sdk_test_factory";
+      const key = args?.key ?? "host_playground_factory";
       const storage = createLocalStorage();
       const value = `factory_${Date.now()}`;
 
@@ -870,14 +848,13 @@ export const storageTests: TestDefinition[] = [
   },
   {
     id: "storage-legacy-write-read",
-    name: "Legacy Storage (hostApi)",
+    name: "Storage (Legacy)",
     description: "Writes and reads via legacy hostApi.localStorageWrite/Read",
     api: "hostApi.localStorageWrite({ tag, value }) / localStorageRead({ tag, value })",
     args: [
       { name: "key", label: "Key (hex)", defaultValue: "0x746573745f6b6579" },
     ],
     category: "storage",
-    isWorking: true,
     async run(_chain, _logger, args) {
       const key = args?.key ?? "0x746573745f6b6579";
       const value = `test_value_${Date.now()}`;
@@ -931,7 +908,6 @@ export const permissionTests: TestDefinition[] = [
     description: "Checks if the selected chain is supported",
     api: "hostApi.featureSupported({ tag, value: { tag: 'Chain', value } })",
     category: "permissions",
-    isWorking: true,
     async run(chain: ChainConfig) {
       const result = await hostApi.featureSupported({
         tag: "v1",
@@ -946,6 +922,14 @@ export const permissionTests: TestDefinition[] = [
   },
 ];
 
+// Echo Bot (daemon) — module-level state so Start/Stop tests share it
+const ECHO_BOT_ID = "demo-echo-bot";
+const ECHO_BOT_NAME = "Echo Bot";
+const ECHO_BOT_ROOM_ID = "host-playground-room";
+const ECHO_BOT_ROOM_NAME = "Host Playground";
+
+let echoBotSubscription: { unsubscribe: () => void } | null = null;
+
 // Chat Tests
 export const chatTests: TestDefinition[] = [
   {
@@ -954,17 +938,20 @@ export const chatTests: TestDefinition[] = [
     description: "Registers a chat room via createProductChatManager",
     api: "chatManager.registerRoom({ roomId, name, icon })",
     args: [
-      { name: "roomId", label: "Room ID", defaultValue: "test-room" },
-      { name: "name", label: "Name", defaultValue: "SDK Test Room" },
+      {
+        name: "roomId",
+        label: "Room ID",
+        defaultValue: "host-playground-room",
+      },
+      { name: "name", label: "Name", defaultValue: "Host Playground" },
     ],
     category: "chat",
-    isWorking: false,
     async run(_chain, _logger, args) {
       const chatManager = createProductChatManager();
 
       const result = await chatManager.registerRoom({
-        roomId: args?.roomId ?? "test-room",
-        name: args?.name ?? "SDK Test Room",
+        roomId: args?.roomId ?? "host-playground-room",
+        name: args?.name ?? "Host Playground",
         icon: "",
       });
 
@@ -972,63 +959,128 @@ export const chatTests: TestDefinition[] = [
     },
   },
   {
-    id: "chat-manager-register-bot",
-    name: "Register Bot",
-    description: "Registers a chat bot via createProductChatManager",
-    api: "chatManager.registerBot({ botId, name, icon })",
-    args: [
-      { name: "botId", label: "Bot ID", defaultValue: "test-bot" },
-      { name: "name", label: "Name", defaultValue: "SDK Test Bot" },
-    ],
-    category: "chat",
-    isWorking: false,
-    async run(_chain, _logger, args) {
-      const chatManager = createProductChatManager();
-
-      const result = await chatManager.registerBot({
-        botId: args?.botId ?? "test-bot",
-        name: args?.name ?? "SDK Test Bot",
-        icon: "",
-      });
-
-      return success(`Bot registration: ${result}`);
-    },
-  },
-  {
     id: "chat-manager-send-message",
     name: "Send Message",
     description:
-      "Registers a room and sends a message via createProductChatManager",
+      "Sends a message to an existing room via createProductChatManager",
     api: "chatManager.sendMessage(roomId, { tag: 'Text', value })",
-    args: [{ name: "roomId", label: "Room ID", defaultValue: "test-room" }],
+    args: [
+      {
+        name: "roomId",
+        label: "Room ID",
+        defaultValue: "host-playground-room",
+      },
+      {
+        name: "message",
+        label: "Message",
+        defaultValue: "Hello from Host Playground!",
+      },
+    ],
     category: "chat",
-    isWorking: false,
     async run(_chain, _logger, args) {
-      const roomId = args?.roomId ?? "test-room";
+      const roomId = args?.roomId ?? "host-playground-room";
       const chatManager = createProductChatManager();
 
-      // Ensure room exists first
-      await chatManager.registerRoom({
-        roomId,
-        name: "SDK Test Room",
-        icon: "",
-      });
-
-      const result = await chatManager.sendMessage(roomId, {
-        tag: "Text",
-        value: `SDK Test: ${new Date().toISOString()}`,
-      });
-
-      return success(`Message sent (ID: ${result.messageId})`);
+      try {
+        await chatManager.registerRoom({ roomId, name: roomId, icon: "" });
+        const result = await chatManager.sendMessage(roomId, {
+          tag: "Text",
+          value: args?.message ?? "Hello from Host Playground!",
+        });
+        return success(`Message sent (ID: ${result.messageId})`);
+      } catch (e) {
+        return error(`Failed to send: ${e}`);
+      }
     },
   },
+  {
+    id: "chat-echo-bot-start",
+    name: "Start Echo Bot",
+    description: "Registers a bot and room, then echoes every incoming message",
+    api: "chatManager.registerBot() + registerRoom() + subscribeAction()",
+    category: "chat",
+    async run() {
+      if (echoBotSubscription) {
+        return error("Echo bot is already running — stop it first");
+      }
+
+      const chatManager = createProductChatManager();
+      console.log("[EchoBot] chatManager created");
+
+      const botResult = await chatManager.registerBot({
+        botId: ECHO_BOT_ID,
+        name: ECHO_BOT_NAME,
+        icon: "",
+      });
+      console.log("[EchoBot] registerBot result:", botResult);
+
+      const roomStatus = await chatManager.registerRoom({
+        roomId: ECHO_BOT_ROOM_ID,
+        name: ECHO_BOT_ROOM_NAME,
+        icon: "",
+      });
+      console.log("[EchoBot] registerRoom result:", roomStatus);
+
+      if (roomStatus === "New") {
+        const welcomeResult = await chatManager.sendMessage(ECHO_BOT_ROOM_ID, {
+          tag: "Text",
+          value: "Echo bot is online! Send me a message and I'll echo it back.",
+        });
+        console.log("[EchoBot] welcome message sent:", welcomeResult);
+      }
+
+      echoBotSubscription = chatManager.subscribeAction(async (action) => {
+        console.log("[EchoBot] action received:", JSON.stringify(action));
+        if (action.payload.tag !== "MessagePosted") {
+          console.log("[EchoBot] skipping — not MessagePosted, tag:", action.payload.tag);
+          return;
+        }
+        if (action.roomId !== ECHO_BOT_ROOM_ID) {
+          console.log("[EchoBot] skipping — wrong room:", action.roomId, "expected:", ECHO_BOT_ROOM_ID);
+          return;
+        }
+        if (action.payload.value.tag !== "Text") {
+          console.log("[EchoBot] skipping — not Text message, tag:", action.payload.value.tag);
+          return;
+        }
+        console.log("[EchoBot] echoing message:", action.payload.value.value);
+        try {
+          const reply = await chatManager.sendMessage(ECHO_BOT_ROOM_ID, {
+            tag: "Text",
+            value: `Echo: ${action.payload.value.value}`,
+          });
+          console.log("[EchoBot] reply sent:", reply);
+        } catch (e) {
+          console.error("[EchoBot] failed to send reply:", e);
+        }
+      });
+      console.log("[EchoBot] subscribeAction registered");
+
+      return success("Echo bot started — send a message in the chat room");
+    },
+  },
+  {
+    id: "chat-echo-bot-stop",
+    name: "Stop Echo Bot",
+    description: "Stops the running echo bot and cleans up the subscription",
+    api: "subscription.unsubscribe()",
+    category: "chat",
+    async run() {
+      if (!echoBotSubscription) {
+        return error("Echo bot is not running");
+      }
+      echoBotSubscription.unsubscribe();
+      echoBotSubscription = null;
+      return success("Echo bot stopped");
+    },
+  },
+
   {
     id: "chat-manager-subscribe-list",
     name: "Subscribe Chat List",
     description: "Subscribes to chat list updates (5s)",
     api: "chatManager.subscribeChatList(callback)",
     category: "chat",
-    isWorking: false,
     async run() {
       const chatManager = createProductChatManager();
 
@@ -1056,7 +1108,6 @@ export const chatTests: TestDefinition[] = [
     description: "Subscribes to incoming chat actions (5s)",
     api: "chatManager.subscribeAction(callback)",
     category: "chat",
-    isWorking: false,
     async run() {
       const chatManager = createProductChatManager();
 
@@ -1085,19 +1136,22 @@ export const chatTests: TestDefinition[] = [
       "Registers a room and sends a custom message via createProductChatManager",
     api: "chatManager.sendMessage(roomId, { tag: 'Custom', value })",
     args: [
-      { name: "roomId", label: "Room ID", defaultValue: "test-room" },
-      { name: "messageType", label: "Type", defaultValue: "sdk-test" },
+      {
+        name: "roomId",
+        label: "Room ID",
+        defaultValue: "host-playground-room",
+      },
+      { name: "messageType", label: "Type", defaultValue: "host-playground" },
     ],
     category: "chat",
-    isWorking: false,
     async run(_chain, _logger, args) {
-      const roomId = args?.roomId ?? "test-room";
-      const messageType = args?.messageType ?? "sdk-test";
+      const roomId = args?.roomId ?? "host-playground-room";
+      const messageType = args?.messageType ?? "host-playground";
       const chatManager = createProductChatManager();
 
       await chatManager.registerRoom({
         roomId,
-        name: "SDK Test Room",
+        name: "Host Playground Room",
         icon: "",
       });
 
@@ -1119,7 +1173,6 @@ export const chatTests: TestDefinition[] = [
     description: "Registers a custom message rendering handler (5s)",
     api: "chatManager.onCustomMessageRenderingRequest(callback)",
     category: "chat",
-    isWorking: false,
     async run() {
       const chatManager = createProductChatManager();
 
@@ -1154,21 +1207,24 @@ export const chatTests: TestDefinition[] = [
   },
   {
     id: "chat-legacy-create-room",
-    name: "Create Room (hostApi)",
+    name: "Create Room (Legacy)",
     description: "Creates a chat room via legacy hostApi",
     api: "hostApi.chatCreateRoom({ tag, value: { roomId, name, icon } })",
     args: [
-      { name: "roomId", label: "Room ID", defaultValue: "test-room" },
-      { name: "name", label: "Name", defaultValue: "SDK Test Product" },
+      {
+        name: "roomId",
+        label: "Room ID",
+        defaultValue: "host-playground-room",
+      },
+      { name: "name", label: "Name", defaultValue: "Host Playground" },
     ],
     category: "chat",
-    isWorking: false,
     async run(_chain, _logger, args) {
       const result = await hostApi.chatCreateRoom({
         tag: "v1",
         value: {
-          roomId: args?.roomId ?? "test-room",
-          name: args?.name ?? "SDK Test Product",
+          roomId: args?.roomId ?? "host-playground-room",
+          name: args?.name ?? "Host Playground",
           icon: "https://example.com/icon.png",
         },
       });
@@ -1181,21 +1237,26 @@ export const chatTests: TestDefinition[] = [
   },
   {
     id: "chat-legacy-post-message",
-    name: "Post Message (hostApi)",
+    name: "Post Message (Legacy)",
     description: "Posts a message via legacy hostApi",
     api: "hostApi.chatPostMessage({ tag, value: { roomId, payload } })",
-    args: [{ name: "roomId", label: "Room ID", defaultValue: "test-room" }],
+    args: [
+      {
+        name: "roomId",
+        label: "Room ID",
+        defaultValue: "host-playground-room",
+      },
+    ],
     category: "chat",
-    isWorking: false,
     async run(_chain, _logger, args) {
-      const roomId = args?.roomId ?? "test-room";
+      const roomId = args?.roomId ?? "host-playground-room";
       const result = await hostApi.chatPostMessage({
         tag: "v1",
         value: {
           roomId,
           payload: {
             tag: "Text",
-            value: `SDK Test: ${new Date().toISOString()}`,
+            value: `Hello from Host Playground! ${new Date().toLocaleString()}`,
           },
         },
       });
@@ -1219,13 +1280,12 @@ export const statementTests: TestDefinition[] = [
       {
         name: "dotNsIdentifier",
         label: "DotNS ID",
-        defaultValue: "test-product-sdk33.dot",
+        defaultValue: "host-playground.dot",
       },
     ],
     category: "statements",
-    isWorking: false,
     async run(_chain, _logger, args) {
-      const dotNsIdentifier = args?.dotNsIdentifier ?? "test-product-sdk33.dot";
+      const dotNsIdentifier = args?.dotNsIdentifier ?? "host-playground.dot";
       const statementStore = createStatementStore();
       const messageBytes = new TextEncoder().encode(`Statement: ${Date.now()}`);
 
@@ -1251,7 +1311,6 @@ export const statementTests: TestDefinition[] = [
     description: "Subscribes to statement store topics (5s)",
     api: "statementStore.subscribe(topics, callback)",
     category: "statements",
-    isWorking: false,
     async run() {
       const statementStore = createStatementStore();
 
@@ -1275,20 +1334,19 @@ export const statementTests: TestDefinition[] = [
   },
   {
     id: "statement-store-legacy",
-    name: "Create Proof (hostApi)",
+    name: "Create Proof (Legacy)",
     description: "Creates a statement store proof via legacy hostApi",
     api: "hostApi.statementStoreCreateProof({ tag, value: [accountId, statement] })",
     args: [
       {
         name: "dotNsIdentifier",
         label: "DotNS ID",
-        defaultValue: "test-product-sdk33.dot",
+        defaultValue: "host-playground.dot",
       },
     ],
     category: "statements",
-    isWorking: false,
     async run(_chain, _logger, args) {
-      const dotNsIdentifier = args?.dotNsIdentifier ?? "test-product-sdk33.dot";
+      const dotNsIdentifier = args?.dotNsIdentifier ?? "host-playground.dot";
       const message = `Statement: ${Date.now()}`;
       const messageBytes = new TextEncoder().encode(message);
 
@@ -1334,7 +1392,6 @@ export const preimageTests: TestDefinition[] = [
     description: "Submits a preimage and gets its hash back",
     api: "preimageManager.submit(data)",
     category: "preimage",
-    isWorking: false,
     async run() {
       const data = new TextEncoder().encode(`preimage_${Date.now()}`);
       const hash = await preimageManager.submit(data);
@@ -1351,7 +1408,6 @@ export const preimageTests: TestDefinition[] = [
     description: "Submits a preimage then looks it up by hash (5s)",
     api: "preimageManager.lookup(hash, callback)",
     category: "preimage",
-    isWorking: false,
     async run() {
       const data = new TextEncoder().encode(`lookup_${Date.now()}`);
       const hash = await preimageManager.submit(data);
@@ -1394,7 +1450,6 @@ export const preimageTests: TestDefinition[] = [
     description: "Creates a preimage manager via createPreimageManager",
     api: "createPreimageManager()",
     category: "preimage",
-    isWorking: false,
     async run() {
       const manager = createPreimageManager();
       const data = new TextEncoder().encode(`factory_${Date.now()}`);
@@ -1422,7 +1477,6 @@ export const notificationTests: TestDefinition[] = [
       { name: "deeplink", label: "Deeplink (optional)", defaultValue: "" },
     ],
     category: "notifications",
-    isWorking: true,
     async run(_chain, _logger, args) {
       const text = args?.text ?? "Hello from demo product!";
       const deeplink = args?.deeplink?.trim() || undefined;
@@ -1433,7 +1487,59 @@ export const notificationTests: TestDefinition[] = [
       });
 
       return result.match(
-        () => success(`Notification sent: "${text}"${deeplink ? ` → ${deeplink}` : ""}`),
+        () =>
+          success(
+            `Notification sent: "${text}"${deeplink ? ` → ${deeplink}` : ""}`,
+          ),
+        (err) => error(err.value.name, err.value),
+      );
+    },
+  },
+];
+
+// Navigation Tests
+export const navigationTests: TestDefinition[] = [
+  {
+    id: "navigate-internal",
+    name: "Navigate In-App",
+    description:
+      "Navigates within the app to /page/ with query params and fragment",
+    api: "window.location.href = url",
+    category: "navigation",
+    async run(_chain, _logger, _args, navigate) {
+      const path = "/page/?id=hello#fragment=something";
+      navigate?.(path);
+      return success(`Navigating to ${path}`);
+    },
+  },
+  {
+    id: "navigate-polkadot",
+    name: "Navigate to Polkadot URL",
+    description: "Navigates to a host-compatible URL via hostApi",
+    api: "hostApi.navigateTo({ tag: 'v1', value: url })",
+    args: [{ name: "url", label: "URL", defaultValue: "https://search.dot" }],
+    category: "navigation",
+    async run(_chain, _logger, args) {
+      const url = args?.url ?? "https://search.dot";
+      const result = await hostApi.navigateTo({ tag: "v1", value: url });
+      return result.match(
+        () => success(`Navigated to ${url}`),
+        (err) => error(err.value.name, err.value),
+      );
+    },
+  },
+  {
+    id: "navigate-http",
+    name: "Navigate to HTTP URL",
+    description: "Navigates to an external HTTP/S URL via hostApi",
+    api: "hostApi.navigateTo({ tag: 'v1', value: url })",
+    args: [{ name: "url", label: "URL", defaultValue: "https://polkadot.com" }],
+    category: "navigation",
+    async run(_chain, _logger, args) {
+      const url = args?.url ?? "https://polkadot.com";
+      const result = await hostApi.navigateTo({ tag: "v1", value: url });
+      return result.match(
+        () => success(`Navigated to ${url}`),
         (err) => error(err.value.name, err.value),
       );
     },
@@ -1450,4 +1556,5 @@ export const testsByCategory = {
   statements: statementTests,
   preimage: preimageTests,
   notifications: notificationTests,
+  navigation: navigationTests,
 };

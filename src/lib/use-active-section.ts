@@ -1,49 +1,36 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 
-export function useActiveSection(sectionIds: string[]) {
+export function useActiveSection(sectionIds: string[]): string {
   const [activeId, setActiveId] = useState<string>(sectionIds[0] ?? "");
-  const observerRef = useRef<IntersectionObserver | null>(null);
 
   useEffect(() => {
-    const ratioMap = new Map<string, number>();
+    const headerHeight =
+      parseInt(
+        getComputedStyle(document.documentElement).getPropertyValue(
+          "--header-height",
+        ),
+        10,
+      ) || 80;
 
-    const headerHeight = parseInt(
-      getComputedStyle(document.documentElement)
-        .getPropertyValue("--header-height"),
-      10,
-    ) || 80;
+    const update = () => {
+      const offset = headerHeight + 8;
+      let bestId = sectionIds[0] ?? "";
 
-    observerRef.current = new IntersectionObserver(
-      (entries) => {
-        for (const entry of entries) {
-          ratioMap.set(entry.target.id, entry.intersectionRatio);
+      for (const id of sectionIds) {
+        const el = document.getElementById(id);
+        if (!el) continue;
+        if (el.getBoundingClientRect().top <= offset) {
+          bestId = id;
         }
+      }
+      setActiveId(bestId);
+    };
 
-        let best = "";
-        let bestRatio = 0;
-        for (const id of sectionIds) {
-          const ratio = ratioMap.get(id) ?? 0;
-          if (ratio > bestRatio) {
-            bestRatio = ratio;
-            best = id;
-          }
-        }
-        if (best) setActiveId(best);
-      },
-      {
-        rootMargin: `-${headerHeight}px 0px -40% 0px`,
-        threshold: [0, 0.25, 0.5, 0.75, 1],
-      },
-    );
-
-    for (const id of sectionIds) {
-      const el = document.getElementById(id);
-      if (el) observerRef.current.observe(el);
-    }
-
-    return () => observerRef.current?.disconnect();
+    window.addEventListener("scroll", update, { passive: true });
+    update();
+    return () => window.removeEventListener("scroll", update);
   }, [sectionIds]);
 
   return activeId;

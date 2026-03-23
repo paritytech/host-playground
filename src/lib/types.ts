@@ -26,7 +26,8 @@ export type TestCategory =
   | "chat"
   | "statements"
   | "preimage"
-  | "notifications";
+  | "notifications"
+  | "navigation";
 
 export interface ChainConfig {
   name: string;
@@ -48,11 +49,11 @@ export interface TestDefinition {
   api: string;
   args?: TestArg[];
   category: TestCategory;
-  isWorking?: boolean;
   run: (
     chain: ChainConfig,
     logger?: TestLogger,
     args?: Record<string, string>,
+    navigate?: (path: string) => void,
   ) => Promise<TestResult>;
 }
 
