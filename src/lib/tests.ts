@@ -1000,17 +1000,12 @@ export const chatTests: TestDefinition[] = [
     },
   },
   {
-    id: "chat-trigger-echo-bot",
-    name: "Trigger Bot",
+    id: "chat-echo-bot-trigger",
+    name: "Echo Bot Trigger",
     description:
-      "Sends a '!echo' message to the room to trigger the echo bot worker",
-    api: "chatManager.sendMessage(roomId, { tag: 'Text', value: '!echo ...' })",
+      "Shows the trigger command to paste in Polkadot Desktop's chat UI",
+    api: "worker: chatManager.subscribeAction() — responds to !echo",
     args: [
-      {
-        name: "roomId",
-        label: "Room ID",
-        defaultValue: "host-playground-room",
-      },
       {
         name: "message",
         label: "Message",
@@ -1019,21 +1014,10 @@ export const chatTests: TestDefinition[] = [
     ],
     category: "chat",
     async run(_chain, _logger, args) {
-      const roomId = args?.roomId ?? "host-playground-room";
       const message = args?.message ?? "Hello from the playground!";
-      const chatManager = createProductChatManager();
-
-      try {
-        const result = await chatManager.sendMessage(roomId, {
-          tag: "Text",
-          value: `!echo ${message}`,
-        });
-        return success(
-          `Trigger sent (ID: ${result.messageId}) — check chat for echo reply`,
-        );
-      } catch (e) {
-        return error(`Failed to send — is the room registered? ${e}`);
-      }
+      const trigger = `!echo ${message}`;
+      await navigator.clipboard.writeText(trigger);
+      return success(`Copied to clipboard — paste in the "Host Playground" chat room`, { trigger });
     },
   },
   {
