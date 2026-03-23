@@ -27,7 +27,8 @@ export type TestCategory =
   | "statements"
   | "preimage"
   | "notifications"
-  | "navigation";
+  | "navigation"
+  | "chain";
 
 export interface ChainConfig {
   name: string;

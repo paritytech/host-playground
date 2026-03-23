@@ -239,7 +239,11 @@ export const signingTests: TestDefinition[] = [
     description: "Signs a raw message with a non-product account",
     api: "hostApi.signRaw({ tag, value: { address, data } })",
     args: [
-      { name: "message", label: "Message", defaultValue: "Hello from Host Playground!" },
+      {
+        name: "message",
+        label: "Message",
+        defaultValue: "Hello from Host Playground!",
+      },
     ],
     category: "signing",
     async run(_chain, _logger, args) {
@@ -262,7 +266,9 @@ export const signingTests: TestDefinition[] = [
         return error("No accounts available for signing");
       }
 
-      const message = args?.message ?? `Hello from Host Playground! ${new Date().toLocaleString()}`;
+      const message =
+        args?.message ??
+        `Hello from Host Playground! ${new Date().toLocaleString()}`;
       const messageBytes = new TextEncoder().encode(message);
 
       const result = await hostApi.signRaw({
@@ -737,7 +743,9 @@ export const storageTests: TestDefinition[] = [
     name: "String Write & Read",
     description: "Writes and reads a string via hostLocalStorage",
     api: "hostLocalStorage.writeString(key, value) / readString(key)",
-    args: [{ name: "key", label: "Key", defaultValue: "host_playground_string" }],
+    args: [
+      { name: "key", label: "Key", defaultValue: "host_playground_string" },
+    ],
     category: "storage",
     async run(_chain, _logger, args) {
       const key = args?.key ?? "host_playground_string";
@@ -756,7 +764,9 @@ export const storageTests: TestDefinition[] = [
     name: "Bytes Write & Read",
     description: "Writes and reads raw bytes via hostLocalStorage",
     api: "hostLocalStorage.writeBytes(key, value) / readBytes(key)",
-    args: [{ name: "key", label: "Key", defaultValue: "host_playground_bytes" }],
+    args: [
+      { name: "key", label: "Key", defaultValue: "host_playground_bytes" },
+    ],
     category: "storage",
     async run(_chain, _logger, args) {
       const key = args?.key ?? "host_playground_bytes";
@@ -809,7 +819,9 @@ export const storageTests: TestDefinition[] = [
     name: "Storage Clear",
     description: "Clears a storage key via hostLocalStorage",
     api: "hostLocalStorage.clear(key)",
-    args: [{ name: "key", label: "Key", defaultValue: "host_playground_string" }],
+    args: [
+      { name: "key", label: "Key", defaultValue: "host_playground_string" },
+    ],
     category: "storage",
     async run(_chain, _logger, args) {
       const key = args?.key ?? "host_playground_string";
@@ -830,7 +842,9 @@ export const storageTests: TestDefinition[] = [
     description:
       "Creates a custom localStorage instance via createLocalStorage",
     api: "createLocalStorage()",
-    args: [{ name: "key", label: "Key", defaultValue: "host_playground_factory" }],
+    args: [
+      { name: "key", label: "Key", defaultValue: "host_playground_factory" },
+    ],
     category: "storage",
     async run(_chain, _logger, args) {
       const key = args?.key ?? "host_playground_factory";
@@ -922,14 +936,6 @@ export const permissionTests: TestDefinition[] = [
   },
 ];
 
-// Echo Bot (daemon) — module-level state so Start/Stop tests share it
-const ECHO_BOT_ID = "demo-echo-bot";
-const ECHO_BOT_NAME = "Echo Bot";
-const ECHO_BOT_ROOM_ID = "host-playground-room";
-const ECHO_BOT_ROOM_NAME = "Host Playground";
-
-let echoBotSubscription: { unsubscribe: () => void } | null = null;
-
 // Chat Tests
 export const chatTests: TestDefinition[] = [
   {
@@ -960,7 +966,7 @@ export const chatTests: TestDefinition[] = [
   },
   {
     id: "chat-manager-send-message",
-    name: "Send Message",
+    name: "Send Text Message to Room",
     description:
       "Sends a message to an existing room via createProductChatManager",
     api: "chatManager.sendMessage(roomId, { tag: 'Text', value })",
@@ -994,87 +1000,146 @@ export const chatTests: TestDefinition[] = [
     },
   },
   {
-    id: "chat-echo-bot-start",
-    name: "Start Echo Bot",
-    description: "Registers a bot and room, then echoes every incoming message",
-    api: "chatManager.registerBot() + registerRoom() + subscribeAction()",
+    id: "chat-trigger-echo-bot",
+    name: "Trigger Bot",
+    description:
+      "Sends a '!echo' message to the room to trigger the echo bot worker",
+    api: "chatManager.sendMessage(roomId, { tag: 'Text', value: '!echo ...' })",
+    args: [
+      {
+        name: "roomId",
+        label: "Room ID",
+        defaultValue: "host-playground-room",
+      },
+      {
+        name: "message",
+        label: "Message",
+        defaultValue: "Hello from the playground!",
+      },
+    ],
     category: "chat",
-    async run() {
-      if (echoBotSubscription) {
-        return error("Echo bot is already running — stop it first");
-      }
-
+    async run(_chain, _logger, args) {
+      const roomId = args?.roomId ?? "host-playground-room";
+      const message = args?.message ?? "Hello from the playground!";
       const chatManager = createProductChatManager();
-      console.log("[EchoBot] chatManager created");
 
-      const botResult = await chatManager.registerBot({
-        botId: ECHO_BOT_ID,
-        name: ECHO_BOT_NAME,
-        icon: "",
-      });
-      console.log("[EchoBot] registerBot result:", botResult);
-
-      const roomStatus = await chatManager.registerRoom({
-        roomId: ECHO_BOT_ROOM_ID,
-        name: ECHO_BOT_ROOM_NAME,
-        icon: "",
-      });
-      console.log("[EchoBot] registerRoom result:", roomStatus);
-
-      if (roomStatus === "New") {
-        const welcomeResult = await chatManager.sendMessage(ECHO_BOT_ROOM_ID, {
+      try {
+        const result = await chatManager.sendMessage(roomId, {
           tag: "Text",
-          value: "Echo bot is online! Send me a message and I'll echo it back.",
+          value: `!echo ${message}`,
         });
-        console.log("[EchoBot] welcome message sent:", welcomeResult);
+        return success(
+          `Trigger sent (ID: ${result.messageId}) — check chat for echo reply`,
+        );
+      } catch (e) {
+        return error(`Failed to send — is the room registered? ${e}`);
       }
-
-      echoBotSubscription = chatManager.subscribeAction(async (action) => {
-        console.log("[EchoBot] action received:", JSON.stringify(action));
-        if (action.payload.tag !== "MessagePosted") {
-          console.log("[EchoBot] skipping — not MessagePosted, tag:", action.payload.tag);
-          return;
-        }
-        if (action.roomId !== ECHO_BOT_ROOM_ID) {
-          console.log("[EchoBot] skipping — wrong room:", action.roomId, "expected:", ECHO_BOT_ROOM_ID);
-          return;
-        }
-        if (action.payload.value.tag !== "Text") {
-          console.log("[EchoBot] skipping — not Text message, tag:", action.payload.value.tag);
-          return;
-        }
-        console.log("[EchoBot] echoing message:", action.payload.value.value);
-        try {
-          const reply = await chatManager.sendMessage(ECHO_BOT_ROOM_ID, {
-            tag: "Text",
-            value: `Echo: ${action.payload.value.value}`,
-          });
-          console.log("[EchoBot] reply sent:", reply);
-        } catch (e) {
-          console.error("[EchoBot] failed to send reply:", e);
-        }
-      });
-      console.log("[EchoBot] subscribeAction registered");
-
-      return success("Echo bot started — send a message in the chat room");
     },
   },
   {
-    id: "chat-echo-bot-stop",
-    name: "Stop Echo Bot",
-    description: "Stops the running echo bot and cleans up the subscription",
-    api: "subscription.unsubscribe()",
+    id: "chat-manager-send-custom-message",
+    name: "Send Custom Message to Room",
+    description:
+      "Sends a custom (binary) message to an existing room — register the room first",
+    api: "chatManager.sendMessage(roomId, { tag: 'Custom', value })",
+    args: [
+      {
+        name: "roomId",
+        label: "Room ID",
+        defaultValue: "host-playground-room",
+      },
+    ],
     category: "chat",
-    async run() {
-      if (!echoBotSubscription) {
-        return error("Echo bot is not running");
+    async run(_chain, _logger, args) {
+      const roomId = args?.roomId ?? "host-playground-room";
+      const chatManager = createProductChatManager();
+
+      const payload = new TextEncoder().encode(
+        JSON.stringify({ action: "test", ts: Date.now() }),
+      );
+
+      try {
+        const result = await chatManager.sendMessage(roomId, {
+          tag: "Custom",
+          value: { messageType: "host-playground", payload },
+        });
+        return success(`Custom message sent (ID: ${result.messageId})`);
+      } catch (e) {
+        return error(`Failed to send — is the room registered? ${e}`);
       }
-      echoBotSubscription.unsubscribe();
-      echoBotSubscription = null;
-      return success("Echo bot stopped");
     },
   },
+  {
+    id: "chat-manager-send-message-to-user",
+    name: "Send Message to User",
+    description:
+      "Sends a statement to a user-specific topic via createStatementStore (hackm3 notification flow)",
+    api: "statementStore.createProof(accountId, statement) + statementStore.submit(signedStatement)",
+    args: [
+      {
+        name: "senderDotNsId",
+        label: "Sender DotNS ID",
+        defaultValue: "host-playground.dot",
+      },
+      {
+        name: "recipientUsername",
+        label: "Recipient Username",
+        defaultValue: "bigtava.41",
+      },
+      {
+        name: "message",
+        label: "Message",
+        defaultValue: "Hello from Host Playground!",
+      },
+    ],
+    category: "chat",
+    async run(_chain, _logger, args) {
+      const senderDotNsId = args?.senderDotNsId ?? "host-playground.dot";
+      const recipientUsername = args?.recipientUsername ?? "bigtava.41";
+      const messageText = args?.message ?? "Hello from Host Playground!";
 
+      const statementStore = createStatementStore();
+      const encoder = new TextEncoder();
+
+      const topic = encoder.encode(`host-playground:${recipientUsername}`);
+      const data = encoder.encode(messageText);
+
+      const statement = {
+        proof: undefined,
+        topics: [topic],
+        data,
+        channel: undefined,
+        decryptionKey: undefined,
+        expiry: undefined,
+      };
+
+      try {
+        console.log(
+          "[SendToUser] Creating proof for",
+          senderDotNsId,
+          "topic:",
+          `host-playground:${recipientUsername}`,
+        );
+        const proof = await statementStore.createProof(
+          [senderDotNsId, 0],
+          statement,
+        );
+        console.log("[SendToUser] Proof created:", proof.tag);
+        console.log("[SendToUser] Submitting statement...");
+        await statementStore.submit({ ...statement, proof });
+        console.log("[SendToUser] Statement submitted");
+        return success(
+          `Statement submitted to topic "hackm3:${recipientUsername}"`,
+          {
+            topic: `host-playground:${recipientUsername}`,
+            message: messageText,
+          },
+        );
+      } catch (e) {
+        return error(`Failed to send: ${e}`);
+      }
+    },
+  },
   {
     id: "chat-manager-subscribe-list",
     name: "Subscribe Chat List",
@@ -1130,44 +1195,6 @@ export const chatTests: TestDefinition[] = [
     },
   },
   {
-    id: "chat-manager-send-custom-message",
-    name: "Send Custom Message",
-    description:
-      "Registers a room and sends a custom message via createProductChatManager",
-    api: "chatManager.sendMessage(roomId, { tag: 'Custom', value })",
-    args: [
-      {
-        name: "roomId",
-        label: "Room ID",
-        defaultValue: "host-playground-room",
-      },
-      { name: "messageType", label: "Type", defaultValue: "host-playground" },
-    ],
-    category: "chat",
-    async run(_chain, _logger, args) {
-      const roomId = args?.roomId ?? "host-playground-room";
-      const messageType = args?.messageType ?? "host-playground";
-      const chatManager = createProductChatManager();
-
-      await chatManager.registerRoom({
-        roomId,
-        name: "Host Playground Room",
-        icon: "",
-      });
-
-      const payload = new TextEncoder().encode(
-        JSON.stringify({ action: "test", ts: Date.now() }),
-      );
-
-      const result = await chatManager.sendMessage(roomId, {
-        tag: "Custom",
-        value: { messageType, payload },
-      });
-
-      return success(`Custom message sent (ID: ${result.messageId})`);
-    },
-  },
-  {
     id: "chat-manager-custom-renderer",
     name: "Custom Message Renderer",
     description: "Registers a custom message rendering handler (5s)",
@@ -1180,15 +1207,15 @@ export const chatTests: TestDefinition[] = [
         let requestCount = 0;
 
         const unsubscribe = chatManager.onCustomMessageRenderingRequest(
-          (messageType, _payload, render) => {
+          (params, render) => {
             requestCount++;
             render({
               tag: "Text",
               value: {
-                modifiers: undefined,
+                modifiers: [],
                 props: { style: undefined, color: undefined },
                 children: [
-                  { tag: "String", value: `Rendered: ${messageType}` },
+                  { tag: "String", value: `Rendered: ${params.messageType}` },
                 ],
               },
             });
@@ -1292,7 +1319,7 @@ export const statementTests: TestDefinition[] = [
       const proof = await statementStore.createProof([dotNsIdentifier, 0], {
         proof: undefined,
         decryptionKey: undefined,
-        priority: undefined,
+        expiry: undefined,
         channel: undefined,
         topics: [],
         data: messageBytes,
@@ -1357,7 +1384,7 @@ export const statementTests: TestDefinition[] = [
           {
             proof: undefined,
             decryptionKey: undefined,
-            priority: undefined,
+            expiry: undefined,
             channel: undefined,
             topics: [],
             data: messageBytes,
@@ -1546,6 +1573,129 @@ export const navigationTests: TestDefinition[] = [
   },
 ];
 
+// Chain Interaction Tests
+export const chainTests: TestDefinition[] = [
+  {
+    id: "chain-spec-genesis-hash",
+    name: "Chain Spec: Genesis Hash",
+    description:
+      "Gets the genesis hash for a chain via the typed chain interaction protocol",
+    api: "hostApi.chainSpecGenesisHash({ tag: 'v1', value: genesisHash })",
+    category: "chain",
+    async run(chain: ChainConfig) {
+      const result = await hostApi.chainSpecGenesisHash({
+        tag: "v1",
+        value: chain.genesis,
+      });
+
+      return result.match(
+        (res) => success(`Genesis hash: ${res.value}`),
+        (err) => error(err.value.name, err.value),
+      );
+    },
+  },
+  {
+    id: "chain-spec-chain-name",
+    name: "Chain Spec: Chain Name",
+    description: "Gets the chain name via the typed chain interaction protocol",
+    api: "hostApi.chainSpecChainName({ tag: 'v1', value: genesisHash })",
+    category: "chain",
+    async run(chain: ChainConfig) {
+      const result = await hostApi.chainSpecChainName({
+        tag: "v1",
+        value: chain.genesis,
+      });
+
+      return result.match(
+        (res) => success(`Chain name: ${res.value}`),
+        (err) => error(err.value.name, err.value),
+      );
+    },
+  },
+  {
+    id: "chain-spec-properties",
+    name: "Chain Spec: Properties",
+    description:
+      "Gets chain properties (token symbol, decimals, etc.) via the typed protocol",
+    api: "hostApi.chainSpecProperties({ tag: 'v1', value: genesisHash })",
+    category: "chain",
+    async run(chain: ChainConfig) {
+      const result = await hostApi.chainSpecProperties({
+        tag: "v1",
+        value: chain.genesis,
+      });
+
+      return result.match(
+        (res) => success(`Properties: ${res.value}`),
+        (err) => error(err.value.name, err.value),
+      );
+    },
+  },
+  {
+    id: "chain-head-follow",
+    name: "Chain Head: Follow",
+    description:
+      "Subscribes to chain head events for 10s (blocks, finalization)",
+    api: "hostApi.chainHeadFollow({ tag: 'v1', value: { genesisHash, withRuntime } }, callback)",
+    category: "chain",
+    async run(chain: ChainConfig) {
+      return new Promise((resolve) => {
+        const events: { tag: string; blockHash?: string }[] = [];
+
+        const subscription = hostApi.chainHeadFollow(
+          {
+            tag: "v1",
+            value: { genesisHash: chain.genesis, withRuntime: false },
+          },
+          (event) => {
+            if (event.tag === "v1") {
+              const e = event.value;
+              switch (e.tag) {
+                case "Initialized":
+                  events.push({
+                    tag: "Initialized",
+                    blockHash: e.value.finalizedBlockHashes[0],
+                  });
+                  break;
+                case "NewBlock":
+                  events.push({
+                    tag: "NewBlock",
+                    blockHash: e.value.blockHash,
+                  });
+                  break;
+                case "BestBlockChanged":
+                  events.push({
+                    tag: "BestBlockChanged",
+                    blockHash: e.value.bestBlockHash,
+                  });
+                  break;
+                case "Finalized":
+                  events.push({
+                    tag: "Finalized",
+                    blockHash: e.value.finalizedBlockHashes[0],
+                  });
+                  break;
+                default:
+                  events.push({ tag: e.tag });
+              }
+            }
+          },
+        );
+
+        setTimeout(() => {
+          subscription.unsubscribe();
+          resolve(
+            success(
+              `Received ${events.length} chain head events in 10s`,
+              events.slice(-10),
+            ),
+          );
+        }, 10000);
+      });
+    },
+  },
+];
+
 export const testsByCategory = {
   accounts: accountTests,
   signing: signingTests,
@@ -1557,4 +1707,5 @@ export const testsByCategory = {
   preimage: preimageTests,
   notifications: notificationTests,
   navigation: navigationTests,
+  chain: chainTests,
 };

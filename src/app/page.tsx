@@ -21,7 +21,7 @@ import { useAccounts } from "@/src/lib/use-accounts";
 import { useConnectionStatus } from "@/src/lib/use-connection-status";
 import { stringify } from "@/src/lib/utils";
 
-const SDK_VERSION = "0.6.1";
+const SDK_VERSION = "0.6.7";
 
 const categoryIcons: Record<TestCategory, string> = {
   extension: "🔌",
@@ -34,6 +34,7 @@ const categoryIcons: Record<TestCategory, string> = {
   preimage: "🔎",
   notifications: "🔔",
   navigation: "🧭",
+  chain: "⛓️",
 };
 
 const categoryInfo: Record<
@@ -79,6 +80,10 @@ const categoryInfo: Record<
   navigation: {
     title: "Navigation",
     description: "Test deeplinks with paths, query params, and fragments",
+  },
+  chain: {
+    title: "Chain Interaction",
+    description: "Typed chain spec and chain head protocol",
   },
 };
 
@@ -213,12 +218,15 @@ export default function SdkTestPage() {
 
           {/* Center Column: Tests */}
           <div className="space-y-6">
-
             {/* Test Categories */}
             <div className="space-y-6">
               {(Object.keys(testsByCategory) as TestCategory[]).map(
                 (category) => (
-                  <div key={category} id={`section-${category}`} className="scroll-mt-(--header-height)">
+                  <div
+                    key={category}
+                    id={`section-${category}`}
+                    className="scroll-mt-(--header-height)"
+                  >
                     <TestCategoryCard
                       title={categoryInfo[category].title}
                       description={categoryInfo[category].description}
@@ -236,7 +244,15 @@ export default function SdkTestPage() {
 
           {/* Right Column: Logs (Sticky) */}
           <div className="lg:sticky lg:top-(--header-height) lg:self-start">
-            <LogViewer logs={logs} onClear={clearLogs} onExport={exportLogs} onReset={() => { clearLogs(); setRunningTest(null); }} />
+            <LogViewer
+              logs={logs}
+              onClear={clearLogs}
+              onExport={exportLogs}
+              onReset={() => {
+                clearLogs();
+                setRunningTest(null);
+              }}
+            />
           </div>
         </div>
       </main>
