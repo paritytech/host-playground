@@ -1017,7 +1017,10 @@ export const chatTests: TestDefinition[] = [
       const message = args?.message ?? "Hello from the playground!";
       const trigger = `!echo ${message}`;
       await navigator.clipboard.writeText(trigger);
-      return success(`Copied to clipboard — paste in the "Host Playground" chat room`, { trigger });
+      return success(
+        `Copied to clipboard — paste in the "Host Playground" chat room`,
+        { trigger },
+      );
     },
   },
   {
@@ -1676,6 +1679,41 @@ export const chainTests: TestDefinition[] = [
           );
         }, 10000);
       });
+    },
+  },
+  {
+    id: "chain-query-balance",
+    name: "Query Balance",
+    description: "Queries System.Account balance using createPapiProvider",
+    api: "createPapiProvider(genesis) → client.getUnsafeApi().query.System.Account.getValue(address)",
+    args: [
+      {
+        name: "address",
+        label: "Address (SS58)",
+        defaultValue: "5GrwvaEF5zXb26Fz9rcQpDWS57CtERHpNehXCPcNoHGKutQY",
+      },
+    ],
+    category: "chain",
+    async run(chain: ChainConfig, _logger, args) {
+      const address =
+        args?.address ?? "5GrwvaEF5zXb26Fz9rcQpDWS57CtERHpNehXCPcNoHGKutQY";
+      const provider = createPapiProvider(chain.genesis);
+      const client = createClient(provider);
+
+      try {
+        const api = client.getUnsafeApi();
+        const account = await api.query.System.Account.getValue(address);
+        const free = account?.data?.free ?? 0;
+        const reserved = account?.data?.reserved ?? 0;
+        return success(
+          `Balance for ${address.slice(0, 8)}…: free=${free}, reserved=${reserved}`,
+          account,
+        );
+      } catch (e) {
+        return error(`Failed to query balance: ${e}`);
+      } finally {
+        client.destroy();
+      }
     },
   },
 ];
