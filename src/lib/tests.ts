@@ -18,6 +18,8 @@ import {
 import { Binary, FixedSizeBinary, createClient } from "polkadot-api";
 import { toHex } from "polkadot-api/utils";
 import { getWsProvider } from "polkadot-api/ws-provider";
+import { createInkSdk } from "@polkadot-api/sdk-ink";
+import { contracts } from "@polkadot-api/descriptors";
 import {
   type ChainConfig,
   type TestDefinition,
@@ -1679,6 +1681,41 @@ export const chainTests: TestDefinition[] = [
           );
         }, 10000);
       });
+    },
+  },
+  {
+    id: "chain-query-counter",
+    name: "Query Program",
+    description:
+      "Reads count() from a Solidity counter contract using createPapiProvider and createInkSdk",
+    api: "createInkSdk(client).getContract(contracts.counter, address).query('count', { origin })",
+    category: "chain",
+    async run(chain: ChainConfig) {
+      const contractAddress = "0x2212ec401fc24ca50c55dcd8378ae7033f36f72b";
+      const origin = "5GrwvaEF5zXb26Fz9rcQpDWS57CtERHpNehXCPcNoHGKutQY";
+
+      const provider = createPapiProvider(chain.genesis);
+      const client = createClient(provider);
+
+      try {
+        const sdk = createInkSdk(client);
+        const contract = sdk.getContract(contracts.counter, contractAddress);
+        const result = await contract.query("count", { origin });
+
+        if (!result.success) {
+          return error("Contract query failed", result.value);
+        }
+
+        const count = result.value.response;
+        return success(`Counter value: ${count}`, {
+          count: String(count),
+          contract: contractAddress,
+        });
+      } catch (e) {
+        return error(`Failed to query counter: ${e}`);
+      } finally {
+        client.destroy();
+      }
     },
   },
   {
