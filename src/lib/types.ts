@@ -40,7 +40,7 @@ export interface ChainConfig {
 export interface TestArg {
   name: string;
   label: string;
-  defaultValue: string;
+  defaultValue: string | (() => Promise<string>);
 }
 
 export interface TestDefinition {

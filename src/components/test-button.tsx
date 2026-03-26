@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Play } from "lucide-react";
 import { Button } from "@/src/components/button";
 import type { TestDefinition } from "@/src/lib/types";
@@ -26,11 +26,30 @@ export function TestButton({
   const initialArgs = useMemo(() => {
     if (!test.args) return {};
     return Object.fromEntries(
-      test.args.map((arg) => [arg.name, arg.defaultValue]),
+      test.args
+        .filter((arg) => typeof arg.defaultValue === "string")
+        .map((arg) => [arg.name, arg.defaultValue as string]),
     );
   }, [test.args]);
 
   const [argValues, setArgValues] = useState<Record<string, string>>(initialArgs);
+
+  useEffect(() => {
+    const dynamicArgs = test.args?.filter((a) => typeof a.defaultValue === "function") ?? [];
+    if (dynamicArgs.length === 0) return;
+
+    void Promise.all(
+      dynamicArgs.map(async (arg) => {
+        const value = await (arg.defaultValue as () => Promise<string>)();
+        return [arg.name, value] as [string, string];
+      }),
+    ).then((resolved) => {
+      setArgValues((prev) => {
+        const updates = Object.fromEntries(resolved.filter(([, v]) => v));
+        return { ...prev, ...updates };
+      });
+    });
+  }, [test.args]);
 
   const handleRun = () => {
     onRun(hasArgs ? argValues : undefined);
@@ -65,7 +84,7 @@ export function TestButton({
               </label>
               <input
                 type="text"
-                value={argValues[arg.name] ?? arg.defaultValue}
+                value={argValues[arg.name] ?? (typeof arg.defaultValue === "string" ? arg.defaultValue : "")}
                 onChange={(e) =>
                   setArgValues((prev) => ({
                     ...prev,

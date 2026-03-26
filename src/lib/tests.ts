@@ -1073,7 +1073,14 @@ export const chatTests: TestDefinition[] = [
       {
         name: "recipientUsername",
         label: "Recipient Username",
-        defaultValue: "bigtava.41",
+        async defaultValue() {
+          const accountsProvider = createAccountsProvider();
+          const result = await accountsProvider.getNonProductAccounts();
+          return result.match(
+            (accounts) => accounts[0]?.name ?? "",
+            () => "",
+          );
+        },
       },
       {
         name: "message",
@@ -1084,10 +1091,21 @@ export const chatTests: TestDefinition[] = [
     category: "chat",
     async run(_chain, _logger, args) {
       const senderDotNsId = args?.senderDotNsId ?? "host-playground.dot";
-      const recipientUsername = args?.recipientUsername ?? "bigtava.41";
       const messageText = args?.message ?? "Hello from Host Playground!";
 
+      let recipientUsername = args?.recipientUsername ?? "";
+      if (!recipientUsername) {
+        const accountsProvider = createAccountsProvider();
+        const accountsResult = await accountsProvider.getNonProductAccounts();
+        recipientUsername = accountsResult.match(
+          (accounts) => accounts[0]?.name ?? "",
+          () => "",
+        );
+      }
+
       const statementStore = createStatementStore();
+      if (!recipientUsername) return error("No recipient username — not signed in?");
+
       const encoder = new TextEncoder();
 
       const topic = encoder.encode(`host-playground:${recipientUsername}`);
@@ -1118,7 +1136,7 @@ export const chatTests: TestDefinition[] = [
         await statementStore.submit({ ...statement, proof });
         console.log("[SendToUser] Statement submitted");
         return success(
-          `Statement submitted to topic "hackm3:${recipientUsername}"`,
+          `Statement submitted to topic "host-playground:${recipientUsername}"`,
           {
             topic: `host-playground:${recipientUsername}`,
             message: messageText,
