@@ -22,9 +22,9 @@ import {
   type PolkadotClient,
 } from "polkadot-api";
 import { toHex } from "polkadot-api/utils";
-import { getWsProvider } from "polkadot-api/ws-provider";
 import { createInkSdk } from "@polkadot-api/sdk-ink";
 import { contracts } from "@polkadot-api/descriptors";
+import { CHAINS } from "./types";
 
 // Cache papi clients per genesis — avoids in-flight chainHead events from a
 // destroyed client corrupting a new client's block tree (undefined.children).
@@ -346,66 +346,50 @@ export const signingTests: TestDefinition[] = [
       const account = accounts[0];
       const address = account.address;
 
-      // Create a pure PAPI client with direct WebSocket
-      const client = createClient(getWsProvider(chain.wsUrl));
+      const client = getClient(chain.genesis);
+      const api = client.getUnsafeApi();
 
-      try {
-        // Wait for client to connect by fetching a block
-        log("Connecting to chain...");
-        await client.getFinalizedBlock();
+      log("Preparing transaction...");
+      const message = args?.message ?? "Remark from Host Playground";
+      const tx = api.tx.System.remark({
+        remark: Binary.fromBytes(new TextEncoder().encode(message)),
+      });
 
-        const api = client.getUnsafeApi();
+      log("Signing with non-product signer...");
 
-        log("Preparing transaction...");
-        const message = args?.message ?? "Remark from Host Playground";
-        const tx = api.tx.System.remark({
-          remark: Binary.fromBytes(new TextEncoder().encode(message)),
-        });
+      const signer = injected.signer;
 
-        log("Signing with non-product signer...");
-
-        // Use the injected signer's signPayload method
-        const signer = injected.signer;
-
-        if (!signer.signPayload) {
-          client.destroy();
-          return error("Signer does not support signPayload");
-        }
-
-        // Get the encoded call data for signing
-        const callData = await tx.getEncodedData();
-        const callDataHex = toHex(callData.asBytes());
-
-        // Sign using the injected signer
-        const signResult = await signer.signPayload({
-          address,
-          blockHash:
-            "0x0000000000000000000000000000000000000000000000000000000000000000",
-          blockNumber: "0x00000000",
-          era: "0x00",
-          genesisHash: chain.genesis,
-          method: callDataHex,
-          nonce: "0x00000000",
-          signedExtensions: [],
-          specVersion: "0x00000000",
-          tip: "0x00000000000000000000000000000000",
-          transactionVersion: "0x00000000",
-          version: 4,
-        });
-
-        const txHash = signResult.signature;
-
-        log(`Transaction signed!\nSignature: ${txHash}`);
-
-        client.destroy();
-        return success(`Transaction signed for ${chain.name}`, {
-          txHash,
-          address,
-        });
-      } catch (e) {
-        client.destroy();
-        throw e;
+      if (!signer.signPayload) {
+        return error("Signer does not support signPayload");
       }
+
+      const callData = await tx.getEncodedData();
+      const callDataHex = toHex(callData.asBytes());
+
+      const signResult = await signer.signPayload({
+        address,
+        blockHash:
+          "0x0000000000000000000000000000000000000000000000000000000000000000",
+        blockNumber: "0x00000000",
+        era: "0x00",
+        genesisHash: chain.genesis,
+        method: callDataHex,
+        nonce: "0x00000000",
+        signedExtensions: [],
+        specVersion: "0x00000000",
+        tip: "0x00000000000000000000000000000000",
+        transactionVersion: "0x00000000",
+        version: 4,
+      });
+
+      const txHash = signResult.signature;
+
+      log(`Transaction signed!\nSignature: ${txHash}`);
+
+      return success(`Transaction signed for ${chain.name}`, {
+        txHash,
+        address,
+      });
     },
   },
   {
@@ -458,11 +442,8 @@ export const signingTests: TestDefinition[] = [
         publicKey: providerAccounts[0].publicKey,
       });
 
-      // Create a pure PAPI client with direct WebSocket
-      const client = createClient(getWsProvider(chain.wsUrl));
+      const client = getClient(chain.genesis);
       try {
-        log("Connecting to chain...");
-        await client.getFinalizedBlock();
         const api = client.getUnsafeApi();
 
         // 1. Remark call
@@ -475,12 +456,10 @@ export const signingTests: TestDefinition[] = [
         // 2. Two increment contract calls
         // Connect to the Paseo testnet where the contract lives
         const contractAddr = "0x4e65b000448e9de00bfd8b674caa35699f7cef13";
-        const contractChainUrl = "wss://asset-hub-paseo-rpc.n.dwellir.com";
 
         log("Connecting to contract chain...");
-        const contractClient = createClient(getWsProvider(contractChainUrl));
+        const contractClient = getClient(CHAINS.PASEO_ASSET_HUB.genesis);
         const contractApi = contractClient.getUnsafeApi();
-        await contractClient.getFinalizedBlock();
 
         const dest = Binary.fromHex(contractAddr);
         // increment() selector = 0xd09de08a
@@ -503,8 +482,6 @@ export const signingTests: TestDefinition[] = [
             ),
         );
         if (!dryRun.result?.success) {
-          contractClient.destroy();
-          client.destroy();
           return error("Dry run failed", dryRun);
         }
 
@@ -527,7 +504,7 @@ export const signingTests: TestDefinition[] = [
         const incrementCall1 = makeIncrementCall();
         const incrementCall2 = makeIncrementCall();
 
-        contractClient.destroy();
+
 
         // 3. Batch all three calls
         log("Preparing batch of 3 calls (1 remark + 2 increments)...");
@@ -585,7 +562,6 @@ export const signingTests: TestDefinition[] = [
 
         log(`Counter value: ${counterValue ?? "unknown"}`);
 
-        client.destroy();
         return success(
           `Batch finalized on ${chain.name} — counter: ${counterValue ?? "unknown"}`,
           {
@@ -600,7 +576,6 @@ export const signingTests: TestDefinition[] = [
           },
         );
       } catch (e) {
-        client.destroy();
         throw e;
       }
     },
