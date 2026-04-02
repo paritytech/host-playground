@@ -49,6 +49,7 @@ export interface TestDefinition {
   description: string;
   api: string;
   args?: TestArg[];
+  warning?: string;
   category: TestCategory;
   run: (
     chain: ChainConfig,

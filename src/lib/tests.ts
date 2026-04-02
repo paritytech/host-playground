@@ -16,6 +16,7 @@ import {
   WellKnownChain,
 } from "@novasamatech/product-sdk";
 import {
+  AccountId,
   Binary,
   FixedSizeBinary,
   createClient,
@@ -248,6 +249,63 @@ export const accountTests: TestDefinition[] = [
       });
     },
   },
+  {
+    id: "accounts-ring-vrf-proof",
+    name: "Create Ring VRF Proof",
+    description: "Creates a Ring VRF proof for a product account",
+    api: "accountsProvider.createRingVRFProof(dotNsId, derivationIndex, location, message)",
+    args: [
+      {
+        name: "dotNsIdentifier",
+        label: "DotNS ID",
+        defaultValue: "host-playground.dot",
+      },
+      {
+        name: "genesisHash",
+        label: "Ring Genesis Hash",
+        defaultValue:
+          "0xd6eec26135305a8ad257a20d003357284c8aa03d0bdb2b357ab0a22371e11ef2",
+      },
+      {
+        name: "ringRootHash",
+        label: "Ring Root Hash",
+        defaultValue: "0x",
+      },
+    ],
+    category: "accounts",
+    async run(_chain, logger, args) {
+      const log = logger || (() => {});
+      const dotNsIdentifier = args?.dotNsIdentifier ?? "host-playground.dot";
+      const genesisHash =
+        (args?.genesisHash as `0x${string}`) ??
+        "0xd6eec26135305a8ad257a20d003357284c8aa03d0bdb2b357ab0a22371e11ef2";
+      const ringRootHash = (args?.ringRootHash as `0x${string}`) ?? "0x";
+
+      const accountsProvider = createAccountsProvider();
+      const message = new TextEncoder().encode(`ring-vrf-test:${Date.now()}`);
+
+      log(`Creating Ring VRF proof for ${dotNsIdentifier}...`);
+      const result = await accountsProvider.createRingVRFProof(
+        dotNsIdentifier,
+        0,
+        {
+          genesisHash,
+          ringRootHash,
+          hints: undefined,
+        },
+        message,
+      );
+
+      return result.match(
+        (proof) =>
+          success(`Ring VRF proof created (${proof.length} bytes)`, {
+            proofHex: toHex(proof).slice(0, 40) + "...",
+            proofLength: proof.length,
+          }),
+        (err) => error(`${err.name}`, err),
+      );
+    },
+  },
 ];
 
 // Signing Tests
@@ -255,9 +313,14 @@ export const signingTests: TestDefinition[] = [
   {
     id: "sign-raw",
     name: "Sign Raw Message",
-    description: "Signs a raw message with a non-product account",
+    description: "Signs a raw message with a product account",
     api: "hostApi.signRaw({ tag, value: { address, data } })",
     args: [
+      {
+        name: "dotNsIdentifier",
+        label: "DotNS ID",
+        defaultValue: "host-playground.dot",
+      },
       {
         name: "message",
         label: "Message",
@@ -265,25 +328,32 @@ export const signingTests: TestDefinition[] = [
       },
     ],
     category: "signing",
-    async run(_chain, _logger, args) {
-      const accountResult = await hostApi.getNonProductAccounts({
-        tag: "v1",
-        value: undefined,
-      });
+    async run(_chain, logger, args) {
+      const log = logger || (() => {});
+      const dotNsIdentifier = args?.dotNsIdentifier ?? "host-playground.dot";
 
-      let publicKey: Uint8Array | null = null;
-      accountResult.match(
-        (res) => {
-          if (res.value.length > 0) {
-            publicKey = res.value[0].publicKey;
-          }
+      log(`Fetching product account for ${dotNsIdentifier}...`);
+      const accountsProvider = createAccountsProvider();
+      const accountResult =
+        await accountsProvider.getProductAccount(dotNsIdentifier);
+
+      const publicKey = accountResult.match(
+        (account) => account.publicKey,
+        (err) => {
+          log(
+            `getProductAccount failed: ${err.name}. Is the user signed in and is "${dotNsIdentifier}" a valid DotNS domain?`,
+          );
+          return null;
         },
-        () => {},
       );
 
       if (!publicKey) {
-        return error("No accounts available for signing");
+        return error(
+          `No product account for "${dotNsIdentifier}" — check that the user is signed in and the DotNS ID is valid`,
+        );
       }
+
+      log(`Account found: ${toHex(publicKey).slice(0, 18)}...`);
 
       const message =
         args?.message ??
@@ -293,7 +363,7 @@ export const signingTests: TestDefinition[] = [
       const result = await hostApi.signRaw({
         tag: "v1",
         value: {
-          address: toHex(publicKey),
+          address: AccountId().dec(publicKey),
           data: { tag: "Bytes", value: messageBytes },
         },
       });
@@ -305,10 +375,91 @@ export const signingTests: TestDefinition[] = [
     },
   },
   {
-    id: "sign-payload",
-    name: "Sign & Submit Payload",
+    id: "sign-payload-product",
+    name: "Sign Payload (Product Account)",
     description:
-      "Signs a transaction payload and submits it to the selected chain (using non-product account signer)",
+      "Signs and submits a remark transaction using a product account signer",
+    api: "tx.signSubmitAndWatch(productAccountSigner)",
+    args: [
+      {
+        name: "dotNsIdentifier",
+        label: "DotNS ID",
+        defaultValue: "host-playground.dot",
+      },
+      {
+        name: "message",
+        label: "Remark",
+        defaultValue: "Remark from Host Playground",
+      },
+    ],
+    category: "signing",
+    async run(chain: ChainConfig, logger?: TestLogger, args?) {
+      const log = logger || (() => {});
+      const dotNsIdentifier = args?.dotNsIdentifier ?? "host-playground.dot";
+
+      log(`Fetching product account for ${dotNsIdentifier}...`);
+      const accountsProvider = createAccountsProvider();
+      const accountResult =
+        await accountsProvider.getProductAccount(dotNsIdentifier);
+
+      const account = accountResult.match(
+        (a) => a,
+        (err) => {
+          log(
+            `getProductAccount failed: ${err.name}. Is the user signed in and is "${dotNsIdentifier}" a valid DotNS domain?`,
+          );
+          return null;
+        },
+      );
+
+      if (!account) {
+        return error(
+          `No product account for "${dotNsIdentifier}" — check that the user is signed in and the DotNS ID is valid`,
+        );
+      }
+
+      const signer = accountsProvider.getProductAccountSigner({
+        dotNsIdentifier,
+        derivationIndex: 0,
+        publicKey: account.publicKey,
+      });
+
+      const client = getClient(chain.genesis);
+      const api = client.getUnsafeApi();
+
+      log("Preparing transaction...");
+      const message = args?.message ?? "Remark from Host Playground";
+      const tx = api.tx.System.remark({
+        remark: Binary.fromBytes(new TextEncoder().encode(message)),
+      });
+
+      log("Signing with product account signer...");
+
+      return new Promise<TestResult>((resolve, reject) => {
+        tx.signSubmitAndWatch(signer).subscribe({
+          next: (event) => {
+            log(`Event: ${event.type}`);
+            if (event.type === "txBestBlocksState" && event.found) {
+              log("Included in block");
+            } else if (event.type === "finalized") {
+              resolve(
+                success(`Transaction finalized on ${chain.name}`, {
+                  txHash: event.txHash,
+                  address: toHex(account.publicKey),
+                }),
+              );
+            }
+          },
+          error: (e) => reject(e),
+        });
+      });
+    },
+  },
+  {
+    id: "sign-payload-non-product",
+    name: "Sign Payload (Non-Product Account)",
+    description:
+      "Signs a transaction payload using a non-product account (injected extension)",
     api: "signer.signPayload(payload)",
     args: [
       {
@@ -393,12 +544,106 @@ export const signingTests: TestDefinition[] = [
     },
   },
   {
+    id: "sign-payload-ws",
+    name: "Sign Payload (wsProvider)",
+    description:
+      "Signs a remark using a direct WebSocket connection instead of createPapiProvider",
+    api: "createClient(getWsProvider(wsUrl)) + tx.signSubmitAndWatch(signer)",
+    warning: "Should fail in proper sandboxing",
+    args: [
+      {
+        name: "dotNsIdentifier",
+        label: "DotNS ID",
+        defaultValue: "host-playground.dot",
+      },
+      {
+        name: "message",
+        label: "Remark",
+        defaultValue: "Remark from Host Playground",
+      },
+    ],
+    category: "signing",
+    async run(chain: ChainConfig, logger?: TestLogger, args?) {
+      const log = logger || (() => {});
+      const dotNsIdentifier = args?.dotNsIdentifier ?? "host-playground.dot";
+
+      log(`Fetching product account for ${dotNsIdentifier}...`);
+      const accountsProvider = createAccountsProvider();
+      const accountResult =
+        await accountsProvider.getProductAccount(dotNsIdentifier);
+
+      const account = accountResult.match(
+        (a) => a,
+        (err) => {
+          log(`getProductAccount failed: ${err.name}`);
+          return null;
+        },
+      );
+
+      if (!account) {
+        return error(
+          `No product account for "${dotNsIdentifier}" — check that the user is signed in`,
+        );
+      }
+
+      const signer = accountsProvider.getProductAccountSigner({
+        dotNsIdentifier,
+        derivationIndex: 0,
+        publicKey: account.publicKey,
+      });
+
+      log(`Connecting directly via WebSocket to ${chain.wsUrl}...`);
+      const { getWsProvider } = await import("polkadot-api/ws-provider");
+      const client = createClient(getWsProvider(chain.wsUrl));
+
+      try {
+        const api = client.getUnsafeApi();
+
+        log("Preparing transaction...");
+        const message = args?.message ?? "Remark from Host Playground";
+        const tx = api.tx.System.remark({
+          remark: Binary.fromBytes(new TextEncoder().encode(message)),
+        });
+
+        log("Signing with product account signer...");
+
+        return await new Promise<TestResult>((resolve, reject) => {
+          tx.signSubmitAndWatch(signer).subscribe({
+            next: (event) => {
+              log(`Event: ${event.type}`);
+              if (event.type === "txBestBlocksState" && event.found) {
+                log("Included in block");
+              } else if (event.type === "finalized") {
+                resolve(
+                  success(`Transaction finalized on ${chain.name}`, {
+                    txHash: event.txHash,
+                    address: toHex(account.publicKey),
+                  }),
+                );
+              }
+            },
+            error: (e) => reject(e),
+          });
+        });
+      } catch (e) {
+        return error(`Direct WebSocket connection failed: ${e}`);
+      } finally {
+        client.destroy();
+      }
+    },
+  },
+  {
     id: "sign-batch-payload",
     name: "Sign & Submit Batch Payload",
     description:
       "Batches a remark + two contract increment calls, submits, and reads counter after finalization",
     api: "api.tx.Utility.batch_all([remark, Revive.call, Revive.call])",
     args: [
+      {
+        name: "dotNsIdentifier",
+        label: "DotNS ID",
+        defaultValue: "host-playground.dot",
+      },
       {
         name: "remark",
         label: "Remark",
@@ -408,39 +653,36 @@ export const signingTests: TestDefinition[] = [
     category: "signing",
     async run(chain: ChainConfig, logger?: TestLogger, args?) {
       const log = logger || (() => {});
+      const dotNsIdentifier = args?.dotNsIdentifier ?? "host-playground.dot";
 
-      // Get address from injected extension (has .address)
-      log("Creating non-product extension...");
-      const enableFactory =
-        await createNonProductExtensionEnableFactory(sandboxTransport);
-      if (!enableFactory)
-        return error("Transport not ready - enable factory returned null");
-      const injected = await enableFactory();
-      if (!injected.accounts)
-        return error("No accounts available from extension");
-      const extAccounts = await injected.accounts.get();
-      if (extAccounts.length === 0)
-        return error("No non-product accounts available");
-
-      const address = extAccounts[0].address;
-      // Get a PAPI-compatible PolkadotSigner via accountsProvider
-      log("Getting PAPI signer...");
+      log(`Fetching product account for ${dotNsIdentifier}...`);
       const accountsProvider = createAccountsProvider();
-      const accountsResult = await accountsProvider.getNonProductAccounts();
-      const providerAccounts = accountsResult.match(
-        (accs) => accs,
+      const accountResult =
+        await accountsProvider.getProductAccount(dotNsIdentifier);
+
+      const account = accountResult.match(
+        (a) => a,
         (err) => {
-          throw new Error(`Failed to get accounts: ${err.name}`);
+          log(
+            `getProductAccount failed: ${err.name}. Is the user signed in and is "${dotNsIdentifier}" a valid DotNS domain?`,
+          );
+          return null;
         },
       );
-      if (providerAccounts.length === 0)
-        return error("No non-product accounts from provider");
 
-      const signer = accountsProvider.getNonProductAccountSigner({
-        dotNsIdentifier: "",
+      if (!account) {
+        return error(
+          `No product account for "${dotNsIdentifier}" — check that the user is signed in and the DotNS ID is valid`,
+        );
+      }
+
+      const address = toHex(account.publicKey);
+      const signer = accountsProvider.getProductAccountSigner({
+        dotNsIdentifier,
         derivationIndex: 0,
-        publicKey: providerAccounts[0].publicKey,
+        publicKey: account.publicKey,
       });
+      log(`Product account signer ready: ${address.slice(0, 18)}...`);
 
       const client = getClient(chain.genesis);
       try {
@@ -1432,15 +1674,25 @@ export const preimageTests: TestDefinition[] = [
   {
     id: "preimage-lookup",
     name: "Lookup Preimage",
-    description: "Submits a preimage then looks it up by hash (5s)",
+    description: "Looks up a preimage by hash (5s)",
     api: "preimageManager.lookup(hash, callback)",
+    args: [
+      {
+        name: "hash",
+        label: "Hash (0x…)",
+        defaultValue: "0x5e933dd685deedfbf58063678bfa2abead4dc25e6da4ffea190503cfaa940d51",
+      },
+    ],
     category: "preimage",
-    async run() {
-      const data = new TextEncoder().encode(`lookup_${Date.now()}`);
-      const hash = await preimageManager.submit(data);
+    async run(_chain, logger, args) {
+      const log = logger || (() => {});
+      const hash = (args?.hash ?? "0x5e933dd685deedfbf58063678bfa2abead4dc25e6da4ffea190503cfaa940d51") as `0x${string}`;
+
+      log(`Looking up hash: ${hash.slice(0, 20)}...`);
 
       return new Promise((resolve) => {
         let found = false;
+        log("Starting lookup subscription...");
         const subscription = preimageManager.lookup(hash, (preimage) => {
           found = true;
           subscription.unsubscribe();

@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { Play } from "lucide-react";
+import { Play, TriangleAlert } from "lucide-react";
 import { Button } from "@/src/components/button";
 import type { TestDefinition } from "@/src/lib/types";
 
@@ -69,6 +69,14 @@ export function TestButton({
         <div className="flex flex-col items-start gap-0.5 min-w-0">
           <div className="flex items-center gap-1.5">
             <span className="font-medium truncate">{test.name}</span>
+            {test.warning && (
+              <span className="relative group">
+                <TriangleAlert className="h-3 w-3 shrink-0 text-yellow-500" />
+                <span className="absolute left-1/2 -translate-x-1/2 top-full mt-1 px-2 py-1 text-xs rounded bg-zinc-900 text-zinc-100 border border-zinc-700 shadow-md whitespace-nowrap invisible group-hover:visible pointer-events-none transition-opacity z-50">
+                  {test.warning}
+                </span>
+              </span>
+            )}
           </div>
           <span className="text-xs text-muted-foreground truncate w-full">
             {test.description}
