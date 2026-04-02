@@ -15,11 +15,28 @@ import {
   preimageManager,
   WellKnownChain,
 } from "@novasamatech/product-sdk";
-import { Binary, FixedSizeBinary, createClient } from "polkadot-api";
+import {
+  Binary,
+  FixedSizeBinary,
+  createClient,
+  type PolkadotClient,
+} from "polkadot-api";
 import { toHex } from "polkadot-api/utils";
 import { getWsProvider } from "polkadot-api/ws-provider";
 import { createInkSdk } from "@polkadot-api/sdk-ink";
 import { contracts } from "@polkadot-api/descriptors";
+
+// Cache papi clients per genesis — avoids in-flight chainHead events from a
+// destroyed client corrupting a new client's block tree (undefined.children).
+const clientCache = new Map<string, PolkadotClient>();
+function getClient(genesis: `0x${string}`): PolkadotClient {
+  let client = clientCache.get(genesis);
+  if (!client) {
+    client = createClient(createPapiProvider(genesis));
+    clientCache.set(genesis, client);
+  }
+  return client;
+}
 import {
   type ChainConfig,
   type TestDefinition,
@@ -1104,7 +1121,8 @@ export const chatTests: TestDefinition[] = [
       }
 
       const statementStore = createStatementStore();
-      if (!recipientUsername) return error("No recipient username — not signed in?");
+      if (!recipientUsername)
+        return error("No recipient username — not signed in?");
 
       const encoder = new TextEncoder();
 
@@ -1712,8 +1730,7 @@ export const chainTests: TestDefinition[] = [
       const contractAddress = "0x2212ec401fc24ca50c55dcd8378ae7033f36f72b";
       const origin = "5GrwvaEF5zXb26Fz9rcQpDWS57CtERHpNehXCPcNoHGKutQY";
 
-      const provider = createPapiProvider(chain.genesis);
-      const client = createClient(provider);
+      const client = getClient(chain.genesis);
 
       try {
         const sdk = createInkSdk(client);
@@ -1731,8 +1748,6 @@ export const chainTests: TestDefinition[] = [
         });
       } catch (e) {
         return error(`Failed to query counter: ${e}`);
-      } finally {
-        client.destroy();
       }
     },
   },
@@ -1752,8 +1767,7 @@ export const chainTests: TestDefinition[] = [
     async run(chain: ChainConfig, _logger, args) {
       const address =
         args?.address ?? "5GrwvaEF5zXb26Fz9rcQpDWS57CtERHpNehXCPcNoHGKutQY";
-      const provider = createPapiProvider(chain.genesis);
-      const client = createClient(provider);
+      const client = getClient(chain.genesis);
 
       try {
         const api = client.getUnsafeApi();
@@ -1766,8 +1780,6 @@ export const chainTests: TestDefinition[] = [
         );
       } catch (e) {
         return error(`Failed to query balance: ${e}`);
-      } finally {
-        client.destroy();
       }
     },
   },
