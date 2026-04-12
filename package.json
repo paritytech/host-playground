@@ -11,7 +11,7 @@
     "lint:fix": "next lint --fix"
   },
   "dependencies": {
-    "@novasamatech/product-sdk": "^0.6.13",
+    "@novasamatech/product-sdk": "0.6.17",
     "@polkadot-api/descriptors": "file:.papi/descriptors",
     "@polkadot-api/ink-contracts": "^0.4.6",
     "@polkadot-api/sdk-ink": "0.6.2",

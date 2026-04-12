@@ -19,7 +19,7 @@ export function TestButton({
   disabled,
 }: TestButtonProps) {
   const isCurrentlyRunning = isRunning;
-  const isDisabled = disabled || isCurrentlyRunning;
+  const isDisabled = disabled || isCurrentlyRunning || !!test.disabled;
 
   const hasArgs = test.args && test.args.length > 0;
 
@@ -69,6 +69,11 @@ export function TestButton({
         <div className="flex flex-col items-start gap-0.5 min-w-0">
           <div className="flex items-center gap-1.5">
             <span className="font-medium truncate">{test.name}</span>
+            {test.disabled && (
+              <span className="shrink-0 text-[10px] font-semibold px-1.5 py-0.5 rounded-full bg-yellow-500 text-white leading-none">
+                Only from worker
+              </span>
+            )}
             {test.warning && (
               <span className="relative group">
                 <TriangleAlert className="h-3 w-3 shrink-0 text-yellow-500" />
@@ -81,6 +86,9 @@ export function TestButton({
           <span className="text-xs text-muted-foreground truncate w-full">
             {test.description}
           </span>
+          <code className="font-mono text-[10px] text-muted-foreground/50 truncate w-full">
+            {test.api}
+          </code>
         </div>
       </Button>
       {hasArgs && (
@@ -92,6 +100,7 @@ export function TestButton({
               </label>
               <input
                 type="text"
+                disabled={!!test.disabled}
                 value={argValues[arg.name] ?? (typeof arg.defaultValue === "string" ? arg.defaultValue : "")}
                 onChange={(e) =>
                   setArgValues((prev) => ({
@@ -99,7 +108,7 @@ export function TestButton({
                     [arg.name]: e.target.value,
                   }))
                 }
-                className="text-xs border-b border-border bg-transparent text-foreground flex-1 min-w-0 px-1 py-0.5 outline-none focus:border-foreground"
+                className="text-xs border-b border-border bg-transparent text-foreground flex-1 min-w-0 px-1 py-0.5 outline-none focus:border-foreground disabled:opacity-50 disabled:cursor-not-allowed"
               />
             </div>
           ))}

@@ -21,7 +21,7 @@ import { useAccounts } from "@/src/lib/use-accounts";
 import { useConnectionStatus } from "@/src/lib/use-connection-status";
 import { stringify } from "@/src/lib/utils";
 
-const SDK_VERSION = "0.6.7";
+const SDK_VERSION = "0.6.17";
 
 const categoryIcons: Record<TestCategory, string> = {
   extension: "🔌",
@@ -260,7 +260,7 @@ export default function SdkTestPage() {
       {/* Footer */}
       <footer className="border-t border-border/40 mt-16 py-8">
         <div className="max-w-7xl mx-auto px-8 text-center text-sm text-muted-foreground">
-          Host Playground — @novasamatech/product-sdk
+          Host Playground
         </div>
       </footer>
     </div>

@@ -50,6 +50,7 @@ export interface TestDefinition {
   api: string;
   args?: TestArg[];
   warning?: string;
+  disabled?: string;
   category: TestCategory;
   run: (
     chain: ChainConfig,

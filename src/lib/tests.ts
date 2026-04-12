@@ -6,8 +6,8 @@ import {
   hostApi,
   injectSpektrExtension,
   metaProvider,
-  createProductChatManager,
   createAccountsProvider,
+  createProductChatManager,
   createStatementStore,
   createLocalStorage,
   hostLocalStorage,
@@ -867,6 +867,43 @@ export const signingTests: TestDefinition[] = [
       );
     },
   },
+  {
+    id: "create-transaction-non-product",
+    name: "Create Transaction (Non-Product)",
+    description: "Creates a transaction with a non-product account",
+    api: "hostApi.createTransactionWithNonProductAccount({ tag, value: payload })",
+    category: "signing",
+    async run() {
+      const txPayload = {
+        version: 1 as const,
+        signer: null,
+        callData: "0x0000" as `0x${string}`,
+        extensions: [] as Array<{
+          id: string;
+          extra: `0x${string}`;
+          additionalSigned: `0x${string}`;
+        }>,
+        txExtVersion: 0,
+        context: {
+          metadata: "0x" as `0x${string}`,
+          tokenSymbol: "DOT",
+          tokenDecimals: 10,
+          bestBlockHeight: 0,
+        },
+      };
+
+      const result = await hostApi.createTransactionWithNonProductAccount({
+        tag: "v1",
+        value: txPayload,
+      });
+
+      return result.match(
+        (res) =>
+          success(`Transaction created: ${toHex(res.value).slice(0, 40)}...`),
+        (err) => error(err.value.name, err.value),
+      );
+    },
+  },
 ];
 
 // Extension & Provider Tests
@@ -1170,71 +1207,126 @@ export const permissionTests: TestDefinition[] = [
       );
     },
   },
+  {
+    id: "device-permission-camera",
+    name: "Device Permission: Camera",
+    description: "Requests camera access from the host",
+    api: "hostApi.devicePermission({ tag: 'v1', value: 'Camera' })",
+    category: "permissions",
+    async run() {
+      const result = await hostApi.devicePermission({
+        tag: "v1",
+        value: "Camera",
+      });
+
+      return result.match(
+        (res) => success(`Camera permission: ${res.value ? "granted" : "denied"}`),
+        (err) => error(err.value.name, err.value),
+      );
+    },
+  },
+  {
+    id: "device-permission-microphone",
+    name: "Device Permission: Microphone",
+    description: "Requests microphone access from the host",
+    api: "hostApi.devicePermission({ tag: 'v1', value: 'Microphone' })",
+    category: "permissions",
+    async run() {
+      const result = await hostApi.devicePermission({
+        tag: "v1",
+        value: "Microphone",
+      });
+
+      return result.match(
+        (res) => success(`Microphone permission: ${res.value ? "granted" : "denied"}`),
+        (err) => error(err.value.name, err.value),
+      );
+    },
+  },
+  {
+    id: "device-permission-location",
+    name: "Device Permission: Location",
+    description: "Requests location access from the host",
+    api: "hostApi.devicePermission({ tag: 'v1', value: 'Location' })",
+    category: "permissions",
+    async run() {
+      const result = await hostApi.devicePermission({
+        tag: "v1",
+        value: "Location",
+      });
+
+      return result.match(
+        (res) => success(`Location permission: ${res.value ? "granted" : "denied"}`),
+        (err) => error(err.value.name, err.value),
+      );
+    },
+  },
+  {
+    id: "device-permission-bluetooth",
+    name: "Device Permission: Bluetooth",
+    description: "Requests bluetooth access from the host",
+    api: "hostApi.devicePermission({ tag: 'v1', value: 'Bluetooth' })",
+    category: "permissions",
+    async run() {
+      const result = await hostApi.devicePermission({
+        tag: "v1",
+        value: "Bluetooth",
+      });
+
+      return result.match(
+        (res) => success(`Bluetooth permission: ${res.value ? "granted" : "denied"}`),
+        (err) => error(err.value.name, err.value),
+      );
+    },
+  },
+  {
+    id: "remote-permission-external-request",
+    name: "Remote Permission: External Request",
+    description: "Requests permission to make an external HTTP request",
+    api: "hostApi.permission({ tag: 'v1', value: { tag: 'ExternalRequest', value } })",
+    args: [
+      {
+        name: "url",
+        label: "URL",
+        defaultValue: "https://example.com",
+      },
+    ],
+    category: "permissions",
+    async run(_chain, _logger, args) {
+      const url = args?.url ?? "https://example.com";
+      const result = await hostApi.permission({
+        tag: "v1",
+        value: { tag: "ExternalRequest", value: url },
+      });
+
+      return result.match(
+        (res) => success(`External request permission: ${res.value ? "granted" : "denied"}`),
+        (err) => error(err.value.name, err.value),
+      );
+    },
+  },
+  {
+    id: "remote-permission-transaction-submit",
+    name: "Remote Permission: Transaction Submit",
+    description: "Requests permission to submit transactions on a chain",
+    api: "hostApi.permission({ tag: 'v1', value: { tag: 'TransactionSubmit', value: undefined } })",
+    category: "permissions",
+    async run(chain) {
+      const result = await hostApi.permission({
+        tag: "v1",
+        value: { tag: "TransactionSubmit", value: undefined },
+      });
+
+      return result.match(
+        (res) => success(`Transaction submit permission for ${chain.name}: ${res.value ? "granted" : "denied"}`),
+        (err) => error(err.value.name, err.value),
+      );
+    },
+  },
 ];
 
 // Chat Tests
 export const chatTests: TestDefinition[] = [
-  {
-    id: "chat-manager-register-room",
-    name: "Register Room",
-    description: "Registers a chat room via createProductChatManager",
-    api: "chatManager.registerRoom({ roomId, name, icon })",
-    args: [
-      {
-        name: "roomId",
-        label: "Room ID",
-        defaultValue: "host-playground-room",
-      },
-      { name: "name", label: "Name", defaultValue: "Host Playground" },
-    ],
-    category: "chat",
-    async run(_chain, _logger, args) {
-      const chatManager = createProductChatManager();
-
-      const result = await chatManager.registerRoom({
-        roomId: args?.roomId ?? "host-playground-room",
-        name: args?.name ?? "Host Playground",
-        icon: "",
-      });
-
-      return success(`Room registration: ${result}`);
-    },
-  },
-  {
-    id: "chat-manager-send-message",
-    name: "Send Text Message to Room",
-    description:
-      "Sends a message to an existing room via createProductChatManager",
-    api: "chatManager.sendMessage(roomId, { tag: 'Text', value })",
-    args: [
-      {
-        name: "roomId",
-        label: "Room ID",
-        defaultValue: "host-playground-room",
-      },
-      {
-        name: "message",
-        label: "Message",
-        defaultValue: "Hello from Host Playground!",
-      },
-    ],
-    category: "chat",
-    async run(_chain, _logger, args) {
-      const roomId = args?.roomId ?? "host-playground-room";
-      const chatManager = createProductChatManager();
-
-      try {
-        await chatManager.registerRoom({ roomId, name: roomId, icon: "" });
-        const result = await chatManager.sendMessage(roomId, {
-          tag: "Text",
-          value: args?.message ?? "Hello from Host Playground!",
-        });
-        return success(`Message sent (ID: ${result.messageId})`);
-      } catch (e) {
-        return error(`Failed to send: ${e}`);
-      }
-    },
-  },
   {
     id: "chat-echo-bot-trigger",
     name: "Echo Bot Trigger",
@@ -1260,11 +1352,113 @@ export const chatTests: TestDefinition[] = [
     },
   },
   {
+    id: "chat-manager-register-room",
+    name: "Register Room",
+    description: "Registers a chat room via createProductChatManager",
+    api: "chatManager.registerRoom({ roomId, name, icon })",
+    disabled: "Worker only — handled by the host",
+    args: [
+      {
+        name: "roomId",
+        label: "Room ID",
+        defaultValue: "host-playground-room",
+      },
+      { name: "name", label: "Name", defaultValue: "Host Playground" },
+    ],
+    category: "chat",
+    async run(_chain, _logger, args) {
+      const chatManager = createProductChatManager();
+      try {
+        const result = await chatManager.registerRoom({
+          roomId: args?.roomId ?? "host-playground-room",
+          name: args?.name ?? "Host Playground",
+          icon: "",
+        });
+        return success(`Room registration: ${result}`);
+      } catch (e) {
+        const err = e as { name?: string; payload?: { reason?: string } };
+        return error(
+          err.name
+            ? `${err.name}${err.payload?.reason ? ` - ${err.payload.reason}` : ""}`
+            : String(e),
+        );
+      }
+    },
+  },
+  {
+    id: "chat-manager-register-bot",
+    name: "Register Bot",
+    description: "Registers a bot via createProductChatManager",
+    api: "chatManager.registerBot({ botId, name, icon })",
+    disabled: "Worker only — handled by the host",
+    args: [
+      {
+        name: "botId",
+        label: "Bot ID",
+        defaultValue: "playground-bot",
+      },
+      { name: "name", label: "Name", defaultValue: "Playground Bot" },
+    ],
+    category: "chat",
+    async run(_chain, _logger, args) {
+      const chatManager = createProductChatManager();
+      try {
+        const result = await chatManager.registerBot({
+          botId: args?.botId ?? "playground-bot",
+          name: args?.name ?? "Playground Bot",
+          icon: "",
+        });
+        return success(`Bot registration: ${result}`);
+      } catch (e) {
+        const err = e as { name?: string; payload?: { reason?: string } };
+        return error(
+          err.name
+            ? `${err.name}${err.payload?.reason ? ` - ${err.payload.reason}` : ""}`
+            : String(e),
+        );
+      }
+    },
+  },
+  {
+    id: "chat-manager-send-message",
+    name: "Send Text Message to Room",
+    description: "Sends a message to an existing room via createProductChatManager",
+    api: "chatManager.sendMessage(roomId, { tag: 'Text', value })",
+    disabled: "Worker only — handled by the host",
+    args: [
+      {
+        name: "roomId",
+        label: "Room ID",
+        defaultValue: "host-playground-room",
+      },
+      {
+        name: "message",
+        label: "Message",
+        defaultValue: "Hello from Host Playground!",
+      },
+    ],
+    category: "chat",
+    async run(_chain, _logger, args) {
+      const roomId = args?.roomId ?? "host-playground-room";
+      const chatManager = createProductChatManager();
+      try {
+        await chatManager.registerRoom({ roomId, name: roomId, icon: "" });
+        const result = await chatManager.sendMessage(roomId, {
+          tag: "Text",
+          value: args?.message ?? "Hello from Host Playground!",
+        });
+        return success(`Message sent (ID: ${result.messageId})`);
+      } catch (e) {
+        return error(`Failed to send: ${e}`);
+      }
+    },
+  },
+  {
     id: "chat-manager-send-custom-message",
     name: "Send Custom Message to Room",
-    description:
-      "Sends a custom (binary) message to an existing room — register the room first",
+    description: "Sends a custom (binary) message to an existing room",
     api: "chatManager.sendMessage(roomId, { tag: 'Custom', value })",
+    disabled: "Worker only — handled by the host",
     args: [
       {
         name: "roomId",
@@ -1276,11 +1470,9 @@ export const chatTests: TestDefinition[] = [
     async run(_chain, _logger, args) {
       const roomId = args?.roomId ?? "host-playground-room";
       const chatManager = createProductChatManager();
-
       const payload = new TextEncoder().encode(
         JSON.stringify({ action: "test", ts: Date.now() }),
       );
-
       try {
         const result = await chatManager.sendMessage(roomId, {
           tag: "Custom",
@@ -1295,9 +1487,9 @@ export const chatTests: TestDefinition[] = [
   {
     id: "chat-manager-send-message-to-user",
     name: "Send Message to User",
-    description:
-      "Sends a statement to a user-specific topic via createStatementStore (hackm3 notification flow)",
+    description: "Sends a statement to a user-specific topic via createStatementStore",
     api: "statementStore.createProof(accountId, statement) + statementStore.submit(signedStatement)",
+    disabled: "Worker only — handled by the host",
     args: [
       {
         name: "senderDotNsId",
@@ -1326,7 +1518,6 @@ export const chatTests: TestDefinition[] = [
     async run(_chain, _logger, args) {
       const senderDotNsId = args?.senderDotNsId ?? "host-playground.dot";
       const messageText = args?.message ?? "Hello from Host Playground!";
-
       let recipientUsername = args?.recipientUsername ?? "";
       if (!recipientUsername) {
         const accountsProvider = createAccountsProvider();
@@ -1336,16 +1527,12 @@ export const chatTests: TestDefinition[] = [
           () => "",
         );
       }
-
       const statementStore = createStatementStore();
       if (!recipientUsername)
         return error("No recipient username — not signed in?");
-
       const encoder = new TextEncoder();
-
       const topic = encoder.encode(`host-playground:${recipientUsername}`);
       const data = encoder.encode(messageText);
-
       const statement = {
         proof: undefined,
         topics: [topic],
@@ -1354,28 +1541,15 @@ export const chatTests: TestDefinition[] = [
         decryptionKey: undefined,
         expiry: undefined,
       };
-
       try {
-        console.log(
-          "[SendToUser] Creating proof for",
-          senderDotNsId,
-          "topic:",
-          `host-playground:${recipientUsername}`,
-        );
         const proof = await statementStore.createProof(
           [senderDotNsId, 0],
           statement,
         );
-        console.log("[SendToUser] Proof created:", proof.tag);
-        console.log("[SendToUser] Submitting statement...");
         await statementStore.submit({ ...statement, proof });
-        console.log("[SendToUser] Statement submitted");
         return success(
           `Statement submitted to topic "host-playground:${recipientUsername}"`,
-          {
-            topic: `host-playground:${recipientUsername}`,
-            message: messageText,
-          },
+          { topic: `host-playground:${recipientUsername}`, message: messageText },
         );
       } catch (e) {
         return error(`Failed to send: ${e}`);
@@ -1387,23 +1561,19 @@ export const chatTests: TestDefinition[] = [
     name: "Subscribe Chat List",
     description: "Subscribes to chat list updates (5s)",
     api: "chatManager.subscribeChatList(callback)",
+    disabled: "Worker only — handled by the host",
     category: "chat",
     async run() {
       const chatManager = createProductChatManager();
-
       return new Promise((resolve) => {
         const rooms: unknown[] = [];
         const subscription = chatManager.subscribeChatList((chatRooms) => {
           rooms.push(...chatRooms);
         });
-
         setTimeout(() => {
           subscription.unsubscribe();
           resolve(
-            success(
-              `Received ${rooms.length} room updates in 5s`,
-              rooms.slice(-5),
-            ),
+            success(`Received ${rooms.length} room updates in 5s`, rooms.slice(-5)),
           );
         }, 5000);
       });
@@ -1414,23 +1584,19 @@ export const chatTests: TestDefinition[] = [
     name: "Subscribe Chat Actions",
     description: "Subscribes to incoming chat actions (5s)",
     api: "chatManager.subscribeAction(callback)",
+    disabled: "Worker only — handled by the host",
     category: "chat",
     async run() {
       const chatManager = createProductChatManager();
-
       return new Promise((resolve) => {
         const actions: unknown[] = [];
         const subscription = chatManager.subscribeAction((action) => {
           actions.push(action);
         });
-
         setTimeout(() => {
           subscription.unsubscribe();
           resolve(
-            success(
-              `Received ${actions.length} actions in 5s`,
-              actions.slice(-5),
-            ),
+            success(`Received ${actions.length} actions in 5s`, actions.slice(-5)),
           );
         }, 5000);
       });
@@ -1441,13 +1607,12 @@ export const chatTests: TestDefinition[] = [
     name: "Custom Message Renderer",
     description: "Registers a custom message rendering handler (5s)",
     api: "chatManager.onCustomMessageRenderingRequest(callback)",
+    disabled: "Worker only — handled by the host",
     category: "chat",
     async run() {
       const chatManager = createProductChatManager();
-
       return new Promise((resolve) => {
         let requestCount = 0;
-
         const unsubscribe = chatManager.onCustomMessageRenderingRequest(
           (params, render) => {
             requestCount++;
@@ -1464,7 +1629,6 @@ export const chatTests: TestDefinition[] = [
             return () => {};
           },
         );
-
         setTimeout(() => {
           unsubscribe();
           resolve(
@@ -1472,68 +1636,6 @@ export const chatTests: TestDefinition[] = [
           );
         }, 5000);
       });
-    },
-  },
-  {
-    id: "chat-legacy-create-room",
-    name: "Create Room (Legacy)",
-    description: "Creates a chat room via legacy hostApi",
-    api: "hostApi.chatCreateRoom({ tag, value: { roomId, name, icon } })",
-    args: [
-      {
-        name: "roomId",
-        label: "Room ID",
-        defaultValue: "host-playground-room",
-      },
-      { name: "name", label: "Name", defaultValue: "Host Playground" },
-    ],
-    category: "chat",
-    async run(_chain, _logger, args) {
-      const result = await hostApi.chatCreateRoom({
-        tag: "v1",
-        value: {
-          roomId: args?.roomId ?? "host-playground-room",
-          name: args?.name ?? "Host Playground",
-          icon: "https://example.com/icon.png",
-        },
-      });
-
-      return result.match(
-        (res) => success(`Room status: ${res.value}`),
-        (err) => error(err.value.name),
-      );
-    },
-  },
-  {
-    id: "chat-legacy-post-message",
-    name: "Post Message (Legacy)",
-    description: "Posts a message via legacy hostApi",
-    api: "hostApi.chatPostMessage({ tag, value: { roomId, payload } })",
-    args: [
-      {
-        name: "roomId",
-        label: "Room ID",
-        defaultValue: "host-playground-room",
-      },
-    ],
-    category: "chat",
-    async run(_chain, _logger, args) {
-      const roomId = args?.roomId ?? "host-playground-room";
-      const result = await hostApi.chatPostMessage({
-        tag: "v1",
-        value: {
-          roomId,
-          payload: {
-            tag: "Text",
-            value: `Hello from Host Playground! ${new Date().toLocaleString()}`,
-          },
-        },
-      });
-
-      return result.match(
-        (res) => success(`Message ID: ${res.value.messageId}`),
-        (err) => error(err.value.name),
-      );
     },
   },
 ];
@@ -1558,20 +1660,86 @@ export const statementTests: TestDefinition[] = [
       const statementStore = createStatementStore();
       const messageBytes = new TextEncoder().encode(`Statement: ${Date.now()}`);
 
-      const proof = await statementStore.createProof([dotNsIdentifier, 0], {
+      try {
+        const proof = await statementStore.createProof([dotNsIdentifier, 0], {
+          proof: undefined,
+          decryptionKey: undefined,
+          expiry: undefined,
+          channel: undefined,
+          topics: [],
+          data: messageBytes,
+        });
+
+        const proofValue = proof.value as { signature?: Uint8Array };
+        const sig = proofValue.signature
+          ? toHex(proofValue.signature).slice(0, 20)
+          : "onchain";
+        return success(`Proof type: ${proof.tag}, sig: ${sig}...`);
+      } catch (e) {
+        const err = e as { name?: string; payload?: { reason?: string } };
+        return error(
+          err.name
+            ? `${err.name}${err.payload?.reason ? ` - ${err.payload.reason}` : ""}`
+            : String(e),
+        );
+      }
+    },
+  },
+  {
+    id: "statement-store-submit",
+    name: "Submit Statement",
+    description: "Creates a proof then submits the signed statement",
+    api: "statementStore.submit(signedStatement)",
+    args: [
+      {
+        name: "dotNsIdentifier",
+        label: "DotNS ID",
+        defaultValue: "host-playground.dot",
+      },
+    ],
+    category: "statements",
+    async run(_chain, logger, args) {
+      const log = logger || (() => {});
+      const dotNsIdentifier = args?.dotNsIdentifier ?? "host-playground.dot";
+      const statementStore = createStatementStore();
+      const messageBytes = new TextEncoder().encode(`Statement: ${Date.now()}`);
+
+      const statement = {
         proof: undefined,
         decryptionKey: undefined,
         expiry: undefined,
         channel: undefined,
         topics: [],
         data: messageBytes,
-      });
+      };
 
-      const proofValue = proof.value as { signature?: Uint8Array };
-      const sig = proofValue.signature
-        ? toHex(proofValue.signature).slice(0, 20)
-        : "onchain";
-      return success(`Proof type: ${proof.tag}, sig: ${sig}...`);
+      try {
+        log("Creating proof...");
+        const proof = await statementStore.createProof(
+          [dotNsIdentifier, 0],
+          statement,
+        );
+        log(`Proof created: ${proof.tag}`);
+
+        const signedStatement = {
+          proof,
+          decryptionKey: undefined,
+          expiry: undefined,
+          channel: undefined,
+          topics: [],
+          data: messageBytes,
+        };
+        log("Submitting signed statement...");
+        await statementStore.submit(signedStatement);
+        return success("Statement submitted successfully");
+      } catch (e) {
+        const err = e as { name?: string; payload?: { reason?: string } };
+        return error(
+          err.name
+            ? `${err.name}${err.payload?.reason ? ` - ${err.payload.reason}` : ""}`
+            : String(e),
+        );
+      }
     },
   },
   {
@@ -1943,6 +2111,556 @@ export const chainTests: TestDefinition[] = [
             ),
           );
         }, 10000);
+      });
+    },
+  },
+  {
+    id: "chain-head-header",
+    name: "Chain Head: Header",
+    description: "Gets the header of the latest finalized block",
+    api: "hostApi.chainHeadHeader({ tag: 'v1', value: { genesisHash, followSubscriptionId, hash } })",
+    category: "chain",
+    async run(chain: ChainConfig, logger) {
+      const log = logger || (() => {});
+      log("Starting follow subscription...");
+
+      return new Promise((resolve) => {
+        const subscription = hostApi.chainHeadFollow(
+          { tag: "v1", value: { genesisHash: chain.genesis, withRuntime: false } },
+          async (event) => {
+            if (event.tag !== "v1") return;
+            const e = event.value;
+            if (e.tag !== "Initialized") return;
+
+            const blockHash = e.value.finalizedBlockHashes[0]!;
+            const subscriptionId = (subscription as unknown as { id: string }).id;
+            log(`Got finalized block, fetching header for ${blockHash.slice(0, 18)}...`);
+
+            try {
+              const result = await hostApi.chainHeadHeader({
+                tag: "v1",
+                value: {
+                  genesisHash: chain.genesis,
+                  followSubscriptionId: subscriptionId,
+                  hash: blockHash,
+                },
+              });
+
+              subscription.unsubscribe();
+              result.match(
+                (res) => resolve(success(`Header: ${res.value?.slice(0, 40)}...`, { blockHash, header: res.value })),
+                (err) => resolve(error(err.value.name, err.value)),
+              );
+            } catch (e) {
+              subscription.unsubscribe();
+              resolve(error(`Failed to get header: ${e}`));
+            }
+          },
+        );
+
+        setTimeout(() => {
+          subscription.unsubscribe();
+          resolve(error("Timed out waiting for Initialized event"));
+        }, 15000);
+      });
+    },
+  },
+  {
+    id: "chain-head-body",
+    name: "Chain Head: Body",
+    description: "Gets the body (extrinsics) of the latest finalized block",
+    api: "hostApi.chainHeadBody({ tag: 'v1', value: { genesisHash, followSubscriptionId, hash } })",
+    category: "chain",
+    async run(chain: ChainConfig, logger) {
+      const log = logger || (() => {});
+      log("Starting follow subscription...");
+
+      return new Promise((resolve) => {
+        const subscription = hostApi.chainHeadFollow(
+          { tag: "v1", value: { genesisHash: chain.genesis, withRuntime: false } },
+          async (event) => {
+            if (event.tag !== "v1") return;
+            const e = event.value;
+            if (e.tag !== "Initialized") return;
+
+            const blockHash = e.value.finalizedBlockHashes[0]!;
+            const subscriptionId = (subscription as unknown as { id: string }).id;
+            log(`Fetching body for ${blockHash.slice(0, 18)}...`);
+
+            try {
+              const result = await hostApi.chainHeadBody({
+                tag: "v1",
+                value: {
+                  genesisHash: chain.genesis,
+                  followSubscriptionId: subscriptionId,
+                  hash: blockHash,
+                },
+              });
+
+              subscription.unsubscribe();
+              result.match(
+                (res) => resolve(success(`Body operation: ${res.value.tag}`, res.value)),
+                (err) => resolve(error(err.value.name, err.value)),
+              );
+            } catch (e) {
+              subscription.unsubscribe();
+              resolve(error(`Failed to get body: ${e}`));
+            }
+          },
+        );
+
+        setTimeout(() => {
+          subscription.unsubscribe();
+          resolve(error("Timed out waiting for Initialized event"));
+        }, 15000);
+      });
+    },
+  },
+  {
+    id: "chain-head-storage",
+    name: "Chain Head: Storage",
+    description: "Queries runtime storage for System.Account using chain head",
+    api: "hostApi.chainHeadStorage({ tag: 'v1', value: { genesisHash, followSubscriptionId, hash, items, childTrie } })",
+    category: "chain",
+    async run(chain: ChainConfig, logger) {
+      const log = logger || (() => {});
+      log("Starting follow subscription...");
+
+      return new Promise((resolve) => {
+        const subscription = hostApi.chainHeadFollow(
+          { tag: "v1", value: { genesisHash: chain.genesis, withRuntime: false } },
+          async (event) => {
+            if (event.tag !== "v1") return;
+            const e = event.value;
+            if (e.tag !== "Initialized") return;
+
+            const blockHash = e.value.finalizedBlockHashes[0]!;
+            const subscriptionId = (subscription as unknown as { id: string }).id;
+            log(`Querying storage at ${blockHash.slice(0, 18)}...`);
+
+            try {
+              // Query System.Account storage prefix
+              const storageKey = "0x26aa394eea5630e07c48ae0c9558cef7" as `0x${string}`;
+              const result = await hostApi.chainHeadStorage({
+                tag: "v1",
+                value: {
+                  genesisHash: chain.genesis,
+                  followSubscriptionId: subscriptionId,
+                  hash: blockHash,
+                  items: [{ key: storageKey, type: "Value" as const }],
+                  childTrie: null,
+                },
+              });
+
+              subscription.unsubscribe();
+              result.match(
+                (res) => resolve(success(`Storage operation: ${res.value.tag}`, res.value)),
+                (err) => resolve(error(err.value.name, err.value)),
+              );
+            } catch (e) {
+              subscription.unsubscribe();
+              resolve(error(`Failed to query storage: ${e}`));
+            }
+          },
+        );
+
+        setTimeout(() => {
+          subscription.unsubscribe();
+          resolve(error("Timed out waiting for Initialized event"));
+        }, 15000);
+      });
+    },
+  },
+  {
+    id: "chain-head-call",
+    name: "Chain Head: Call",
+    description: "Makes a runtime API call (Core_version) via chain head",
+    api: "hostApi.chainHeadCall({ tag: 'v1', value: { genesisHash, followSubscriptionId, hash, function, callParameters } })",
+    category: "chain",
+    async run(chain: ChainConfig, logger) {
+      const log = logger || (() => {});
+      log("Starting follow subscription...");
+
+      return new Promise((resolve) => {
+        const subscription = hostApi.chainHeadFollow(
+          { tag: "v1", value: { genesisHash: chain.genesis, withRuntime: false } },
+          async (event) => {
+            if (event.tag !== "v1") return;
+            const e = event.value;
+            if (e.tag !== "Initialized") return;
+
+            const blockHash = e.value.finalizedBlockHashes[0]!;
+            const subscriptionId = (subscription as unknown as { id: string }).id;
+            log(`Calling Core_version at ${blockHash.slice(0, 18)}...`);
+
+            try {
+              const result = await hostApi.chainHeadCall({
+                tag: "v1",
+                value: {
+                  genesisHash: chain.genesis,
+                  followSubscriptionId: subscriptionId,
+                  hash: blockHash,
+                  function: "Core_version",
+                  callParameters: "0x" as `0x${string}`,
+                },
+              });
+
+              subscription.unsubscribe();
+              result.match(
+                (res) => resolve(success(`Call operation: ${res.value.tag}`, res.value)),
+                (err) => resolve(error(err.value.name, err.value)),
+              );
+            } catch (e) {
+              subscription.unsubscribe();
+              resolve(error(`Failed to make runtime call: ${e}`));
+            }
+          },
+        );
+
+        setTimeout(() => {
+          subscription.unsubscribe();
+          resolve(error("Timed out waiting for Initialized event"));
+        }, 15000);
+      });
+    },
+  },
+  {
+    id: "chain-head-unpin",
+    name: "Chain Head: Unpin",
+    description: "Unpins a previously pinned block hash",
+    api: "hostApi.chainHeadUnpin({ tag: 'v1', value: { genesisHash, followSubscriptionId, hashes } })",
+    category: "chain",
+    async run(chain: ChainConfig, logger) {
+      const log = logger || (() => {});
+      log("Starting follow subscription...");
+
+      return new Promise((resolve) => {
+        const subscription = hostApi.chainHeadFollow(
+          { tag: "v1", value: { genesisHash: chain.genesis, withRuntime: false } },
+          async (event) => {
+            if (event.tag !== "v1") return;
+            const e = event.value;
+            if (e.tag !== "Initialized") return;
+
+            const blockHash = e.value.finalizedBlockHashes[0]!;
+            const subscriptionId = (subscription as unknown as { id: string }).id;
+            log(`Unpinning block ${blockHash.slice(0, 18)}...`);
+
+            try {
+              const result = await hostApi.chainHeadUnpin({
+                tag: "v1",
+                value: {
+                  genesisHash: chain.genesis,
+                  followSubscriptionId: subscriptionId,
+                  hashes: [blockHash],
+                },
+              });
+
+              subscription.unsubscribe();
+              result.match(
+                () => resolve(success(`Unpinned block ${blockHash.slice(0, 18)}...`)),
+                (err) => resolve(error(err.value.name, err.value)),
+              );
+            } catch (e) {
+              subscription.unsubscribe();
+              resolve(error(`Failed to unpin: ${e}`));
+            }
+          },
+        );
+
+        setTimeout(() => {
+          subscription.unsubscribe();
+          resolve(error("Timed out waiting for Initialized event"));
+        }, 15000);
+      });
+    },
+  },
+  {
+    id: "chain-transaction-broadcast",
+    name: "Transaction: Broadcast",
+    description: "Broadcasts a dummy transaction (expected to fail validation)",
+    api: "hostApi.chainTransactionBroadcast({ tag: 'v1', value: { genesisHash, transaction } })",
+    warning: "Will fail with invalid transaction",
+    category: "chain",
+    async run(chain: ChainConfig) {
+      const result = await hostApi.chainTransactionBroadcast({
+        tag: "v1",
+        value: {
+          genesisHash: chain.genesis,
+          transaction: "0x00" as `0x${string}`,
+        },
+      });
+
+      return result.match(
+        (res) =>
+          res.value
+            ? success(`Broadcast started, operationId: ${res.value}`)
+            : success("Broadcast accepted (no operationId)"),
+        (err) => error(err.value.name, err.value),
+      );
+    },
+  },
+  {
+    id: "chain-transaction-stop",
+    name: "Transaction: Stop",
+    description: "Broadcasts a transaction then immediately stops it",
+    api: "hostApi.chainTransactionStop({ tag: 'v1', value: { genesisHash, operationId } })",
+    category: "chain",
+    async run(chain: ChainConfig, logger) {
+      const log = logger || (() => {});
+      log("Broadcasting dummy transaction...");
+
+      const broadcastResult = await hostApi.chainTransactionBroadcast({
+        tag: "v1",
+        value: {
+          genesisHash: chain.genesis,
+          transaction: "0x00" as `0x${string}`,
+        },
+      });
+
+      return broadcastResult.match(
+        async (res) => {
+          const operationId = res.value;
+          if (!operationId) return success("Broadcast returned no operationId — nothing to stop");
+
+          log(`Stopping broadcast ${operationId}...`);
+          const stopResult = await hostApi.chainTransactionStop({
+            tag: "v1",
+            value: { genesisHash: chain.genesis, operationId },
+          });
+
+          return stopResult.match(
+            () => success(`Stopped broadcast ${operationId}`),
+            (err) => error(err.value.name, err.value),
+          );
+        },
+        (err) => error(err.value.name, err.value),
+      );
+    },
+  },
+  {
+    id: "chain-head-continue",
+    name: "Chain Head: Continue",
+    description: "Starts a storage query then continues the operation",
+    api: "hostApi.chainHeadContinue({ tag: 'v1', value: { genesisHash, followSubscriptionId, operationId } })",
+    category: "chain",
+    async run(chain: ChainConfig, logger) {
+      const log = logger || (() => {});
+      log("Starting follow subscription...");
+
+      return new Promise((resolve) => {
+        const subscription = hostApi.chainHeadFollow(
+          { tag: "v1", value: { genesisHash: chain.genesis, withRuntime: false } },
+          async (event) => {
+            if (event.tag !== "v1") return;
+            const e = event.value;
+            if (e.tag !== "Initialized") return;
+
+            const blockHash = e.value.finalizedBlockHashes[0]!;
+            const subscriptionId = (subscription as unknown as { id: string }).id;
+            log("Starting storage query to trigger OperationWaitingForContinue...");
+
+            try {
+              // Query with DescendantsValues to increase chance of pagination
+              const storageKey = "0x26aa394eea5630e07c48ae0c9558cef7" as `0x${string}`;
+              const storageResult = await hostApi.chainHeadStorage({
+                tag: "v1",
+                value: {
+                  genesisHash: chain.genesis,
+                  followSubscriptionId: subscriptionId,
+                  hash: blockHash,
+                  items: [{ key: storageKey, type: "DescendantsValues" as const }],
+                  childTrie: null,
+                },
+              });
+
+              const operationId = storageResult.match(
+                (res) => (res.value.tag === "Started" ? res.value.value.operationId : null),
+                () => null,
+              );
+
+              if (!operationId) {
+                subscription.unsubscribe();
+                resolve(success("Storage query returned LimitReached — no operation to continue"));
+                return;
+              }
+
+              log(`Calling continue on operation ${operationId}...`);
+              const continueResult = await hostApi.chainHeadContinue({
+                tag: "v1",
+                value: {
+                  genesisHash: chain.genesis,
+                  followSubscriptionId: subscriptionId,
+                  operationId,
+                },
+              });
+
+              subscription.unsubscribe();
+              continueResult.match(
+                () => resolve(success(`Continued operation ${operationId}`)),
+                (err) => resolve(error(err.value.name, err.value)),
+              );
+            } catch (e) {
+              subscription.unsubscribe();
+              resolve(error(`Failed: ${e}`));
+            }
+          },
+        );
+
+        setTimeout(() => {
+          subscription.unsubscribe();
+          resolve(error("Timed out waiting for Initialized event"));
+        }, 15000);
+      });
+    },
+  },
+  {
+    id: "chain-head-stop-operation",
+    name: "Chain Head: Stop Operation",
+    description: "Starts a storage query then stops the operation",
+    api: "hostApi.chainHeadStopOperation({ tag: 'v1', value: { genesisHash, followSubscriptionId, operationId } })",
+    category: "chain",
+    async run(chain: ChainConfig, logger) {
+      const log = logger || (() => {});
+      log("Starting follow subscription...");
+
+      return new Promise((resolve) => {
+        const subscription = hostApi.chainHeadFollow(
+          { tag: "v1", value: { genesisHash: chain.genesis, withRuntime: false } },
+          async (event) => {
+            if (event.tag !== "v1") return;
+            const e = event.value;
+            if (e.tag !== "Initialized") return;
+
+            const blockHash = e.value.finalizedBlockHashes[0]!;
+            const subscriptionId = (subscription as unknown as { id: string }).id;
+            log("Starting storage query...");
+
+            try {
+              const storageKey = "0x26aa394eea5630e07c48ae0c9558cef7" as `0x${string}`;
+              const storageResult = await hostApi.chainHeadStorage({
+                tag: "v1",
+                value: {
+                  genesisHash: chain.genesis,
+                  followSubscriptionId: subscriptionId,
+                  hash: blockHash,
+                  items: [{ key: storageKey, type: "DescendantsValues" as const }],
+                  childTrie: null,
+                },
+              });
+
+              const operationId = storageResult.match(
+                (res) => (res.value.tag === "Started" ? res.value.value.operationId : null),
+                () => null,
+              );
+
+              if (!operationId) {
+                subscription.unsubscribe();
+                resolve(success("Storage query returned LimitReached — no operation to stop"));
+                return;
+              }
+
+              log(`Stopping operation ${operationId}...`);
+              const stopResult = await hostApi.chainHeadStopOperation({
+                tag: "v1",
+                value: {
+                  genesisHash: chain.genesis,
+                  followSubscriptionId: subscriptionId,
+                  operationId,
+                },
+              });
+
+              subscription.unsubscribe();
+              stopResult.match(
+                () => resolve(success(`Stopped operation ${operationId}`)),
+                (err) => resolve(error(err.value.name, err.value)),
+              );
+            } catch (e) {
+              subscription.unsubscribe();
+              resolve(error(`Failed: ${e}`));
+            }
+          },
+        );
+
+        setTimeout(() => {
+          subscription.unsubscribe();
+          resolve(error("Timed out waiting for Initialized event"));
+        }, 15000);
+      });
+    },
+  },
+  {
+    id: "jsonrpc-message-send",
+    name: "JSON-RPC: Send",
+    description: "Sends a legacy JSON-RPC message to a chain",
+    api: "hostApi.jsonrpcMessageSend({ tag: 'v1', value: [genesisHash, message] })",
+    warning: "Legacy — replaced by typed chain interaction",
+    category: "chain",
+    async run(chain: ChainConfig) {
+      const message = JSON.stringify({
+        jsonrpc: "2.0",
+        id: 1,
+        method: "system_chain",
+        params: [],
+      });
+
+      const result = await hostApi.jsonrpcMessageSend({
+        tag: "v1",
+        value: [chain.genesis, message],
+      });
+
+      return result.match(
+        () => success("JSON-RPC message sent"),
+        (err) => error(err.value.name, err.value),
+      );
+    },
+  },
+  {
+    id: "jsonrpc-message-subscribe",
+    name: "JSON-RPC: Subscribe",
+    description: "Subscribes to JSON-RPC responses from a chain for 5s",
+    api: "hostApi.jsonrpcMessageSubscribe({ tag: 'v1', value: genesisHash }, callback)",
+    warning: "Legacy — replaced by typed chain interaction",
+    category: "chain",
+    async run(chain: ChainConfig, logger) {
+      const log = logger || (() => {});
+      log("Subscribing to JSON-RPC messages...");
+
+      return new Promise((resolve) => {
+        const messages: string[] = [];
+
+        const subscription = hostApi.jsonrpcMessageSubscribe(
+          { tag: "v1", value: chain.genesis },
+          (msg) => {
+            if (msg.tag === "v1") {
+              messages.push(msg.value);
+              log(`Received ${messages.length} message(s)`);
+            }
+          },
+        );
+
+        // Send a request to trigger a response
+        hostApi.jsonrpcMessageSend({
+          tag: "v1",
+          value: [
+            chain.genesis,
+            JSON.stringify({
+              jsonrpc: "2.0",
+              id: 1,
+              method: "system_chain",
+              params: [],
+            }),
+          ],
+        });
+
+        setTimeout(() => {
+          subscription.unsubscribe();
+          if (messages.length > 0) {
+            resolve(success(`Received ${messages.length} JSON-RPC response(s)`, messages));
+          } else {
+            resolve(success("Subscribed but no responses in 5s"));
+          }
+        }, 5000);
       });
     },
   },
