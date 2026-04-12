@@ -5,9 +5,19 @@ on:
     branches: [main]
   pull_request:
     branches: [main]
+  workflow_dispatch:
+    inputs:
+      skip-cache:
+        description: 'Skip deployment cache and force redeploy'
+        type: boolean
+        default: false
+
+permissions:
+  contents: read
+  pull-requests: write
 
 concurrency:
-  group: deploy-${{ github.event_name == 'pull_request' && github.event.pull_request.number || 'production' }}
+  group: deploy-${{ github.event.pull_request.number || 'production' }}
   cancel-in-progress: true
 
 jobs:
@@ -31,66 +41,154 @@ jobs:
           name: web-dist
           path: out/
 
-  deploy-production:
-    if: github.event_name == 'push'
+  deploy:
     needs: build
-    uses: paritytech/dotns-sdk/.github/workflows/deploy.yml@main
-    with:
-      basename: host-playground
-      mode: production
-      artifact-name: web-dist
-      register-base: true
-    secrets:
-      dotns-mnemonic: ${{ secrets.PASEO_DEPLOYER_MNEMONIC }}
+    runs-on: ubuntu-latest
+    outputs:
+      cid: ${{ steps.final.outputs.cid }}
+      domain: ${{ steps.final.outputs.domain }}
+    steps:
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
 
-  deploy-preview:
-    if: github.event_name == 'pull_request'
-    needs: build
-    uses: paritytech/dotns-sdk/.github/workflows/deploy.yml@main
-    with:
-      basename: host-playground
-      mode: preview
-      subname-format: branch
-      artifact-name: web-dist
-      register-base: true
-      max-retries: 5
-    secrets:
-      dotns-mnemonic: ${{ secrets.PASEO_DEPLOYER_MNEMONIC }}
+      - name: Download build artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: web-dist
+          path: build
+
+      - name: Compute build hash
+        id: hash
+        run: echo "hash=$(find build -type f -exec sha256sum {} \; | sort | sha256sum | cut -d' ' -f1)" >> "$GITHUB_OUTPUT"
+
+      - name: Check deployment cache
+        id: cache
+        if: inputs.skip-cache != true
+        uses: actions/cache@v4
+        with:
+          path: .deploy-cache
+          key: deploy-${{ steps.hash.outputs.hash }}
+
+      - name: Load cached CID
+        id: cached-deploy
+        if: steps.cache.outputs.cache-hit == 'true'
+        run: |
+          echo "cid=$(cat .deploy-cache/cid)" >> "$GITHUB_OUTPUT"
+          echo "::notice::Found cached CID: $(cat .deploy-cache/cid)"
+
+      - name: Setup IPFS Kubo
+        if: steps.cache.outputs.cache-hit != 'true'
+        uses: ipfs/download-ipfs-distribution-action@v1
+        with:
+          name: kubo
+          version: v0.33.0
+
+      - name: Initialize IPFS
+        if: steps.cache.outputs.cache-hit != 'true'
+        run: ipfs init
+
+      - name: Install bulletin-deploy
+        if: steps.cache.outputs.cache-hit != 'true'
+        run: npm install -g bulletin-deploy
+
+      - name: Determine domain
+        id: domain-input
+        run: |
+          if [ "${{ github.event_name }}" == "push" ]; then
+            echo "dotns=host-playground.dot" >> "$GITHUB_OUTPUT"
+          else
+            BRANCH="${{ github.event.pull_request.head.ref }}"
+            SAFE_BRANCH=$(echo "$BRANCH" | tr '/' '-' | cut -c1-20)
+            echo "dotns=${SAFE_BRANCH}-host-playground.dot" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Deploy
+        id: deploy
+        if: steps.cache.outputs.cache-hit != 'true'
+        uses: nick-fields/retry@v3
+        with:
+          timeout_minutes: 15
+          max_attempts: 3
+          retry_wait_seconds: 30
+          command: |
+            export MNEMONIC='${{ secrets.PASEO_DEPLOYER_MNEMONIC }}'
+            export IPFS_CID='${{ steps.cached-deploy.outputs.cid }}'
+            export NODE_OPTIONS='--max-old-space-size=8192'
+            bulletin-deploy 'build' '${{ steps.domain-input.outputs.dotns }}'
+
+      - name: Validate deployment outputs
+        if: steps.cache.outputs.cache-hit != 'true'
+        run: |
+          if [ -z "${{ steps.deploy.outputs.cid }}" ] || [ -z "${{ steps.deploy.outputs.domain }}" ]; then
+            echo "::error::Deployment step completed but produced no CID or domain output."
+            exit 1
+          fi
+
+      - name: Save deployment to cache
+        if: steps.cache.outputs.cache-hit != 'true'
+        run: |
+          mkdir -p .deploy-cache
+          echo "${{ steps.deploy.outputs.cid }}" > .deploy-cache/cid
+
+      - name: Set deployment outputs
+        id: final
+        run: |
+          if [ "${{ steps.cache.outputs.cache-hit }}" == "true" ]; then
+            DOMAIN="${{ steps.domain-input.outputs.dotns }}"
+            DOMAIN="${DOMAIN%.dot}"
+            echo "cid=${{ steps.cached-deploy.outputs.cid }}" >> "$GITHUB_OUTPUT"
+            echo "domain=${DOMAIN}" >> "$GITHUB_OUTPUT"
+          else
+            echo "cid=${{ steps.deploy.outputs.cid }}" >> "$GITHUB_OUTPUT"
+            echo "domain=${{ steps.deploy.outputs.domain }}" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Deployment summary
+        run: |
+          DOMAIN="${{ steps.final.outputs.domain }}"
+          CID="${{ steps.final.outputs.cid }}"
+          if [ -z "$DOMAIN" ]; then
+            echo "### Deployment completed but domain output is missing" >> $GITHUB_STEP_SUMMARY
+            echo "" >> $GITHUB_STEP_SUMMARY
+            echo "CID \`${CID}\`" >> $GITHUB_STEP_SUMMARY
+          else
+            echo "### ${DOMAIN}.dot" >> $GITHUB_STEP_SUMMARY
+            echo "" >> $GITHUB_STEP_SUMMARY
+            echo "Browser &nbsp; https://${DOMAIN}.dot.li" >> $GITHUB_STEP_SUMMARY
+            echo "Desktop &nbsp; \`${DOMAIN}.dot\`" >> $GITHUB_STEP_SUMMARY
+            echo "CID &nbsp; \`${CID}\`" >> $GITHUB_STEP_SUMMARY
+          fi
 
   comment:
     if: github.event_name == 'pull_request'
+    needs: deploy
     runs-on: ubuntu-latest
-    needs: deploy-preview
     permissions:
       pull-requests: write
     steps:
       - uses: actions/github-script@v7
         with:
           script: |
-            const url = '${{ needs.deploy-preview.outputs.url }}'
-            const fqdn = '${{ needs.deploy-preview.outputs.fqdn }}'
-            const cid = '${{ needs.deploy-preview.outputs.cid }}'
+            const domain = '${{ needs.deploy.outputs.domain }}';
+            const cid = '${{ needs.deploy.outputs.cid }}';
+            const runUrl = `${process.env.GITHUB_SERVER_URL}/${process.env.GITHUB_REPOSITORY}/actions/runs/${process.env.GITHUB_RUN_ID}`;
 
             const body = [
-              '### Preview Deploy',
+              `**${domain}.dot** · [logs](${runUrl})`,
               '',
-              `| | |`,
-              `|---|---|`,
-              `| **Preview** | [${fqdn}](${url}) |`,
-              `| **CID** | \`${cid}\` |`,
-              '',
-              '_Deployed to Bulletin Chain via DotNS_',
-            ].join('\n')
+              `https://${domain}.dot.li`,
+            ].join('\n');
 
             const { data: comments } = await github.rest.issues.listComments({
               owner: context.repo.owner,
               repo: context.repo.repo,
               issue_number: context.issue.number,
-            })
+            });
 
             const existing = comments.find(c =>
-              c.user.type === 'Bot' && c.body.includes('### Preview Deploy')
-            )
+              c.user.type === 'Bot' && c.body.includes('.dot')
+            );
 
             if (existing) {
               await github.rest.issues.updateComment({
@@ -98,12 +196,12 @@ jobs:
                 repo: context.repo.repo,
                 comment_id: existing.id,
                 body,
-              })
+              });
             } else {
               await github.rest.issues.createComment({
                 owner: context.repo.owner,
                 repo: context.repo.repo,
                 issue_number: context.issue.number,
                 body,
-              })
+              });
             }
