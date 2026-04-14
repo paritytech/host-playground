@@ -108,9 +108,9 @@ jobs:
         if: steps.cache.outputs.cache-hit != 'true'
         uses: nick-fields/retry@v3
         with:
-          timeout_minutes: 15
+          timeout_minutes: 10
           max_attempts: 3
-          retry_wait_seconds: 30
+          retry_wait_seconds: 10
           command: |
             export MNEMONIC='${{ secrets.PASEO_DEPLOYER_MNEMONIC }}'
             export IPFS_CID='${{ steps.cached-deploy.outputs.cid }}'

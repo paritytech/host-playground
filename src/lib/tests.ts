@@ -59,12 +59,12 @@ function error(message: string, details?: unknown): TestResult {
 /** Request TransactionSubmit permission. Required before any signing operation. */
 async function ensureTransactionPermission(log: (msg: string) => void): Promise<TestResult | null> {
   log("Requesting TransactionSubmit permission...");
-  const perm = await hostApi.permission({
+  const permissionResult = await hostApi.permission({
     tag: "v1",
     value: { tag: "TransactionSubmit", value: undefined },
   });
-  if (perm.isErr()) {
-    return error("TransactionSubmit permission denied", perm.error);
+  if (permissionResult.isErr()) {
+    return error("TransactionSubmit permission denied", permissionResult.error);
   }
   return null;
 }
@@ -371,8 +371,8 @@ export const signingTests: TestDefinition[] = [
 
       log(`Account found: ${toHex(publicKey).slice(0, 18)}...`);
 
-      const permErr = await ensureTransactionPermission(log);
-      if (permErr) return permErr;
+      const permissionError = await ensureTransactionPermission(log);
+      if (permissionError) return permissionError;
 
       const message =
         args?.message ??
@@ -446,8 +446,8 @@ export const signingTests: TestDefinition[] = [
       const client = getClient(chain.genesis);
       const api = client.getUnsafeApi();
 
-      const permErr = await ensureTransactionPermission(log);
-      if (permErr) return permErr;
+      const permissionError = await ensureTransactionPermission(log);
+      if (permissionError) return permissionError;
 
       log("Preparing transaction...");
       const message = args?.message ?? "Remark from Host Playground";
@@ -528,8 +528,8 @@ export const signingTests: TestDefinition[] = [
         remark: Binary.fromBytes(new TextEncoder().encode(message)),
       });
 
-      const permErr = await ensureTransactionPermission(log);
-      if (permErr) return permErr;
+      const permissionError = await ensureTransactionPermission(log);
+      if (permissionError) return permissionError;
 
       log("Signing with non-product signer...");
 
@@ -2783,8 +2783,8 @@ export const contractTests: TestDefinition[] = [
       });
       const origin = AccountId().dec(account.publicKey);
 
-      const permErr = await ensureTransactionPermission(log);
-      if (permErr) return permErr;
+      const permissionError = await ensureTransactionPermission(log);
+      if (permissionError) return permissionError;
 
       const client = getClient(chain.genesis);
       const sdk = createInkSdk(client);
@@ -2811,7 +2811,6 @@ export const contractTests: TestDefinition[] = [
       return success(`Stored value: ${value}`, { value: String(value), contract: HOSTAPI_DEMO_ADDRESS });
     },
   },
-  // ── Contract: Data ──
   {
     id: "contract-query-data-length",
     name: "Contract: Query Data Length",
@@ -2837,7 +2836,6 @@ export const contractTests: TestDefinition[] = [
       }
     },
   },
-  // ── Contract: Balance ──
   {
     id: "contract-query-balance",
     name: "Contract: Query Balance",
@@ -2899,8 +2897,8 @@ export const contractTests: TestDefinition[] = [
       });
       const origin = AccountId().dec(account.publicKey);
 
-      const permErr = await ensureTransactionPermission(log);
-      if (permErr) return permErr;
+      const permissionError = await ensureTransactionPermission(log);
+      if (permissionError) return permissionError;
 
       const client = getClient(chain.genesis);
       const sdk = createInkSdk(client);
@@ -2960,8 +2958,8 @@ export const contractTests: TestDefinition[] = [
       });
       const origin = AccountId().dec(account.publicKey);
 
-      const permErr = await ensureTransactionPermission(log);
-      if (permErr) return permErr;
+      const permissionError = await ensureTransactionPermission(log);
+      if (permissionError) return permissionError;
 
       const client = getClient(chain.genesis);
       const sdk = createInkSdk(client);

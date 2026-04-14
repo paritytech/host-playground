@@ -21,7 +21,6 @@ contract HostApiDemo {
         _;
     }
 
-    // ── Read functions ──
 
     function version() public pure returns (uint256) {
         return 1;
@@ -43,7 +42,6 @@ contract HostApiDemo {
         return address(this).balance;
     }
 
-    // ── Write functions ──
 
     function storeValue(uint256 _value) public {
         uint256 oldValue = storedValue;
@@ -56,7 +54,6 @@ contract HostApiDemo {
         emit DataStored(_data.length);
     }
 
-    // ── Payable ──
 
     function deposit() public payable {
         require(msg.value > 0, "Zero deposit");
