@@ -2776,7 +2776,11 @@ export const contractTests: TestDefinition[] = [
       if (!accounts?.length) return error("No accounts available");
 
       const account = accounts[0];
-      const signer = accountsProvider.getNonProductAccountSigner({ publicKey: account.publicKey });
+      const signer = accountsProvider.getNonProductAccountSigner({
+        dotNsIdentifier: "",
+        derivationIndex: 0,
+        publicKey: account.publicKey,
+      });
       const origin = AccountId().dec(account.publicKey);
 
       const permErr = await ensureTransactionPermission(log);
@@ -2888,7 +2892,11 @@ export const contractTests: TestDefinition[] = [
       if (!accounts?.length) return error("No accounts available");
 
       const account = accounts[0];
-      const signer = accountsProvider.getNonProductAccountSigner({ publicKey: account.publicKey });
+      const signer = accountsProvider.getNonProductAccountSigner({
+        dotNsIdentifier: "",
+        derivationIndex: 0,
+        publicKey: account.publicKey,
+      });
       const origin = AccountId().dec(account.publicKey);
 
       const permErr = await ensureTransactionPermission(log);
@@ -2945,7 +2953,11 @@ export const contractTests: TestDefinition[] = [
       if (!accounts?.length) return error("No accounts available");
 
       const account = accounts[0];
-      const signer = accountsProvider.getNonProductAccountSigner({ publicKey: account.publicKey });
+      const signer = accountsProvider.getNonProductAccountSigner({
+        dotNsIdentifier: "",
+        derivationIndex: 0,
+        publicKey: account.publicKey,
+      });
       const origin = AccountId().dec(account.publicKey);
 
       const permErr = await ensureTransactionPermission(log);
