@@ -10,6 +10,6 @@
     }
   },
   "sol": {
-    "counter": ".papi/contracts/counter.json"
+    "hostApiDemo": ".papi/contracts/hostApiDemo.json"
   }
 }

@@ -37,3 +37,5 @@ next-env.d.ts
 
 # PAPI generated
 .papi/
+
+test-results
