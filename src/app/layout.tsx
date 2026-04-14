@@ -2,8 +2,8 @@ import type { Metadata } from 'next'
 import './globals.css'
 
 export const metadata: Metadata = {
-  title: 'Host Playground',
-  description: 'Interactive playground for testing the Polkadot Product SDK',
+  title: 'Host API Playground',
+  description: 'Interactive playground for testing the Host API',
 }
 
 export default function RootLayout({
