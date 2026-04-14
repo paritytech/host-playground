@@ -10,24 +10,21 @@ export async function waitForAppReady(testHost: TestHost, options?: { timeout?: 
 }
 
 /**
- * Click a test button by its visible name text and wait for the log
- * to show a success or error badge (not pending).
+ * Click a test button by its test ID and wait for the log entry to resolve.
  */
 export async function runTest(
   frame: FrameLocator,
-  testName: string,
+  testId: string,
   timeout = 90_000,
 ): Promise<'success' | 'error'> {
-  const btn = frame.locator(`button:has(span.font-medium:text-is("${testName}"))`);
+  const btn = frame.locator(`[data-testid="run-${testId}"]`);
   await expect(btn).toBeVisible({ timeout: 10_000 });
   await btn.click();
 
-  // The log viewer's last entry should resolve from "pending" to "success" or "error".
-  // Badge text is the status string inside a rounded-full div.
-  const lastEntry = frame.locator('.space-y-3 > div').last();
-  // Wait for it NOT to say "pending"
-  await expect(lastEntry).not.toContainText('pending', { timeout });
+  // Wait for the latest log entry to resolve (not pending)
+  const lastEntry = frame.locator('[data-testid="log-entry"]').last();
+  await expect(lastEntry).not.toHaveAttribute('data-status', 'pending', { timeout });
 
-  const text = await lastEntry.textContent() ?? '';
-  return text.includes('success') ? 'success' : 'error';
+  const status = await lastEntry.getAttribute('data-status');
+  return status === 'success' ? 'success' : 'error';
 }

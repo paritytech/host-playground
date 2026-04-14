@@ -2694,14 +2694,47 @@ export const chainTests: TestDefinition[] = [
     },
   },
   {
-    id: "chain-query-stored-value",
-    name: "Query Stored Value",
-    description:
-      "Reads getStoredValue() from the HostApiDemo contract using createInkSdk",
-    api: "createInkSdk(client).getContract(contracts.hostApiDemo, addr).query('getStoredValue', { origin })",
+    id: "chain-query-balance",
+    name: "Query Balance",
+    description: "Queries System.Account balance using createPapiProvider",
+    api: "createPapiProvider(genesis) → client.getUnsafeApi().query.System.Account.getValue(address)",
+    args: [
+      {
+        name: "address",
+        label: "Address (SS58)",
+        defaultValue: READ_ORIGIN,
+      },
+    ],
     category: "chain",
-    async run(chain: ChainConfig, logger?: TestLogger) {
-      const log = logger || (() => {});
+    async run(chain: ChainConfig, _logger, args) {
+      const address =
+        args?.address ?? READ_ORIGIN;
+      const client = getClient(chain.genesis);
+      try {
+        const api = client.getUnsafeApi();
+        const account = await api.query.System.Account.getValue(address);
+        const free = account?.data?.free ?? 0;
+        const reserved = account?.data?.reserved ?? 0;
+        return success(
+          `Balance for ${address.slice(0, 8)}…: free=${free}, reserved=${reserved}`,
+          account,
+        );
+      } catch (e) {
+        return error(`Failed to query balance: ${e}`);
+      }
+    },
+  },
+];
+
+export const contractTests: TestDefinition[] = [
+  {
+    id: "contract-query-stored-value",
+    name: "Contract: Query Stored Value",
+    description:
+      "Reads getStoredValue() from the HostApiDemo contract",
+    api: "contract.query('getStoredValue', { origin })",
+    category: "contract",
+    async run(chain: ChainConfig) {
       const contractAddress = HOSTAPI_DEMO_ADDRESS;
       const origin = READ_ORIGIN;
       const client = getClient(chain.genesis);
@@ -2720,12 +2753,68 @@ export const chainTests: TestDefinition[] = [
     },
   },
   {
-    id: "chain-query-data-length",
-    name: "Query Stored Data Length",
+    id: "contract-store-value",
+    name: "Contract: Store Value",
+    description:
+      "Calls storeValue() on the HostApiDemo contract (write operation)",
+    api: "contract.send('storeValue', { origin, data: { _value } }).signSubmitAndWatch(signer)",
+    args: [
+      {
+        name: "value",
+        label: "Value (uint256)",
+        defaultValue: "42",
+      },
+    ],
+    category: "contract",
+    async run(chain: ChainConfig, logger?: TestLogger, args?) {
+      const log = logger || (() => {});
+
+      log("Fetching account...");
+      const accountsProvider = createAccountsProvider();
+      const accountsResult = await accountsProvider.getNonProductAccounts();
+      const accounts = accountsResult.match((a) => a, () => null);
+      if (!accounts?.length) return error("No accounts available");
+
+      const account = accounts[0];
+      const signer = accountsProvider.getNonProductAccountSigner({ publicKey: account.publicKey });
+      const origin = AccountId().dec(account.publicKey);
+
+      const permErr = await ensureTransactionPermission(log);
+      if (permErr) return permErr;
+
+      const client = getClient(chain.genesis);
+      const sdk = createInkSdk(client);
+      const contract = sdk.getContract(contracts.hostApiDemo, HOSTAPI_DEMO_ADDRESS);
+
+      const value = BigInt(args?.value ?? "42");
+      log(`Storing value ${value}...`);
+
+      const dryRun = await contract.query("storeValue", { origin, data: { _value: value } });
+      if (!dryRun.success) return error("Dry-run failed", dryRun.value);
+
+      log("Signing and submitting...");
+      await new Promise<void>((resolve, reject) => {
+        dryRun.value.send().signSubmitAndWatch(signer).subscribe({
+          next: (ev) => {
+            log(`Event: ${ev.type}`);
+            if (ev.type === "txBestBlocksState" && ev.found) resolve();
+            if (ev.type === "finalized" && !ev.ok) reject(new Error("Tx failed"));
+          },
+          error: reject,
+        });
+      });
+
+      return success(`Stored value: ${value}`, { value: String(value), contract: HOSTAPI_DEMO_ADDRESS });
+    },
+  },
+  // ── Contract: Data ──
+  {
+    id: "contract-query-data-length",
+    name: "Contract: Query Data Length",
     description:
       "Reads getStoredDataLength() from the HostApiDemo contract",
     api: "contract.query('getStoredDataLength', { origin })",
-    category: "chain",
+    category: "contract",
     async run(chain: ChainConfig) {
       const contractAddress = HOSTAPI_DEMO_ADDRESS;
       const origin = READ_ORIGIN;
@@ -2744,13 +2833,14 @@ export const chainTests: TestDefinition[] = [
       }
     },
   },
+  // ── Contract: Balance ──
   {
-    id: "chain-query-contract-balance",
-    name: "Query Contract Balance",
+    id: "contract-query-balance",
+    name: "Contract: Query Balance",
     description:
       "Reads getBalance() (address(this).balance) from the HostApiDemo contract",
     api: "contract.query('getBalance', { origin })",
-    category: "chain",
+    category: "contract",
     async run(chain: ChainConfig) {
       const contractAddress = HOSTAPI_DEMO_ADDRESS;
       const origin = READ_ORIGIN;
@@ -2775,12 +2865,127 @@ export const chainTests: TestDefinition[] = [
     },
   },
   {
-    id: "chain-query-total-deposits",
-    name: "Query Total Deposits",
+    id: "contract-deposit",
+    name: "Contract: Deposit",
+    description:
+      "Calls deposit() on the HostApiDemo contract (payable write operation)",
+    api: "contract.send('deposit', { origin, value: amount }).signSubmitAndWatch(signer)",
+    args: [
+      {
+        name: "amount",
+        label: "Amount (PAS)",
+        defaultValue: "0.1",
+      },
+    ],
+    category: "contract",
+    async run(chain: ChainConfig, logger?: TestLogger, args?) {
+      const log = logger || (() => {});
+
+      log("Fetching account...");
+      const accountsProvider = createAccountsProvider();
+      const accountsResult = await accountsProvider.getNonProductAccounts();
+      const accounts = accountsResult.match((a) => a, () => null);
+      if (!accounts?.length) return error("No accounts available");
+
+      const account = accounts[0];
+      const signer = accountsProvider.getNonProductAccountSigner({ publicKey: account.publicKey });
+      const origin = AccountId().dec(account.publicKey);
+
+      const permErr = await ensureTransactionPermission(log);
+      if (permErr) return permErr;
+
+      const client = getClient(chain.genesis);
+      const sdk = createInkSdk(client);
+      const contract = sdk.getContract(contracts.hostApiDemo, HOSTAPI_DEMO_ADDRESS);
+
+      const amountStr = args?.amount ?? "0.1";
+      const [whole = "0", frac = ""] = amountStr.split(".");
+      const planck = BigInt(whole) * BigInt("10000000000") + BigInt(frac.padEnd(10, "0").slice(0, 10));
+      log(`Depositing ${amountStr} PAS (${planck} planck)...`);
+
+      const dryRun = await contract.query("deposit", { origin, value: planck });
+      if (!dryRun.success) return error("Dry-run failed", dryRun.value);
+
+      log("Signing and submitting...");
+      await new Promise<void>((resolve, reject) => {
+        dryRun.value.send().signSubmitAndWatch(signer).subscribe({
+          next: (ev) => {
+            log(`Event: ${ev.type}`);
+            if (ev.type === "txBestBlocksState" && ev.found) resolve();
+            if (ev.type === "finalized" && !ev.ok) reject(new Error("Tx failed"));
+          },
+          error: reject,
+        });
+      });
+
+      return success(`Deposited ${amountStr} PAS`, { planck: String(planck), contract: HOSTAPI_DEMO_ADDRESS });
+    },
+  },
+  {
+    id: "contract-withdraw",
+    name: "Contract: Withdraw",
+    description:
+      "Calls withdraw() on the HostApiDemo contract (write operation)",
+    api: "contract.send('withdraw', { origin, data: { _amount } }).signSubmitAndWatch(signer)",
+    args: [
+      {
+        name: "amount",
+        label: "Amount (PAS)",
+        defaultValue: "0.1",
+      },
+    ],
+    category: "contract",
+    async run(chain: ChainConfig, logger?: TestLogger, args?) {
+      const log = logger || (() => {});
+
+      log("Fetching account...");
+      const accountsProvider = createAccountsProvider();
+      const accountsResult = await accountsProvider.getNonProductAccounts();
+      const accounts = accountsResult.match((a) => a, () => null);
+      if (!accounts?.length) return error("No accounts available");
+
+      const account = accounts[0];
+      const signer = accountsProvider.getNonProductAccountSigner({ publicKey: account.publicKey });
+      const origin = AccountId().dec(account.publicKey);
+
+      const permErr = await ensureTransactionPermission(log);
+      if (permErr) return permErr;
+
+      const client = getClient(chain.genesis);
+      const sdk = createInkSdk(client);
+      const contract = sdk.getContract(contracts.hostApiDemo, HOSTAPI_DEMO_ADDRESS);
+
+      const amountStr = args?.amount ?? "0.1";
+      const [whole = "0", frac = ""] = amountStr.split(".");
+      // withdraw() takes wei (18 decimals)
+      const wei = BigInt(whole) * BigInt("1000000000000000000") + BigInt(frac.padEnd(18, "0").slice(0, 18));
+      log(`Withdrawing ${amountStr} PAS (${wei} wei)...`);
+
+      const dryRun = await contract.query("withdraw", { origin, data: { _amount: wei } });
+      if (!dryRun.success) return error("Dry-run failed", dryRun.value);
+
+      log("Signing and submitting...");
+      await new Promise<void>((resolve, reject) => {
+        dryRun.value.send().signSubmitAndWatch(signer).subscribe({
+          next: (ev) => {
+            log(`Event: ${ev.type}`);
+            if (ev.type === "txBestBlocksState" && ev.found) resolve();
+            if (ev.type === "finalized" && !ev.ok) reject(new Error("Tx failed"));
+          },
+          error: reject,
+        });
+      });
+
+      return success(`Withdrew ${amountStr} PAS`, { wei: String(wei), contract: HOSTAPI_DEMO_ADDRESS });
+    },
+  },
+  {
+    id: "contract-query-total-deposits",
+    name: "Contract: Query Total Deposits",
     description:
       "Reads totalDeposits() from the HostApiDemo contract",
     api: "contract.query('totalDeposits', { origin })",
-    category: "chain",
+    category: "contract",
     async run(chain: ChainConfig) {
       const contractAddress = HOSTAPI_DEMO_ADDRESS;
       const origin = READ_ORIGIN;
@@ -2799,38 +3004,6 @@ export const chainTests: TestDefinition[] = [
       }
     },
   },
-  {
-    id: "chain-query-balance",
-    name: "Query Balance",
-    description: "Queries System.Account balance using createPapiProvider",
-    api: "createPapiProvider(genesis) → client.getUnsafeApi().query.System.Account.getValue(address)",
-    args: [
-      {
-        name: "address",
-        label: "Address (SS58)",
-        defaultValue: "5GrwvaEF5zXb26Fz9rcQpDWS57CtERHpNehXCPcNoHGKutQY",
-      },
-    ],
-    category: "chain",
-    async run(chain: ChainConfig, _logger, args) {
-      const address =
-        args?.address ?? "5GrwvaEF5zXb26Fz9rcQpDWS57CtERHpNehXCPcNoHGKutQY";
-      const client = getClient(chain.genesis);
-
-      try {
-        const api = client.getUnsafeApi();
-        const account = await api.query.System.Account.getValue(address);
-        const free = account?.data?.free ?? 0;
-        const reserved = account?.data?.reserved ?? 0;
-        return success(
-          `Balance for ${address.slice(0, 8)}…: free=${free}, reserved=${reserved}`,
-          account,
-        );
-      } catch (e) {
-        return error(`Failed to query balance: ${e}`);
-      }
-    },
-  },
 ];
 
 export const testsByCategory = {
@@ -2845,4 +3018,5 @@ export const testsByCategory = {
   notifications: notificationTests,
   navigation: navigationTests,
   chain: chainTests,
+  contract: contractTests,
 };
