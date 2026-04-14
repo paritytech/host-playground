@@ -1,1 +1,1 @@
-export { descriptor as counter } from './counter';
+export { descriptor as hostApiDemo } from './hostApiDemo';

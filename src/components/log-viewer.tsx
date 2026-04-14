@@ -66,10 +66,12 @@ export function LogViewer({ logs, onClear, onExport, onReset }: LogViewerProps) 
               No logs yet. Run a test to see results.
             </div>
           ) : (
-            <div className="space-y-3">
+            <div className="space-y-3" data-testid="log-entries">
               {logs.map((entry) => (
                 <div
                   key={entry.id}
+                  data-testid="log-entry"
+                  data-status={entry.status}
                   className="border-b border-border/40 pb-3 last:border-0 last:pb-0"
                 >
                   <div className="flex items-start gap-2 flex-wrap">

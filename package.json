@@ -8,7 +8,10 @@
     "start": "npx serve out",
     "build": "next build && vite build --config vite.config.worker.ts",
     "lint": "next lint",
-    "lint:fix": "next lint --fix"
+    "lint:fix": "next lint --fix",
+    "typecheck": "tsc --noEmit",
+    "test:e2e": "playwright test",
+    "test:e2e:ui": "playwright test --ui"
   },
   "dependencies": {
     "@novasamatech/product-sdk": "0.6.17",
@@ -29,6 +32,8 @@
     "tailwind-merge": "^3.3.1"
   },
   "devDependencies": {
+    "@parity/host-api-test-sdk": "^0.6.0",
+    "@playwright/test": "^1.59.1",
     "@tailwindcss/postcss": "^4",
     "@types/node": "^20",
     "@types/react": "^19",

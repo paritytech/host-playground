@@ -56,13 +56,14 @@ export function TestButton({
   };
 
   return (
-    <div className="border border-border rounded-md overflow-hidden">
+    <div className="border border-border rounded-md overflow-hidden" data-testid={`test-${test.id}`}>
       <Button
         variant="ghost"
         size="sm"
         onClick={handleRun}
         disabled={isDisabled}
         loading={isCurrentlyRunning}
+        data-testid={`run-${test.id}`}
         className="justify-start text-left h-auto py-2 px-3 w-full rounded-none hover:bg-accent"
       >
         {!isCurrentlyRunning && <Play className="h-3 w-3 shrink-0" />}

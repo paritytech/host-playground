@@ -28,7 +28,8 @@ export type TestCategory =
   | "preimage"
   | "notifications"
   | "navigation"
-  | "chain";
+  | "chain"
+  | "contract";
 
 export interface ChainConfig {
   name: string;

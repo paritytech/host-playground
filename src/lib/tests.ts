@@ -18,7 +18,6 @@ import {
 import {
   AccountId,
   Binary,
-  FixedSizeBinary,
   createClient,
   type PolkadotClient,
 } from "polkadot-api";
@@ -26,6 +25,13 @@ import { toHex } from "polkadot-api/utils";
 import { createInkSdk } from "@polkadot-api/sdk-ink";
 import { contracts } from "@polkadot-api/descriptors";
 import { CHAINS } from "./types";
+import deployment from "../../programs/deployment.json";
+import {
+  type ChainConfig,
+  type TestDefinition,
+  type TestLogger,
+  type TestResult,
+} from "./types";
 
 // Cache papi clients per genesis — avoids in-flight chainHead events from a
 // destroyed client corrupting a new client's block tree (undefined.children).
@@ -38,12 +44,9 @@ function getClient(genesis: `0x${string}`): PolkadotClient {
   }
   return client;
 }
-import {
-  type ChainConfig,
-  type TestDefinition,
-  type TestLogger,
-  type TestResult,
-} from "./types";
+
+const HOSTAPI_DEMO_ADDRESS = deployment.hostApiDemo;
+const READ_ORIGIN = "5GrwvaEF5zXb26Fz9rcQpDWS57CtERHpNehXCPcNoHGKutQY";
 
 function success(message: string, details?: unknown): TestResult {
   return { success: true, message, details };
@@ -51,6 +54,19 @@ function success(message: string, details?: unknown): TestResult {
 
 function error(message: string, details?: unknown): TestResult {
   return { success: false, message, details };
+}
+
+/** Request TransactionSubmit permission. Required before any signing operation. */
+async function ensureTransactionPermission(log: (msg: string) => void): Promise<TestResult | null> {
+  log("Requesting TransactionSubmit permission...");
+  const permissionResult = await hostApi.permission({
+    tag: "v1",
+    value: { tag: "TransactionSubmit", value: undefined },
+  });
+  if (permissionResult.isErr()) {
+    return error("TransactionSubmit permission denied", permissionResult.error);
+  }
+  return null;
 }
 
 // Account Tests
@@ -355,6 +371,9 @@ export const signingTests: TestDefinition[] = [
 
       log(`Account found: ${toHex(publicKey).slice(0, 18)}...`);
 
+      const permissionError = await ensureTransactionPermission(log);
+      if (permissionError) return permissionError;
+
       const message =
         args?.message ??
         `Hello from Host Playground! ${new Date().toLocaleString()}`;
@@ -426,6 +445,9 @@ export const signingTests: TestDefinition[] = [
 
       const client = getClient(chain.genesis);
       const api = client.getUnsafeApi();
+
+      const permissionError = await ensureTransactionPermission(log);
+      if (permissionError) return permissionError;
 
       log("Preparing transaction...");
       const message = args?.message ?? "Remark from Host Playground";
@@ -505,6 +527,9 @@ export const signingTests: TestDefinition[] = [
       const tx = api.tx.System.remark({
         remark: Binary.fromBytes(new TextEncoder().encode(message)),
       });
+
+      const permissionError = await ensureTransactionPermission(log);
+      if (permissionError) return permissionError;
 
       log("Signing with non-product signer...");
 
@@ -593,11 +618,14 @@ export const signingTests: TestDefinition[] = [
       });
 
       log(`Connecting directly via WebSocket to ${chain.wsUrl}...`);
-      const { getWsProvider } = await import("polkadot-api/ws-provider");
+      const { getWsProvider } = await import("@polkadot-api/ws-provider");
       const client = createClient(getWsProvider(chain.wsUrl));
 
       try {
         const api = client.getUnsafeApi();
+
+        const permErr = await ensureTransactionPermission(log);
+        if (permErr) return permErr;
 
         log("Preparing transaction...");
         const message = args?.message ?? "Remark from Host Playground";
@@ -636,8 +664,8 @@ export const signingTests: TestDefinition[] = [
     id: "sign-batch-payload",
     name: "Sign & Submit Batch Payload",
     description:
-      "Batches a remark + two contract increment calls, submits, and reads counter after finalization",
-    api: "api.tx.Utility.batch_all([remark, Revive.call, Revive.call])",
+      "Batches a remark + two storeValue calls on the HostApiDemo contract, submits, and reads stored value after finalization",
+    api: "api.tx.Utility.batch_all([remark, Revive.call(storeValue), Revive.call(storeValue)])",
     args: [
       {
         name: "dotNsIdentifier",
@@ -695,26 +723,27 @@ export const signingTests: TestDefinition[] = [
           remark: Binary.fromBytes(new TextEncoder().encode(remarkMsg)),
         }).decodedCall;
 
-        // 2. Two increment contract calls
-        // Connect to the Paseo testnet where the contract lives
-        const contractAddr = "0x4e65b000448e9de00bfd8b674caa35699f7cef13";
+        // 2. Two storeValue contract calls
+        const contractAddr = HOSTAPI_DEMO_ADDRESS;
 
         log("Connecting to contract chain...");
         const contractClient = getClient(CHAINS.PASEO_ASSET_HUB.genesis);
         const contractApi = contractClient.getUnsafeApi();
 
         const dest = Binary.fromHex(contractAddr);
-        // increment() selector = 0xd09de08a
-        const incrementData = Binary.fromHex("0xd09de08a");
+        // storeValue(uint256) with value=42: selector 0x55241077 + ABI-encoded 42
+        const storeValueData = Binary.fromHex(
+          "0x55241077000000000000000000000000000000000000000000000000000000000000002a",
+        );
 
-        // Dry run to estimate gas (passing undefined = let runtime decide)
+        // Dry run to estimate gas
         const dryRun = await contractApi.apis.ReviveApi.call(
           address,
           dest,
           BigInt(0),
           undefined,
           undefined,
-          incrementData,
+          storeValueData,
         );
 
         log(
@@ -732,26 +761,27 @@ export const signingTests: TestDefinition[] = [
         const storageDepositLimit =
           storageDeposit?.type === "Charge" ? storageDeposit.value : BigInt(0);
 
-        log("Preparing 2 increment calls...");
-        const txDest = FixedSizeBinary.fromHex(contractAddr);
-        const makeIncrementCall = () =>
+        log("Preparing 2 storeValue calls...");
+        const txDest = Binary.fromHex(contractAddr);
+        const makeStoreValueCall = () =>
           contractApi.tx.Revive.call({
             dest: txDest,
             value: BigInt(0),
             weight_limit: weightLimit,
             storage_deposit_limit: storageDepositLimit,
-            data: incrementData,
+            data: storeValueData,
           }).decodedCall;
 
-        const incrementCall1 = makeIncrementCall();
-        const incrementCall2 = makeIncrementCall();
+        const storeCall1 = makeStoreValueCall();
+        const storeCall2 = makeStoreValueCall();
 
-
+        const permErr = await ensureTransactionPermission(log);
+        if (permErr) return permErr;
 
         // 3. Batch all three calls
-        log("Preparing batch of 3 calls (1 remark + 2 increments)...");
+        log("Preparing batch of 3 calls (1 remark + 2 storeValue)...");
         const batchTx = api.tx.Utility.batch_all({
-          calls: [remarkCall, incrementCall1, incrementCall2],
+          calls: [remarkCall, storeCall1, storeCall2],
         });
 
         // 4. Sign, submit, and wait for finalization
@@ -772,22 +802,22 @@ export const signingTests: TestDefinition[] = [
           });
         });
 
-        // 5. Read counter value after finalization
-        log("Reading counter value...");
-        // count() selector = 0x06661abd
-        const countData = Binary.fromHex("0x06661abd");
-        const countResult = await api.apis.ReviveApi.call(
+        // 5. Read stored value after finalization
+        log("Reading stored value...");
+        // getStoredValue() selector = 0x12db2ef6
+        const getValueData = Binary.fromHex("0x12db2ef6");
+        const readResult = await api.apis.ReviveApi.call(
           address,
           Binary.fromHex(contractAddr),
           BigInt(0),
           undefined,
           undefined,
-          countData,
+          getValueData,
         );
 
-        let counterValue: string | null = null;
-        if (countResult.result.success) {
-          const data = countResult.result.value.data;
+        let storedValue: string | null = null;
+        if (readResult.result.success) {
+          const data = readResult.result.value.data;
           let hexData: string;
           if (typeof data === "string") {
             hexData = data;
@@ -797,24 +827,23 @@ export const signingTests: TestDefinition[] = [
             hexData = "0x";
           }
           if (hexData !== "0x" && hexData.length >= 66) {
-            // uint256 is 32 bytes = 64 hex chars + 0x prefix
-            counterValue = String(BigInt(hexData));
+            storedValue = String(BigInt(hexData));
           }
         }
 
-        log(`Counter value: ${counterValue ?? "unknown"}`);
+        log(`Stored value: ${storedValue ?? "unknown"}`);
 
         return success(
-          `Batch finalized on ${chain.name} — counter: ${counterValue ?? "unknown"}`,
+          `Batch finalized on ${chain.name} — stored value: ${storedValue ?? "unknown"}`,
           {
             address,
             calls: [
               "System.remark",
-              "Revive.call (increment)",
-              "Revive.call (increment)",
+              "Revive.call (storeValue)",
+              "Revive.call (storeValue)",
             ],
             contract: contractAddr,
-            counterValue,
+            storedValue,
           },
         );
       } catch (e) {
@@ -2665,38 +2694,6 @@ export const chainTests: TestDefinition[] = [
     },
   },
   {
-    id: "chain-query-counter",
-    name: "Query Program",
-    description:
-      "Reads count() from a Solidity counter contract using createPapiProvider and createInkSdk",
-    api: "createInkSdk(client).getContract(contracts.counter, address).query('count', { origin })",
-    category: "chain",
-    async run(chain: ChainConfig) {
-      const contractAddress = "0x2212ec401fc24ca50c55dcd8378ae7033f36f72b";
-      const origin = "5GrwvaEF5zXb26Fz9rcQpDWS57CtERHpNehXCPcNoHGKutQY";
-
-      const client = getClient(chain.genesis);
-
-      try {
-        const sdk = createInkSdk(client);
-        const contract = sdk.getContract(contracts.counter, contractAddress);
-        const result = await contract.query("count", { origin });
-
-        if (!result.success) {
-          return error("Contract query failed", result.value);
-        }
-
-        const count = result.value.response;
-        return success(`Counter value: ${count}`, {
-          count: String(count),
-          contract: contractAddress,
-        });
-      } catch (e) {
-        return error(`Failed to query counter: ${e}`);
-      }
-    },
-  },
-  {
     id: "chain-query-balance",
     name: "Query Balance",
     description: "Queries System.Account balance using createPapiProvider",
@@ -2705,15 +2702,14 @@ export const chainTests: TestDefinition[] = [
       {
         name: "address",
         label: "Address (SS58)",
-        defaultValue: "5GrwvaEF5zXb26Fz9rcQpDWS57CtERHpNehXCPcNoHGKutQY",
+        defaultValue: READ_ORIGIN,
       },
     ],
     category: "chain",
     async run(chain: ChainConfig, _logger, args) {
       const address =
-        args?.address ?? "5GrwvaEF5zXb26Fz9rcQpDWS57CtERHpNehXCPcNoHGKutQY";
+        args?.address ?? READ_ORIGIN;
       const client = getClient(chain.genesis);
-
       try {
         const api = client.getUnsafeApi();
         const account = await api.query.System.Account.getValue(address);
@@ -2725,6 +2721,296 @@ export const chainTests: TestDefinition[] = [
         );
       } catch (e) {
         return error(`Failed to query balance: ${e}`);
+      }
+    },
+  },
+];
+
+export const contractTests: TestDefinition[] = [
+  {
+    id: "contract-query-stored-value",
+    name: "Contract: Query Stored Value",
+    description:
+      "Reads getStoredValue() from the HostApiDemo contract",
+    api: "contract.query('getStoredValue', { origin })",
+    category: "contract",
+    async run(chain: ChainConfig) {
+      const contractAddress = HOSTAPI_DEMO_ADDRESS;
+      const origin = READ_ORIGIN;
+      const client = getClient(chain.genesis);
+      try {
+        const sdk = createInkSdk(client);
+        const contract = sdk.getContract(contracts.hostApiDemo, contractAddress);
+        const result = await contract.query("getStoredValue", { origin });
+        if (!result.success) return error("Query failed", result.value);
+        return success(`Stored value: ${result.value.response}`, {
+          value: String(result.value.response),
+          contract: contractAddress,
+        });
+      } catch (e) {
+        return error(`Failed to query: ${e}`);
+      }
+    },
+  },
+  {
+    id: "contract-store-value",
+    name: "Contract: Store Value",
+    description:
+      "Calls storeValue() on the HostApiDemo contract (write operation)",
+    api: "contract.send('storeValue', { origin, data: { _value } }).signSubmitAndWatch(signer)",
+    args: [
+      {
+        name: "value",
+        label: "Value (uint256)",
+        defaultValue: "42",
+      },
+    ],
+    category: "contract",
+    async run(chain: ChainConfig, logger?: TestLogger, args?) {
+      const log = logger || (() => {});
+
+      log("Fetching account...");
+      const accountsProvider = createAccountsProvider();
+      const accountsResult = await accountsProvider.getNonProductAccounts();
+      const accounts = accountsResult.match((a) => a, () => null);
+      if (!accounts?.length) return error("No accounts available");
+
+      const account = accounts[0];
+      const signer = accountsProvider.getNonProductAccountSigner({
+        dotNsIdentifier: "",
+        derivationIndex: 0,
+        publicKey: account.publicKey,
+      });
+      const origin = AccountId().dec(account.publicKey);
+
+      const permissionError = await ensureTransactionPermission(log);
+      if (permissionError) return permissionError;
+
+      const client = getClient(chain.genesis);
+      const sdk = createInkSdk(client);
+      const contract = sdk.getContract(contracts.hostApiDemo, HOSTAPI_DEMO_ADDRESS);
+
+      const value = BigInt(args?.value ?? "42");
+      log(`Storing value ${value}...`);
+
+      const dryRun = await contract.query("storeValue", { origin, data: { _value: value } });
+      if (!dryRun.success) return error("Dry-run failed", dryRun.value);
+
+      log("Signing and submitting...");
+      await new Promise<void>((resolve, reject) => {
+        dryRun.value.send().signSubmitAndWatch(signer).subscribe({
+          next: (ev) => {
+            log(`Event: ${ev.type}`);
+            if (ev.type === "txBestBlocksState" && ev.found) resolve();
+            if (ev.type === "finalized" && !ev.ok) reject(new Error("Tx failed"));
+          },
+          error: reject,
+        });
+      });
+
+      return success(`Stored value: ${value}`, { value: String(value), contract: HOSTAPI_DEMO_ADDRESS });
+    },
+  },
+  {
+    id: "contract-query-data-length",
+    name: "Contract: Query Data Length",
+    description:
+      "Reads getStoredDataLength() from the HostApiDemo contract",
+    api: "contract.query('getStoredDataLength', { origin })",
+    category: "contract",
+    async run(chain: ChainConfig) {
+      const contractAddress = HOSTAPI_DEMO_ADDRESS;
+      const origin = READ_ORIGIN;
+      const client = getClient(chain.genesis);
+      try {
+        const sdk = createInkSdk(client);
+        const contract = sdk.getContract(contracts.hostApiDemo, contractAddress);
+        const result = await contract.query("getStoredDataLength", { origin });
+        if (!result.success) return error("Query failed", result.value);
+        return success(`Data length: ${result.value.response} bytes`, {
+          length: String(result.value.response),
+          contract: contractAddress,
+        });
+      } catch (e) {
+        return error(`Failed to query: ${e}`);
+      }
+    },
+  },
+  {
+    id: "contract-query-balance",
+    name: "Contract: Query Balance",
+    description:
+      "Reads getBalance() (address(this).balance) from the HostApiDemo contract",
+    api: "contract.query('getBalance', { origin })",
+    category: "contract",
+    async run(chain: ChainConfig) {
+      const contractAddress = HOSTAPI_DEMO_ADDRESS;
+      const origin = READ_ORIGIN;
+      const client = getClient(chain.genesis);
+      try {
+        const sdk = createInkSdk(client);
+        const contract = sdk.getContract(contracts.hostApiDemo, contractAddress);
+        const result = await contract.query("getBalance", { origin });
+        if (!result.success) return error("Query failed", result.value);
+        const wei = result.value.response as bigint;
+        const divisor = BigInt("1000000000000000000");
+        const whole = wei / divisor;
+        const frac = (wei % divisor).toString().padStart(18, "0").replace(/0+$/, "") || "0";
+        const formatted = `${whole}.${frac}`;
+        return success(`Contract balance: ${formatted} PAS`, {
+          balanceWei: String(wei),
+          contract: contractAddress,
+        });
+      } catch (e) {
+        return error(`Failed to query: ${e}`);
+      }
+    },
+  },
+  {
+    id: "contract-deposit",
+    name: "Contract: Deposit",
+    description:
+      "Calls deposit() on the HostApiDemo contract (payable write operation)",
+    api: "contract.send('deposit', { origin, value: amount }).signSubmitAndWatch(signer)",
+    args: [
+      {
+        name: "amount",
+        label: "Amount (PAS)",
+        defaultValue: "0.1",
+      },
+    ],
+    category: "contract",
+    async run(chain: ChainConfig, logger?: TestLogger, args?) {
+      const log = logger || (() => {});
+
+      log("Fetching account...");
+      const accountsProvider = createAccountsProvider();
+      const accountsResult = await accountsProvider.getNonProductAccounts();
+      const accounts = accountsResult.match((a) => a, () => null);
+      if (!accounts?.length) return error("No accounts available");
+
+      const account = accounts[0];
+      const signer = accountsProvider.getNonProductAccountSigner({
+        dotNsIdentifier: "",
+        derivationIndex: 0,
+        publicKey: account.publicKey,
+      });
+      const origin = AccountId().dec(account.publicKey);
+
+      const permissionError = await ensureTransactionPermission(log);
+      if (permissionError) return permissionError;
+
+      const client = getClient(chain.genesis);
+      const sdk = createInkSdk(client);
+      const contract = sdk.getContract(contracts.hostApiDemo, HOSTAPI_DEMO_ADDRESS);
+
+      const amountStr = args?.amount ?? "0.1";
+      const [whole = "0", frac = ""] = amountStr.split(".");
+      const planck = BigInt(whole) * BigInt("10000000000") + BigInt(frac.padEnd(10, "0").slice(0, 10));
+      log(`Depositing ${amountStr} PAS (${planck} planck)...`);
+
+      const dryRun = await contract.query("deposit", { origin, value: planck });
+      if (!dryRun.success) return error("Dry-run failed", dryRun.value);
+
+      log("Signing and submitting...");
+      await new Promise<void>((resolve, reject) => {
+        dryRun.value.send().signSubmitAndWatch(signer).subscribe({
+          next: (ev) => {
+            log(`Event: ${ev.type}`);
+            if (ev.type === "txBestBlocksState" && ev.found) resolve();
+            if (ev.type === "finalized" && !ev.ok) reject(new Error("Tx failed"));
+          },
+          error: reject,
+        });
+      });
+
+      return success(`Deposited ${amountStr} PAS`, { planck: String(planck), contract: HOSTAPI_DEMO_ADDRESS });
+    },
+  },
+  {
+    id: "contract-withdraw",
+    name: "Contract: Withdraw",
+    description:
+      "Calls withdraw() on the HostApiDemo contract (write operation)",
+    api: "contract.send('withdraw', { origin, data: { _amount } }).signSubmitAndWatch(signer)",
+    args: [
+      {
+        name: "amount",
+        label: "Amount (PAS)",
+        defaultValue: "0.1",
+      },
+    ],
+    category: "contract",
+    async run(chain: ChainConfig, logger?: TestLogger, args?) {
+      const log = logger || (() => {});
+
+      log("Fetching account...");
+      const accountsProvider = createAccountsProvider();
+      const accountsResult = await accountsProvider.getNonProductAccounts();
+      const accounts = accountsResult.match((a) => a, () => null);
+      if (!accounts?.length) return error("No accounts available");
+
+      const account = accounts[0];
+      const signer = accountsProvider.getNonProductAccountSigner({
+        dotNsIdentifier: "",
+        derivationIndex: 0,
+        publicKey: account.publicKey,
+      });
+      const origin = AccountId().dec(account.publicKey);
+
+      const permissionError = await ensureTransactionPermission(log);
+      if (permissionError) return permissionError;
+
+      const client = getClient(chain.genesis);
+      const sdk = createInkSdk(client);
+      const contract = sdk.getContract(contracts.hostApiDemo, HOSTAPI_DEMO_ADDRESS);
+
+      const amountStr = args?.amount ?? "0.1";
+      const [whole = "0", frac = ""] = amountStr.split(".");
+      // withdraw() takes wei (18 decimals)
+      const wei = BigInt(whole) * BigInt("1000000000000000000") + BigInt(frac.padEnd(18, "0").slice(0, 18));
+      log(`Withdrawing ${amountStr} PAS (${wei} wei)...`);
+
+      const dryRun = await contract.query("withdraw", { origin, data: { _amount: wei } });
+      if (!dryRun.success) return error("Dry-run failed", dryRun.value);
+
+      log("Signing and submitting...");
+      await new Promise<void>((resolve, reject) => {
+        dryRun.value.send().signSubmitAndWatch(signer).subscribe({
+          next: (ev) => {
+            log(`Event: ${ev.type}`);
+            if (ev.type === "txBestBlocksState" && ev.found) resolve();
+            if (ev.type === "finalized" && !ev.ok) reject(new Error("Tx failed"));
+          },
+          error: reject,
+        });
+      });
+
+      return success(`Withdrew ${amountStr} PAS`, { wei: String(wei), contract: HOSTAPI_DEMO_ADDRESS });
+    },
+  },
+  {
+    id: "contract-query-total-deposits",
+    name: "Contract: Query Total Deposits",
+    description:
+      "Reads totalDeposits() from the HostApiDemo contract",
+    api: "contract.query('totalDeposits', { origin })",
+    category: "contract",
+    async run(chain: ChainConfig) {
+      const contractAddress = HOSTAPI_DEMO_ADDRESS;
+      const origin = READ_ORIGIN;
+      const client = getClient(chain.genesis);
+      try {
+        const sdk = createInkSdk(client);
+        const contract = sdk.getContract(contracts.hostApiDemo, contractAddress);
+        const result = await contract.query("totalDeposits", { origin });
+        if (!result.success) return error("Query failed", result.value);
+        return success(`Total deposits: ${result.value.response}`, {
+          deposits: String(result.value.response),
+          contract: contractAddress,
+        });
+      } catch (e) {
+        return error(`Failed to query: ${e}`);
       }
     },
   },
@@ -2742,4 +3028,5 @@ export const testsByCategory = {
   notifications: notificationTests,
   navigation: navigationTests,
   chain: chainTests,
+  contract: contractTests,
 };

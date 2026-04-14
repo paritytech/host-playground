@@ -35,6 +35,7 @@ const categoryIcons: Record<TestCategory, string> = {
   notifications: "🔔",
   navigation: "🧭",
   chain: "⛓️",
+  contract: "📄",
 };
 
 const categoryInfo: Record<
@@ -84,6 +85,10 @@ const categoryInfo: Record<
   chain: {
     title: "Chain Interaction",
     description: "Typed chain spec and chain head protocol",
+  },
+  contract: {
+    title: "Contract",
+    description: "Read and write operations on the HostApiDemo Solidity contract",
   },
 };
 
