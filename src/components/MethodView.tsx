@@ -28,8 +28,9 @@ export function MethodView({
   method: string;
   onBack: () => void;
 }) {
-  const defaultRequest = services.find((s) => s.name === service)?.methods.find((m) => m.name === method)?.defaultRequest ?? '{}';
-  const [request, setRequest] = useState(defaultRequest);
+  const methodInfo = services.find((s) => s.name === service)?.methods.find((m) => m.name === method);
+  const noParams = methodInfo?.noParams ?? false;
+  const [request, setRequest] = useState(methodInfo?.defaultRequest ?? '{}');
   const [response, setResponse] = useState<string>('');
   const [error, setError] = useState<string>('');
   const [loading, setLoading] = useState(false);
@@ -47,11 +48,15 @@ export function MethodView({
     setStreamLog([]);
 
     let parsed: unknown;
-    try {
-      parsed = JSON.parse(request);
-    } catch {
-      setError('Invalid JSON request');
-      return;
+    if (noParams) {
+      parsed = null;
+    } else {
+      try {
+        parsed = JSON.parse(request);
+      } catch {
+        setError('Invalid JSON request');
+        return;
+      }
     }
 
     if (binding.isStream) {
@@ -100,15 +105,23 @@ export function MethodView({
       </div>
 
       <div style={styles.section}>
-        <div style={styles.label}>Request</div>
-        <textarea
-          style={styles.textarea}
-          data-testid="request-editor"
-          value={request}
-          onChange={(e) => setRequest(e.target.value)}
-        />
+        {!noParams && (
+          <>
+            <div style={styles.label}>Request</div>
+            <textarea
+              style={styles.textarea}
+              data-testid="request-editor"
+              value={request}
+              onChange={(e) => setRequest(e.target.value)}
+            />
+          </>
+        )}
         <div style={{ marginTop: '12px', display: 'flex', gap: '8px' }}>
-          {binding?.isStream ? (
+          {!binding ? (
+            <button style={{ ...styles.callBtn, background: '#9e9e9e', cursor: 'not-allowed' }} disabled>
+              Not supported yet
+            </button>
+          ) : binding.isStream ? (
             streamActive ? (
               <button style={{ ...styles.callBtn, background: '#d32f2f' }} data-testid="stop-button" onClick={handleStop}>Stop</button>
             ) : (

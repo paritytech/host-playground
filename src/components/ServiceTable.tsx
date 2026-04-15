@@ -26,7 +26,7 @@ export function ServiceTable({
 }) {
   return (
     <div style={styles.container}>
-      <div style={styles.title}>Host API Playground</div>
+      <div style={styles.title}>TrUAPI Playground</div>
       {services.map((svc) => (
         <div key={svc.name} style={styles.service} data-testid={`service-${svc.name}`}>
           <div style={styles.serviceHeader}>{svc.name}</div>

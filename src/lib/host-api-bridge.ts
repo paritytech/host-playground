@@ -39,7 +39,7 @@ const methodMap: Record<string, [string, boolean]> = {
   'Chat/host_chat_register_bot': ['chatRegisterBot', false],
   'Chat/host_chat_post_message': ['chatPostMessage', false],
   'Chat/host_chat_list_subscribe': ['chatListSubscribe', true],
-  'Chat/host_chat_action_subsctribe': ['chatActionSubscribe', true],
+  'Chat/host_chat_action_subscribe': ['chatActionSubscribe', true],
   'Chat/product_chat_custom_message_render_subscribe': ['productChatCustomMessageRenderSubscribe', true],
 
   // Statement Store
@@ -49,7 +49,6 @@ const methodMap: Record<string, [string, boolean]> = {
 
   // Preimage
   'Preimage/remote_preimage_lookup_subscribe': ['preimageLookupSubscribe', true],
-  'Preimage/Submit': ['preimageSubmit', false],
 
   // Chain Interaction
   'Chain Interaction/remote_chain_head_follow': ['chainHeadFollow', true],
