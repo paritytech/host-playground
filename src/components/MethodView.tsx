@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import type { HostApi } from '@novasamatech/host-api';
 import { getMethodBinding, stringify } from '@/src/lib/host-api-bridge';
-import { getDefaultRequest } from '@/src/lib/services';
+import { services } from '@/src/lib/services';
 
 const styles = {
   container: { padding: '24px', fontFamily: 'system-ui, sans-serif', maxWidth: '900px', margin: '0 auto' } as const,
@@ -28,7 +28,8 @@ export function MethodView({
   method: string;
   onBack: () => void;
 }) {
-  const [request, setRequest] = useState(getDefaultRequest(service, method));
+  const defaultRequest = services.find((s) => s.name === service)?.methods.find((m) => m.name === method)?.defaultRequest ?? '{}';
+  const [request, setRequest] = useState(defaultRequest);
   const [response, setResponse] = useState<string>('');
   const [error, setError] = useState<string>('');
   const [loading, setLoading] = useState(false);
@@ -37,6 +38,7 @@ export function MethodView({
   const [activeSub, setActiveSub] = useState<{ unsubscribe: () => void } | null>(null);
 
   const binding = getMethodBinding(hostApi, service, method);
+
 
   const handleCall = async () => {
     if (!binding) return;
@@ -71,7 +73,7 @@ export function MethodView({
       try {
         const result = await binding.call(parsed);
         if (result.ok) {
-          setResponse(stringify(result.data));
+          setResponse(stringify(result.data) ?? 'null');
         } else {
           setError(stringify(result.data));
         }

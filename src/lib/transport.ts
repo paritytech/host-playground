@@ -26,7 +26,7 @@ function isIframe() {
 
 function isWebview() {
   try {
-    return (window as any)['__HOST_WEBVIEW_MARK__'] === true;
+    return (window as never)['__HOST_WEBVIEW_MARK__'] === true;
   } catch {
     return false;
   }
@@ -34,7 +34,7 @@ function isWebview() {
 
 async function getWebviewPort(iteration = 200): Promise<MessagePort> {
   if (iteration === 0) throw new Error('No webview port found');
-  if ((window as any)['__HOST_API_PORT__']) return (window as any)['__HOST_API_PORT__'];
+  if ((window as never)['__HOST_API_PORT__']) return (window as never)['__HOST_API_PORT__'];
   await delay(100);
   return getWebviewPort(iteration - 1);
 }
