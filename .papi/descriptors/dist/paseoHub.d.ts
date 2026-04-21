@@ -1,11 +1,11 @@
-import { StorageDescriptor, PlainDescriptor, TxDescriptor, RuntimeDescriptor, Enum, ApisFromDef, QueryFromPalletsDef, TxFromPalletsDef, EventsFromPalletsDef, ErrorsFromPalletsDef, ConstFromPalletsDef, ViewFnsFromPalletsDef, SS58String, FixedSizeBinary, Binary, FixedSizeArray } from "polkadot-api";
-import { I5sesotjlssv2d, Iffmde3ekjedi9, I4mddgoa69c0a2, I2jo1mg7kp0e5u, I95g6i7ilua7lq, Ieniouoqkq4icf, Phase, Ibgl04rn6nbfm6, I4q39t5hn830vp, I1v7jbnil3tjns, I8jgj1nhcr2dg8, Ifn6q3equiq9qi, Ia3sb0vgvovhtg, Iav8k1edbj86k7, Itom7fk49o0c9, I4i91h98n3cv1b, I4iumukclgj8ej, Iqnbvitf7a7l3, I48i407regf59r, I6r5cbv8ttrb09, PreimageOldRequestStatus, PreimageRequestStatus, I4pact7n2e9a0i, Idqn63pep0hpog, I56u24ncejr5kt, I9jd27rnpm8ttv, I7rt63b9d5k7p8, I4b3lhc1ach2vm, Iepbsvlk3qceij, I1q8tnt1cluu5j, I8ds64oj6581v0, Ia7pdug7cdsg8g, I523vadfflec6s, I2l1ctuihi2mfd, TransactionPaymentReleases, Ifble4juuml5ig, Version, I2phecamkn3pej, ClaimsStatementKind, Ia2lhg7l2hilo3, Ifi4da1gej1fri, Ifvgo9568rpmqc, I82jm9g7pufuel, Ic5m5lp1oioo8r, I6cs1itejju2vv, Icgljjb6j82uhn, Ib77b0fp1a6mjr, I5g2vv0ckl2m8b, Ifup3lg9ro8a0f, I5qfubnuvrnqn6, I8t3u2dv73ahbd, I7vlvrrl2pnbgk, Ie0rpl5bahldfk, XcmPalletVersionMigrationStage, I7e5oaj2qi4kl1, Ie849h3gncgvok, Iat62vud7hlod2, Ict03eedr8de9s, Ibkm2gcn4pji30, XcmVersionedLocation, I7f4alf2hnuu8s, Idh2ug6ou4a8og, Iejeo53sea6n4q, I53esa2ms463bk, Ib4jhb8tt3uung, Ibqjcgmcid3dll, Iag146hmjgqfgj, I8uo3fpd3bcc6f, I1808sk45co89c, I9p9lq3rej5bhc, Iff9heri56m1mb, I3qklfjubrljqh, Iag3f1hum3p4c8, I7svnfko10tq2e, I4s6jkha20aoh0, I2brm5b9jij1st, I78s05f59eoi8b, Ianufjuplcj6u4, Id32h28hjj1tch, I6ouflveob4eli, I2mv9dvsaj3kcr, I7781vnk0rm9eq, Ie2iqtdb0stqo1, I5irutptk105do, Ic9nev69d8grv1, I18m6a0sc4k7s9, Ic9iokm15iigt6, I35m96p3u4vl0p, Iapmji0h53pmkn, Idrr42svup341f, I4ugih6gb4fmug, Idac0t49lnd4ls, I72ndo6phms8ik, If9iqq7i64mur8, I4v5g6i7bmt06o, I84bhscllvv07n, If21n82i0516em, Iegmj7n48sc3am, I2l0beelkqtf0a, ConvictionVotingVoteVoting, If9jidduiuq7vv, I7ra2omf9acmpl, Ict0fmb8krq1lk, Ibofbvvaehln4e, I2q3ri6itcjj5u, If354jrdedj0pj, Ib17t3992hb64n, I215mkl885p4da, Idphjddn2h69vc, Idhh9vuu2bderg, If6qa32dj75gu1, I7oo2mprv1qd1s, NominationPoolsClaimPermission, Ic5t26f9cp3tvk, I39k39h6vu4hbq, I542q009qbgt8k, I4e5ujckjq61g8, I3fgbanmq2lnk2, I6765e2s56217t, I7d4qtdlascfk8, I9cpogojpnsq8h, I4bboqsv44evel, I8je4hjun1hc3g, I3mj0igdqvh474, I8s6n43okuj2b1, I29575k8s6asco, I3rfe446il0rb7, I1nvcsqg39g26j, Ia8896dq44k9m4, Iefkd2klketjfh, I69tqqtpr9n8ie, StakingRewardDestination, I9o7ssi9vmhmgr, Ic3m9d6tdl6gi2, Ib3j7gb0jgs38u, I6flrronqs3l6n, I97fulj5h3ik95, Iff9p3c7k6pfoi, StakingForcing, I7oqom2n34q7u8, I921dks5d4ov9t, Idm2c96td6cqkk, Iam8h8p165t5uu, I205qrookusi3d, I4ojmnsk1dchql, I70u6ma6po0va2, I2julfd57mkmap, I834nfrf667ag1, I14i9pui8lc778, I8t4pajubp34g3, I10nrsmn0hji4l, I3oiqcurom3m43, I20ichc5j0l1u7, I1p16diuhde12h, Id4f5q01qh34o3, I6o6dmud53u1fj, I95l2k9b1re95f, Ifb0kt7cu5a61c, I9134mhoe91oet, I1d6j3815ii0ua, I2fbmombro6ugg, In7a38730s6qs, If15el53dd76v9, I9s0ave7t0vnrk, I4fo08joqmcqnm, XcmV5Junctions, Iasb8k6ash5mjn, Ibafpkl9hhno69, I35p85j063s0il, Iafqnechp3omqg, I8ofcg5rbj0g2c, I4adgbll7gku4i, I6pjjpfvhvcfru, I9pj91mj79qekl, I39uah9nss64h9, Ik64dknsq7k08, I3m5sq54sjdlso, Ib51vk42m1po4n, Ial23jn8hp0aen, Ifpj261e8s63m3, Idcr6u6361oad9, I82nfqfkd48n10, I1jm8m1rh9e20v, I3o5j3bli1pd8e, I2kt2o3oip6gat, I5n4sebgkfr760, Ieeljvqc3s7le3, Ifs1i5fk9cqvr6, I5k9bsqt4lg5o1, I6j4ivvobbgrr6, Ieg3fd8p4pkt10, I8kg5ll427kfqq, I467333262q1l9, I6usrkf9la6hg2, Ibou4u1engb441, Id6nbvqoqdj4o2, I95iqep3b8snn9, I4ktuaksf5i1gk, I9bqtpv2ii35mp, I9j7pagd6d4bda, I2h9pmio37r7fb, Ibmr18suc9ikh9, I9iq22t0burs89, I5u8olqbbvfnvf, I5utcetro501ir, Id9uqtigc0il3v, Iaa2o6cgjdpdn5, Iam6hrl7ptd85l, Ict9ivhr2c5hv0, I8t4vv03357lk9, I6uag8j5aql8q, Isq3k9rh2c0l4, I1dqiovk0tpoah, I1ntko0oih7v1a, I2tf5qmg09624f, Ifccifqltb5obi, Iadtsfv699cq8b, Ialpmgmhr3gk5r, I4cbvqmqadhrea, I3sdol54kg5jaq, I8fougodaj6di6, I81vt5eq60l4b6, I3vh014cqgmrfd, Ia5cotcvi888ln, I21jsa919m88fd, Iegif7m3upfe1k, I9kt8c221c83ln, Ic76kfh5ebqkpl, Icscpmubum33bq, I21d2olof7eb60, Ibgm4rnf22lal1, Ie68np0vpihith, I9bnv6lu0crf1q, Iauhjqifrdklq7, Ie1uso9m8rt5cf, Idlampfle3vh6q, I40pqum1mu8qg3, I1r4c2ghbtvjuc, I9i6b1362umn1t, Iel0ml15497i7b, Icp5j0naoi9qh2, Iaifsc8ohbnivh, Ie9b9ug0pdcb7f, I1iog9igphiith, Iavdtbbn92d56q, I9b6jujt4ckdem, Idn3g9e67p0qkf, I9doqkns1o391l, Ideaemvoneh309, I3d9o9d7epp66v, I6lqh1vgb4mcja, I46a6cqthuf20a, I80cht592rotce, Ibpc4kthjktuo, I1i6grf28bv9hm, I2eb501t8s6hsq, Ianmuoljk2sk1u, I8onfucrniob93, I666bl2fqjkejo, I6o1er683vod1j, I5bq561t4gpfva, Ic357tcepuvo5c, I2rnoam876ruhj, Ic5b47dj4coa3r, Ib3qnc19gu633c, Ifira6u9hi7cu1, I72tqocvdoqfff, I2i27f3sfmvc05, I1nlrtd1epki2d, I3abtumcmempjs, Id81m8flopt8ha, I8hff7chabggkd, I49i39mtj1ivbs, Ifkr2kcak2vto1, I1ju6r8q0cs9jt, I4kpeq6j7cd5bu, I5na1ka76k6811, I59mhdb9omdqfa, I9vl5kpk0fpakt, I717jt61hu19b4, I7f7v8192r1lmq, If66ivi02f7256, I223jtcatlfkrc, I223jg78mng8hq, I4iiuiftkpq3fd, Ibra6533h92c0a, Ibgvkh96s68a66, If9vko7pv0231m, Iafkqus0ohh6l6, I6cu7obfo0rr0o, I736lv5q9m5bot, I1ap9tlenhr44l, Ib92t90p616grb, Ieipuujd6879do, Ie56eq9sg1rsoc, I5tvvgui05tn6e, Ibal0joadvdc2h, Iceq9fmmp9aeqv, I9viqhmdtuof5e, Ibqooroq6rr5kr, I6h88h8vba22v8, Ia9cd4jqb5eecb, I19jiel1ftbcce, I43aobns89nbkh, Iamd7rovec1hfb, I77ie723ncd4co, Ieebloeahma3ke, I4mbtpf4pu3rec, I1ahf3pvgsgbu, I9uapdn16emsti, Ie5i0q2glmr0md, I97qcg6i3l8gee, Ib5udrahak005b, I1jj31tn29ie3c, I5llu6o6a0go5i, Ic8b8561e6t9ie, I93r2effh7od84, I6afd7fllr8otc, Icrkms46uh8tpb, I78u60nqh0etah, I1lso3vlgherue, I26c8p47106toa, Iq82b3qvf20ne, Ic3j8ku6mbsms4, I3nvoqsi8f05ph, I3eoft5md071do, I923eug653ra0o, I7t2thek61ghou, I61tdrsafr1vf3, Ibsk5g3rhm45pu, Icfoe9q8d4vs8f, Ibrfmvjrg4trnb, Iedih7t34maii9, I4e902qbfel1f1, Ie4met0joi8sv0, I1t8vq6a06ohhu, Icvt3pdunbinm7, I9ui3n41balr2q, I89sl7btgl24g2, I3u6g26k9kn96u, If1invp94rsjms, Ie5nc19gtiv5sv, Iald3dgvt1hjkb, Iurrhahet4gno, I5tamv2nk8bj8o, I8apq8e7c7qcpp, Id1e31ij0c35fv, I3ip09dj7i1e8n, Ide34bfv94bvut, I6c7mabde89bp, I9sbpodgd8ilku, Ialnqi1f4kpb, Icnrv1mfbd3in1, Icm9m0qeemu66d, I79dicn2l2lfgs, Idnsr2pndm36h0, Ia1pvdcbhuqf8m, I8steo882k7qns, I4pa4q37gj6fua, I5f178ab6b89t3, I4nakhtbsk3c5s, Id2j3bi9rqi3qn, Icbio0e1f0034b, I8c0vkqjjipnuj, I1adbcfi5uc62r, Ibf6ucefn8fh49, Idtu2sfctrhvdl, I2a839vbf5817q, Ia9p5bg6p18r0i, I42bqh279uf7oa, I4p6v96cffstms, I90n6nnkpdahrh, I8mk5kjgn02hi8, Ieqvq91sbe02ko, I2gr10p66od9ch, I9mcq66cm3gibo, I9c4d50jrp7as1, Ifplevr9hp8jo3, I7psec5e6ghc64, I2psb0sladd863, I585tk8khua0gk, I3ut99di214ru2, Iemkp87d26vsbh, I4ahfrt5dscf6q, Ieg1oc56mamrl5, I2vu5vj7173ik9, I6galqkn58q3bl, I36uoc8t9liv80, Ibunghsg9qa7f7, I8qnouj2c0igph, Ic30e2k517a3ns, I47a2tsd2o2b1c, Ifc9k1s0e9nv8e, I4ihj26hl75e5p, I2dl8ekhm2t22h, I13us5e5h5645o, I931cottvong90, I7sujb8gfvuo7n, I1ors0vru14it3, I40s11r8nagn2g, I6bjj87fr5g9nl, I8cbluptqo8kbp, I81cc4plffa1dm, I3ihan8icf0c5k, I7ibh0fckqou49, Id9js0aucdivjk, I1vj3e1a62je3o, I6c1t14l6giceg, Ibqeqpelookfc7, Idluhda5fs51me, I5gjo9p1b18ftr, I5rijfvcqtmsdc, Ib8qhbmc61qu95, I6041egnb3am04, I7ej7mean6mih8, Iehi3mdadqmlp5, Id9gv8k0nmtfsc, I2eip8tc75dpje, I564va64vtidbq, Ie5v6njpckr05b, I328av3j0bgmjb, I4tuqm9ato907i, Iagi89qt4h1lqg, I9dgmcnuamt5p8, Ifhs60omlhvt3, If34udpd5e57vi, I39t01nnod9109, Ie5vbnd9198quk, Ib1db5b4tm2bvc, I6k6jf8ncesuu3, I3qhk481i120pk, If1qr0kbbl298c, Idl3umm12u5pa, I5ont0141q9ss5, Ie6j49utvii126, I3v6ks33uluhnj, I3kiiim1cds68i, I4k60mkh2r6jjg, I70mou2rha6f5o, I9bur6p3ovq9mo, Ida37oe44osb06, I6v02o6j4snahe, I27569neuh5t1o, Id92o6smntb9m5, I5nmb2hfkgk9ol, Iav55bcqlrqn51, I2n0gaifmvnk9h, I10ra4g1rl6k2f, I1uihehkdsggvp, I8k3rnvpeeh4hv, Ibmikog7okp9jd, Ikkngcosp7bof, I22bm4d7re21j9, Idq94m670fbari, Ifioonc6ic974t, I72qfv83rhp4qr, I1sdjtg0mom46u, Ibcsrif5qnktv4, Ifsa6pjvc8t5vn, I64udjlb3l43q9, Ic0j854aucsgjh, I2gvrhmhj0moqc, I65qh88839sl2u, I43641g81fhl82, I9ibr6lih6j2ou, I935tki4voiobr, I4j0tlbg1g4hnk, Ifqt5asg9c3kl9, I9ii4hnjt4vc2j, Idjvt48j5plqih, I1gnvp8b47fj27, Iavl169paa5dbb, I835djvt3d32hf, I3ktkk856tqa2t, I57cq79pckivve, I8hv3mpjd5kvbj, I2tap0v9vk3h8h, Id55jp9esfn3s7, I3jftp5j4o8mk5, Ics4uc7qr0bv8t, I5sgsmd01vj1nq, I6kmjpgojp035v, Ibacrca7stumsr, Ia82mnkmeo2rhc, I4ltu3flme1ias, Icbccs0ug47ilf, I855j4i3kr8ko1, I44l1j847a2nv8, Ifb8gl934ssbac, Idd7hd99u0ho0n, Iafscmv8tjf0ou, I100l07kaehdlp, I6gnbnvip5vvdi, I984chsf9v7u61, Ia3c82eadg79bj, Ienusoeb625ftq, Ibtsa3docbr9el, Icusb76knakdp5, If1co0pilmi7oq, Iae74gjak1qibn, I3escdojpj0551, Icv68aq8841478, Ic262ibdoec56a, Iflcfm9b6nlmdd, Ijrsf4mnp3eka, Id5fm4p8lj5qgi, I8tjvj9uq4b7hi, I3qt1hgg4djhgb, I4fooe9dun9o0t, Iph9c4rn81ub2, Ier2cke86dqbr2, Imhre0s2vm68p, Icjchvrijclvlv, Ih04jp733tqqa, Ievr89968437gm, Ie3hcrrq6r18fs, I6v8sm60vvkmk7, I1qmtmbe5so8r3, Ih99m6ehpcar7, Idgorhsbgdq2ap, I9ubb2kqevnu6t, I2hq50pu2kdjpo, I9acqruh7322g2, I137t1cld92pod, I61d51nv4cou88, If8u5kl4h8070m, Ibmuil6p3vl83l, I7lul91g50ae87, Icl7nl1rfeog3i, Iasr6pj6shs0fl, I2uqmls7kcdnii, Idg69klialbkb8, I7r6b7145022pp, I30pg328m00nr3, Icmrn7bogp28cs, I7m9b5plj4h5ot, I9onhk772nfs4f, I3l6bnksrmt56r, Idh09k0l2pmdcg, I7uoiphbm0tj4r, I512p1n7qt24l8, I6s1nbislhk619, I3gghqnh2mj0is, I6iv852roh6t3h, I9oc2o6itbiopq, Ibslgga81p36aa, Ie8hpsm3jhsvo3, I1rvj4ubaplho0, Ia3uu7lqcc1q1i, I7crucfnonitkn, I7tmrp94r9sq4n, Iah8ta848qv1ud, I63bc0tucct525, I662h6anvimldg, Ieht0iu11hhrtr, Iep27ialq4a7o7, Iasu5jvoqr43mv, I6dlmjppkjq3k8, I5qolde99acmd1, I8gtde5abn1g9a, I65k0d394bfcb7, I1n8ob4k6240vs, I2ur0oeqg495j8, I6m4engkf1gbh2, I1bhd210c3phjj, Ia1u3jll6a06ae, Ic9g5lvl9iddc5, I88ff3u4dpivk, I33cp947glv1ks, Ic9om1gmmqu7rq, I5hfov2b68ppb6, Ibthhb2m9vneds, Iaitn5bqfacj7k, If4ebvclj2ugvi, Ia5le7udkgbaq9, Ieduc1e6frq8rb, I9h6gbtabovtm4, Ifnsa0dkkpf465, I65dtqr2egjbc3, Ibqj3vg5s5lk0c, I6l73u513p8rna, Iefqmt2htu1dlu, If8bgtgqrchjtu, Idusmq77988cmt, I9gqanbbbe917p, Id1m1230297f7a, Ifvb1p5munhhv4, I46h83ilqeed3g, Icahse3uoi76n7, I75sj3uv7gnemk, I5fjkvcb5vr6nb, I2gr1toekv86b9, I2v2ikqt2trp52, If3057hi1g5qlo, Iaii5qf41d5n3d, Ico8bnjc6taa27, I78i1bvlonei69, I9i1f9mrso1hmf, I9ksla2si91s56, Id9j7b85otvjru, Iaihk9pek2ajl9, Id9av23h47ufb2, Ib4kpnijas4jqp, I2vnu5k0u1i65h, Icqe266pmnr25o, I5hoiph0lqphp, I5k7oropl9ofc7, I48vagp1omigob, Ib5tst4ppem1g6, Ibn64edsrg3737, I83r9d02dh47j9, I3jnhifvaeuama, I8n1gia0lo42ok, I6gb0o7lqjfdjq, Idh36v6iegkmpq, I27hnueutmchbe, Iectm2em66uhao, I7q57goff3j72h, Ibe49veu9i9nro, I1rnkmiu7usb82, I1q546n7mmm8nk, If7i5aoh4lk0a1, If9prqbk25189q, Icugn66dlnp8rd, I1bfrt15apsnp, Id3old33tr9erj, I8iksqi3eani0a, I16enopmju1p0q, I43kq8qudg7pq9, I76riseemre533, I38bmcrmh852rk, I4hcillge8de5f, I6pl54js63fnua, Iek7v4hrgnq6iv, I2na29tt2afp0j, I9qfchhljqsjjl, I7kij8p9kchdjo, I229ijht536qdu, I62nte77gksm0f, I9cg2delv92pvq, Ilhp45uime5tp, I4f1hv034jf1dt, I5ihtepn1j7c1e, Id9idaj83175f9, Ie1semicfuv5uu, If25fjs9o37co1, I70sc1pdo8vtos, Ibck5e4jpm96l8, I60p8l86a8cm59, I3m3sk2lgcabvp, I5pf572duh4oeg, Idrugh2blv81ia, Iagqcb06kbevb1, Iec8defeh924b6, I1ti389kf8t6oi, If4nnre373amul, I55kbor0ocqk6h, Idsj9cg7j96kpc, Ido4u9drncfaml, Ie8c7ctks8ur2p, I6c6fpqmnqijqd, I6mik29s5073td, I2m0sqmb75cnpb, I49agc5b62mehu, Iatq9jda4hq6pg, I2g87evcjlgmqi, I93ajn7brqs8df, Ib2q8vnsr19t9b, If6q1q7op2gvqf, I37454vatvmm1l, Iblau1qa7u7fet, Id2aanom2jncf1, I1b9s29roqhg41, I9kd1anrch3gtm, I87u3l28logste, I44bc4bblti9at, Icr28nsmo3thmu, I1csu4ejte2mno, I9lrippm0l6t0c, Icsknfl0f6r973, I1au3fq4n84nv3, Iejaj7m7qka9tr, Idnak900lt5lm8, Ifk8eme5o7mukf, Iau4cgm6ih61cf, Ith132hqfb27q, Ic19as7nbst738, I54umskavgc9du, I2ip7o9e2tc5sf, I5egvk6hadac5h, I1td4upnup9gqv, I3m3s3nqk2k59p, I4rl33s8t7uju2, Icgsl781ka0jnq, I9s54l74mrft0k, Ia5ob51vsq2d0j, Ia082gmtdk04o2, I7svbvm6hg57aj, I8jhsbaiultviu, Iqklri338898o, Ie3nv9l8l9o5pa, I5rtkmhm2dng4u, I4g1444e4lrvko, I605froskfgu31, I7tgp4mjg0vh3g, I6qgvbdj59q82d, I8a7s0gpbv2c0i, I4udn5ndu0dko2, Ifpff50mo8ndh6, I3f9qerj1fhlkp, I7j6vt4ra6khhv, Iaddpgr0qkt1u0, I9mu321muoighj, I5r8t4iaend96p, Ie2db4l6126rkt, Ictkqqlhdjt761, I9cpqhfvd2291p, Idugco9k7jdh0f, Iba6ec6u9n2dc1, Iaqet9jc3ihboe, Ic952bubvq4k7d, I2v50gu3s1aqk6, Iabpgqcjikia83, Iar90ghe1dk69b, If7uv525tdvv7a, I2an1fs2eiebjp, TransactionValidityTransactionSource, I9ask1o4tfvcvs, Icerf8h8pdu8ss, I4gil44d08grh, I7u915mvkdsb08, I6spmpef2c7svf, Iei2mvq0mjvt81, Iftvbctbo05fu4, XcmVersionedXcm, Ic0c3req3mlc1l, XcmVersionedAssetId, I7ocn4njqde3v5, Iek7ha36da9mf5, I7qpv90droestd, If3hqm69dc23pp, Ib57kqg31o21t7, Ieh6nis3hdbtgi, XcmVersionedAsset, Icujp6hmv35vbn, I4tjame31218k9, I5gif8vomct5i8, I8fk5filgollou, Ic1d4u2opv3fst, Ie9sr1iqcg3cgm, I1mqgk2tmnn9i2, I6lr8sctk0bi4e, I5vv5n03oo8gas, Ies018ev98ebq7, I4totqt881mlti, I4s6vifaf8k998, Ia0r2e8lfrlsp0, I9sijb8gfrns29, I68qlusu5li159, I6f9v7emp7t5ba, Ida7d8eqrkav55, Idmrtv8jbbitnu, I6be4suv3r5mn6, Ibvgael8j9a8om, I63nhnkgg114n5, I1l7ajs6s9ur3a, Ice9mpbhevl5b7, Idt5popft6i714, I512dtcl0pn07c, Iaf368inbarroo } from "./common-types";
+import { StorageDescriptor, PlainDescriptor, TxDescriptor, RuntimeDescriptor, Enum, ApisFromDef, QueryFromPalletsDef, TxFromPalletsDef, EventsFromPalletsDef, ErrorsFromPalletsDef, ConstFromPalletsDef, ViewFnsFromPalletsDef, SS58String, SizedHex, FixedSizeArray } from "polkadot-api";
+import type { I5sesotjlssv2d, Iffmde3ekjedi9, I4mddgoa69c0a2, Ibh270f2dkuvvj, I95g6i7ilua7lq, Ieniouoqkq4icf, Phase, Ibgl04rn6nbfm6, I4q39t5hn830vp, I1v7jbnil3tjns, I8jgj1nhcr2dg8, Ifn6q3equiq9qi, Ia3sb0vgvovhtg, Iav8k1edbj86k7, Itom7fk49o0c9, I4i91h98n3cv1b, I4iumukclgj8ej, Iqnbvitf7a7l3, I48i407regf59r, I6r5cbv8ttrb09, PreimageOldRequestStatus, PreimageRequestStatus, I4pact7n2e9a0i, Idqn63pep0hpog, I56u24ncejr5kt, I9jd27rnpm8ttv, I7rt63b9d5k7p8, I4b3lhc1ach2vm, Iepbsvlk3qceij, I1q8tnt1cluu5j, I8ds64oj6581v0, Ia7pdug7cdsg8g, I3a3gt3bf28qh7, I2l1ctuihi2mfd, TransactionPaymentReleases, Ifble4juuml5ig, Version, I2phecamkn3pej, ClaimsStatementKind, Ia2lhg7l2hilo3, Ifi4da1gej1fri, Ifvgo9568rpmqc, I82jm9g7pufuel, Ic5m5lp1oioo8r, I6cs1itejju2vv, Icgljjb6j82uhn, Ib77b0fp1a6mjr, I5g2vv0ckl2m8b, Ifup3lg9ro8a0f, I5qfubnuvrnqn6, I8t3u2dv73ahbd, I7vlvrrl2pnbgk, Ie0rpl5bahldfk, XcmPalletVersionMigrationStage, I7e5oaj2qi4kl1, Ie849h3gncgvok, Iat62vud7hlod2, Ict03eedr8de9s, Ibkm2gcn4pji30, XcmVersionedLocation, I7f4alf2hnuu8s, Idh2ug6ou4a8og, Iejeo53sea6n4q, I53esa2ms463bk, Ib4jhb8tt3uung, Ibqjcgmcid3dll, Iag146hmjgqfgj, I8uo3fpd3bcc6f, I1808sk45co89c, I9p9lq3rej5bhc, Iff9heri56m1mb, I3qklfjubrljqh, Iag3f1hum3p4c8, I7svnfko10tq2e, I4s6jkha20aoh0, I2brm5b9jij1st, I78s05f59eoi8b, I35l6p7kq19mr0, Ianufjuplcj6u4, Id32h28hjj1tch, I6ouflveob4eli, I2mv9dvsaj3kcr, I7781vnk0rm9eq, Ie2iqtdb0stqo1, I5irutptk105do, Ic9nev69d8grv1, I18m6a0sc4k7s9, Ic9iokm15iigt6, I35m96p3u4vl0p, Iapmji0h53pmkn, Idrr42svup341f, I4ugih6gb4fmug, Idac0t49lnd4ls, I72ndo6phms8ik, If9iqq7i64mur8, I4v5g6i7bmt06o, I84bhscllvv07n, If2801grpltbp8, If21n82i0516em, Iegmj7n48sc3am, I2l0beelkqtf0a, ConvictionVotingVoteVoting, If9jidduiuq7vv, I7ra2omf9acmpl, Ict0fmb8krq1lk, Ibofbvvaehln4e, I2q3ri6itcjj5u, I64c5iroci157c, I72g4e3mnj3e6d, Ifmarq0v77ok, If354jrdedj0pj, Ib17t3992hb64n, I215mkl885p4da, Idphjddn2h69vc, Idhh9vuu2bderg, If6qa32dj75gu1, I7oo2mprv1qd1s, NominationPoolsClaimPermission, Ic5t26f9cp3tvk, I39k39h6vu4hbq, I542q009qbgt8k, I4e5ujckjq61g8, I3fgbanmq2lnk2, I6765e2s56217t, I7d4qtdlascfk8, I9cpogojpnsq8h, I4bboqsv44evel, I8je4hjun1hc3g, I3mj0igdqvh474, I8s6n43okuj2b1, I29575k8s6asco, I3rfe446il0rb7, I1nvcsqg39g26j, Ia8896dq44k9m4, Iefkd2klketjfh, I69tqqtpr9n8ie, StakingRewardDestination, I9o7ssi9vmhmgr, Ic3m9d6tdl6gi2, Ib3j7gb0jgs38u, I6flrronqs3l6n, I97fulj5h3ik95, Iff9p3c7k6pfoi, StakingForcing, I7oqom2n34q7u8, I921dks5d4ov9t, Idm2c96td6cqkk, Iam8h8p165t5uu, I205qrookusi3d, I4ojmnsk1dchql, I70u6ma6po0va2, I2gkgd7kt1f2bl, I834nfrf667ag1, I14i9pui8lc778, I8t4pajubp34g3, I10nrsmn0hji4l, I3oiqcurom3m43, I20ichc5j0l1u7, I1p16diuhde12h, Id4f5q01qh34o3, I6o6dmud53u1fj, I95l2k9b1re95f, Ifb0kt7cu5a61c, I9134mhoe91oet, I1d6j3815ii0ua, I2fbmombro6ugg, In7a38730s6qs, If15el53dd76v9, I9s0ave7t0vnrk, I4fo08joqmcqnm, XcmV5Junctions, Iasb8k6ash5mjn, Ibafpkl9hhno69, I35p85j063s0il, Iafqnechp3omqg, I8ofcg5rbj0g2c, I4adgbll7gku4i, I6pjjpfvhvcfru, I9pj91mj79qekl, I39uah9nss64h9, Ik64dknsq7k08, I3m5sq54sjdlso, Ib51vk42m1po4n, Ial23jn8hp0aen, Ifpj261e8s63m3, Idcr6u6361oad9, I82nfqfkd48n10, I1jm8m1rh9e20v, I3o5j3bli1pd8e, I304bsj18ipusd, I5n4sebgkfr760, I70j4tsj4jnnmm, Ifs1i5fk9cqvr6, Iedanerg9go0jc, I6ojmhgbsr6bah, Ieg3fd8p4pkt10, I8kg5ll427kfqq, I467333262q1l9, I6usrkf9la6hg2, Ibou4u1engb441, Id6nbvqoqdj4o2, I95iqep3b8snn9, I4ktuaksf5i1gk, I9bqtpv2ii35mp, I9j7pagd6d4bda, I2h9pmio37r7fb, Ibmr18suc9ikh9, I9iq22t0burs89, I5u8olqbbvfnvf, I5utcetro501ir, Id9uqtigc0il3v, Iaa2o6cgjdpdn5, Iam6hrl7ptd85l, Ict9ivhr2c5hv0, I8t4vv03357lk9, I6uag8j5aql8q, Isq3k9rh2c0l4, I1dqiovk0tpoah, I1ntko0oih7v1a, I2tf5qmg09624f, Ifccifqltb5obi, Iadtsfv699cq8b, Ialpmgmhr3gk5r, I4cbvqmqadhrea, I3sdol54kg5jaq, I8fougodaj6di6, I81vt5eq60l4b6, I3vh014cqgmrfd, Ia5cotcvi888ln, I21jsa919m88fd, Iegif7m3upfe1k, I9kt8c221c83ln, Ic76kfh5ebqkpl, Icscpmubum33bq, I21d2olof7eb60, Ibgm4rnf22lal1, Ie68np0vpihith, I9bnv6lu0crf1q, Iauhjqifrdklq7, Ie1uso9m8rt5cf, Idlampfle3vh6q, I40pqum1mu8qg3, I1r4c2ghbtvjuc, I9i6b1362umn1t, Iel0ml15497i7b, Icp5j0naoi9qh2, I6tmhgfk8n1767, Iabqr45kt0ojpg, I9jtl5i42je9s7, I81cj956at2rp6, I14u2uhn33si1m, Ifsm9g1hpgurkb, I7haeg59va2bre, Ideaemvoneh309, I3d9o9d7epp66v, I6lqh1vgb4mcja, Ieob9opmhn5et3, I80cht592rotce, Ibpc4kthjktuo, I1i6grf28bv9hm, I2eb501t8s6hsq, Ianmuoljk2sk1u, I3nal4mj09ue7q, I666bl2fqjkejo, I6o1er683vod1j, I5bq561t4gpfva, Ic357tcepuvo5c, I2rnoam876ruhj, Ic5b47dj4coa3r, Ib3qnc19gu633c, Ifira6u9hi7cu1, I72tqocvdoqfff, I2i27f3sfmvc05, I1nlrtd1epki2d, I3abtumcmempjs, Id81m8flopt8ha, I8hff7chabggkd, I49i39mtj1ivbs, Ifkr2kcak2vto1, I1ju6r8q0cs9jt, I4kpeq6j7cd5bu, I5na1ka76k6811, I59mhdb9omdqfa, I9vl5kpk0fpakt, I717jt61hu19b4, I7f7v8192r1lmq, Idjrs24gh0qv5l, If66ivi02f7256, I223jtcatlfkrc, I223jg78mng8hq, I4iiuiftkpq3fd, Ibra6533h92c0a, Ibgvkh96s68a66, If9vko7pv0231m, Iafkqus0ohh6l6, I6cu7obfo0rr0o, I736lv5q9m5bot, I1ap9tlenhr44l, Ib92t90p616grb, Ieipuujd6879do, Ie56eq9sg1rsoc, I5tvvgui05tn6e, Ibal0joadvdc2h, Iceq9fmmp9aeqv, I9viqhmdtuof5e, Ibqooroq6rr5kr, I6h88h8vba22v8, Ia9cd4jqb5eecb, I19jiel1ftbcce, I43aobns89nbkh, Iamd7rovec1hfb, I77ie723ncd4co, Ieebloeahma3ke, I4mbtpf4pu3rec, I1ahf3pvgsgbu, I9uapdn16emsti, Ie5i0q2glmr0md, I97qcg6i3l8gee, Ib5udrahak005b, I1jj31tn29ie3c, I5llu6o6a0go5i, Ic8b8561e6t9ie, I93r2effh7od84, I6afd7fllr8otc, Icrkms46uh8tpb, I78u60nqh0etah, I1lso3vlgherue, I26c8p47106toa, Iq82b3qvf20ne, Ic3j8ku6mbsms4, I3nvoqsi8f05ph, I4dr6q8duftm2l, I4da75oqso1rqj, I7t2thek61ghou, I61tdrsafr1vf3, Ibsk5g3rhm45pu, Icfoe9q8d4vs8f, Ibrfmvjrg4trnb, Iedih7t34maii9, I4e902qbfel1f1, Ie4met0joi8sv0, I1t8vq6a06ohhu, Icvt3pdunbinm7, I9ui3n41balr2q, I89sl7btgl24g2, I3u6g26k9kn96u, If1invp94rsjms, Ie5nc19gtiv5sv, Iald3dgvt1hjkb, Iurrhahet4gno, I5tamv2nk8bj8o, I8apq8e7c7qcpp, Id1e31ij0c35fv, Ic6vatc0h2tbq8, I3ip09dj7i1e8n, Ide34bfv94bvut, I6c7mabde89bp, I9sbpodgd8ilku, Ialnqi1f4kpb, Icnrv1mfbd3in1, Icm9m0qeemu66d, I79dicn2l2lfgs, Idnsr2pndm36h0, Ia1pvdcbhuqf8m, I8steo882k7qns, I4pa4q37gj6fua, I5f178ab6b89t3, I4nakhtbsk3c5s, Id2j3bi9rqi3qn, Icbio0e1f0034b, I8c0vkqjjipnuj, I1adbcfi5uc62r, Ibf6ucefn8fh49, I4re2nri9v0i54, I2a839vbf5817q, Ia9p5bg6p18r0i, I42bqh279uf7oa, I4p6v96cffstms, I90n6nnkpdahrh, I8mk5kjgn02hi8, Ieqvq91sbe02ko, I2gr10p66od9ch, I9mcq66cm3gibo, I9c4d50jrp7as1, Ifplevr9hp8jo3, Ic7vv426t45o81, Ic5qjcpspmr75n, I9usg3e2ik3sk, I9bg8aubpi9e76, I6k9enqukp95rq, I7psec5e6ghc64, I2psb0sladd863, I585tk8khua0gk, I3ut99di214ru2, Iemkp87d26vsbh, I4ahfrt5dscf6q, Ieg1oc56mamrl5, I2vu5vj7173ik9, I6galqkn58q3bl, I36uoc8t9liv80, Ibunghsg9qa7f7, I8qnouj2c0igph, Ic30e2k517a3ns, I47a2tsd2o2b1c, Ifc9k1s0e9nv8e, I4ihj26hl75e5p, I2dl8ekhm2t22h, I13us5e5h5645o, I931cottvong90, I7sujb8gfvuo7n, I1ors0vru14it3, I40s11r8nagn2g, I6bjj87fr5g9nl, I8cbluptqo8kbp, I81cc4plffa1dm, I3ihan8icf0c5k, I7ibh0fckqou49, Id9js0aucdivjk, I1vj3e1a62je3o, I6c1t14l6giceg, Ibqeqpelookfc7, Idluhda5fs51me, I5fth63b1m9g33, Ial45quj87eu6f, I5gjo9p1b18ftr, I5rijfvcqtmsdc, Ib8qhbmc61qu95, I6041egnb3am04, I7ej7mean6mih8, Iehi3mdadqmlp5, Id9gv8k0nmtfsc, I2eip8tc75dpje, I564va64vtidbq, Ie5v6njpckr05b, I328av3j0bgmjb, I4tuqm9ato907i, Iagi89qt4h1lqg, I9dgmcnuamt5p8, Ifhs60omlhvt3, If34udpd5e57vi, I39t01nnod9109, Ie5vbnd9198quk, Ib1db5b4tm2bvc, I6k6jf8ncesuu3, I3qhk481i120pk, I1640pio56addk, Idl3umm12u5pa, I5ont0141q9ss5, Ie6j49utvii126, I3v6ks33uluhnj, I3kiiim1cds68i, I4k60mkh2r6jjg, I70mou2rha6f5o, I9bur6p3ovq9mo, Ida37oe44osb06, I6v02o6j4snahe, I27569neuh5t1o, Id92o6smntb9m5, I5nmb2hfkgk9ol, Iav55bcqlrqn51, I6epk3rkifmg7p, I10ra4g1rl6k2f, I1uihehkdsggvp, I8k3rnvpeeh4hv, Ib96tka8srenvk, Ikkngcosp7bof, I22bm4d7re21j9, Idq94m670fbari, Ifioonc6ic974t, I72qfv83rhp4qr, I1sdjtg0mom46u, Ibcsrif5qnktv4, Ifsa6pjvc8t5vn, I64udjlb3l43q9, Ic0j854aucsgjh, I2gvrhmhj0moqc, I65qh88839sl2u, I43641g81fhl82, I9ibr6lih6j2ou, I935tki4voiobr, I4j0tlbg1g4hnk, Ifqt5asg9c3kl9, I9ii4hnjt4vc2j, Idjvt48j5plqih, I1gnvp8b47fj27, Iavl169paa5dbb, I835djvt3d32hf, I3ktkk856tqa2t, I57cq79pckivve, I8hv3mpjd5kvbj, I2tap0v9vk3h8h, Id55jp9esfn3s7, I3jftp5j4o8mk5, Ics4uc7qr0bv8t, I5sgsmd01vj1nq, I6kmjpgojp035v, Ibacrca7stumsr, Ia82mnkmeo2rhc, Id01msqoi1vkdp, Icbccs0ug47ilf, I855j4i3kr8ko1, I2cren9u3sfqmt, I6lk22bu76jt63, Idd7hd99u0ho0n, Iafscmv8tjf0ou, I100l07kaehdlp, I6gnbnvip5vvdi, Ib5m2ftafin6cg, Ia3c82eadg79bj, Ienusoeb625ftq, Ibtsa3docbr9el, Icusb76knakdp5, If1co0pilmi7oq, Iae74gjak1qibn, I3escdojpj0551, Icv68aq8841478, Ic262ibdoec56a, Iflcfm9b6nlmdd, Ijrsf4mnp3eka, Id5fm4p8lj5qgi, I8tjvj9uq4b7hi, I3qt1hgg4djhgb, I4fooe9dun9o0t, I8jo5jmsfnhqqg, I21r16r4j2912m, I672l1i4ipl36t, Iph9c4rn81ub2, Ier2cke86dqbr2, Imhre0s2vm68p, Icjchvrijclvlv, Ih04jp733tqqa, Ievr89968437gm, Ie3hcrrq6r18fs, I6v8sm60vvkmk7, I1qmtmbe5so8r3, Ih99m6ehpcar7, Idgorhsbgdq2ap, I9ubb2kqevnu6t, I2hq50pu2kdjpo, I9acqruh7322g2, I137t1cld92pod, I61d51nv4cou88, If8u5kl4h8070m, Ibmuil6p3vl83l, I7lul91g50ae87, Icl7nl1rfeog3i, Iasr6pj6shs0fl, I2uqmls7kcdnii, Idg69klialbkb8, I7r6b7145022pp, I30pg328m00nr3, Icmrn7bogp28cs, I7m9b5plj4h5ot, I9onhk772nfs4f, I3l6bnksrmt56r, Idh09k0l2pmdcg, I7uoiphbm0tj4r, I512p1n7qt24l8, I6s1nbislhk619, I3gghqnh2mj0is, I6iv852roh6t3h, I9oc2o6itbiopq, Ibslgga81p36aa, Ie8hpsm3jhsvo3, I1rvj4ubaplho0, Ia3uu7lqcc1q1i, I7crucfnonitkn, I7tmrp94r9sq4n, I2pi79fr5p6fs0, I8n30a7eej7n16, I8gv6h0r7v7hv, I58tu5pp7i2tgs, Iep27ialq4a7o7, Iasu5jvoqr43mv, I3ot064imihdqv, I5qolde99acmd1, I8gtde5abn1g9a, Icnom4korobbg9, I1n8ob4k6240vs, I2ur0oeqg495j8, I6m4engkf1gbh2, I1bhd210c3phjj, Ia1u3jll6a06ae, Ic9g5lvl9iddc5, I88ff3u4dpivk, I33cp947glv1ks, Ic9om1gmmqu7rq, I5hfov2b68ppb6, Ibthhb2m9vneds, Iaitn5bqfacj7k, If4ebvclj2ugvi, Ia5le7udkgbaq9, Ieduc1e6frq8rb, I9h6gbtabovtm4, Ifnsa0dkkpf465, I65dtqr2egjbc3, Ibqj3vg5s5lk0c, I6l73u513p8rna, Iefqmt2htu1dlu, If8bgtgqrchjtu, Idusmq77988cmt, Ifhs6ggbuiec5i, I9gqanbbbe917p, Id1m1230297f7a, Ifvb1p5munhhv4, I46h83ilqeed3g, Icahse3uoi76n7, I75sj3uv7gnemk, I5fjkvcb5vr6nb, I2gr1toekv86b9, I2v2ikqt2trp52, If3057hi1g5qlo, Iaii5qf41d5n3d, Ico8bnjc6taa27, I78i1bvlonei69, I9i1f9mrso1hmf, I9ksla2si91s56, Id9j7b85otvjru, Iaihk9pek2ajl9, Id9av23h47ufb2, Ib4kpnijas4jqp, I2vnu5k0u1i65h, Icqe266pmnr25o, I5hoiph0lqphp, I5k7oropl9ofc7, I48vagp1omigob, Ib5tst4ppem1g6, Ibn64edsrg3737, I83r9d02dh47j9, I3jnhifvaeuama, I8n1gia0lo42ok, I6gb0o7lqjfdjq, Idh36v6iegkmpq, I27hnueutmchbe, Iectm2em66uhao, I7q57goff3j72h, Ibe49veu9i9nro, I1rnkmiu7usb82, Iadvnek4gbu68j, I1q546n7mmm8nk, If7i5aoh4lk0a1, If9prqbk25189q, Icugn66dlnp8rd, I1bfrt15apsnp, Id3old33tr9erj, I8iksqi3eani0a, I16enopmju1p0q, I43kq8qudg7pq9, I76riseemre533, I38bmcrmh852rk, I4hcillge8de5f, I6pl54js63fnua, Iek7v4hrgnq6iv, I7svrbkiu01iec, I8cbok7qd7ru4t, I7kij8p9kchdjo, I229ijht536qdu, I62nte77gksm0f, I9cg2delv92pvq, Ilhp45uime5tp, I4f1hv034jf1dt, Icfla2fq51530d, Id9idaj83175f9, Ie1semicfuv5uu, If25fjs9o37co1, I70sc1pdo8vtos, Ibck5e4jpm96l8, I60p8l86a8cm59, I3m3sk2lgcabvp, I5pf572duh4oeg, Idrugh2blv81ia, I41bt7lr6c2cqa, I200voven22cdm, I2j7mp9h804tg2, I1hl2lumftiuhm, Iccp9ugd60cntc, Iagqcb06kbevb1, Iec8defeh924b6, I1ti389kf8t6oi, If4nnre373amul, I55kbor0ocqk6h, Idsj9cg7j96kpc, Ido4u9drncfaml, Ie8c7ctks8ur2p, I6c6fpqmnqijqd, I6mik29s5073td, I2m0sqmb75cnpb, I49agc5b62mehu, Iatq9jda4hq6pg, I2g87evcjlgmqi, I93ajn7brqs8df, Ib2q8vnsr19t9b, If6q1q7op2gvqf, I37454vatvmm1l, Iblau1qa7u7fet, Id2aanom2jncf1, I1b9s29roqhg41, I9kd1anrch3gtm, I9i3iv964ch4c9, I87u3l28logste, I44bc4bblti9at, Icr28nsmo3thmu, I1csu4ejte2mno, I9lrippm0l6t0c, Icsknfl0f6r973, I1au3fq4n84nv3, Iejaj7m7qka9tr, Idnak900lt5lm8, Ifk8eme5o7mukf, Iau4cgm6ih61cf, Ith132hqfb27q, Ic19as7nbst738, I54umskavgc9du, I2ip7o9e2tc5sf, I5egvk6hadac5h, I1td4upnup9gqv, I3m3s3nqk2k59p, I4rl33s8t7uju2, Icgsl781ka0jnq, I9s54l74mrft0k, Ia5ob51vsq2d0j, Ia082gmtdk04o2, I7svbvm6hg57aj, I8jhsbaiultviu, I6r8cv4qc2gp0i, Idv2jr6mgamhml, I5rtkmhm2dng4u, I4g1444e4lrvko, I605froskfgu31, I7tgp4mjg0vh3g, I6qgvbdj59q82d, I8a7s0gpbv2c0i, I4udn5ndu0dko2, Ifpff50mo8ndh6, I3f9qerj1fhlkp, I7j6vt4ra6khhv, Iaddpgr0qkt1u0, I9mu321muoighj, I5r8t4iaend96p, Ie2db4l6126rkt, Ictkqqlhdjt761, I7ghpul17sf1lm, Idugco9k7jdh0f, I6052turo9tavh, Iemk0s5gdc9ruv, Ia596n3f2p58pa, Iba6ec6u9n2dc1, Iaqet9jc3ihboe, Ic952bubvq4k7d, I2v50gu3s1aqk6, Iabpgqcjikia83, I4ip92cejsh8vu, If7uv525tdvv7a, I2an1fs2eiebjp, TransactionValidityTransactionSource, I9ask1o4tfvcvs, Icerf8h8pdu8ss, I4gil44d08grh, I7u915mvkdsb08, I6spmpef2c7svf, Iei2mvq0mjvt81, Iftvbctbo05fu4, XcmVersionedXcm, Ic0c3req3mlc1l, XcmVersionedAssetId, I7ocn4njqde3v5, Iek7ha36da9mf5, I7qpv90droestd, I5e1f2dmpobegd, Ia2g9rj22vtc71, Ieh6nis3hdbtgi, XcmVersionedAsset, Icujp6hmv35vbn, I4tjame31218k9, I5gif8vomct5i8, I8fk5filgollou, Ic1d4u2opv3fst, Ie9sr1iqcg3cgm, I1mqgk2tmnn9i2, I6lr8sctk0bi4e, I5vv5n03oo8gas, I2na29tt2afp0j, Ies018ev98ebq7, I4totqt881mlti, I4s6vifaf8k998, Iel648dq935909, I9sijb8gfrns29, I284b23t92u5po, I6f9v7emp7t5ba, Ida7d8eqrkav55, Idmrtv8jbbitnu, Id20o5u3itehte, Ieogbgh0dt6bkn, I63nhnkgg114n5, I1l7ajs6s9ur3a, Ice9mpbhevl5b7, Idt5popft6i714, I512dtcl0pn07c, I72ju98lulovhp } from "./common-types";
 type AnonymousEnum<T extends {}> = T & {
     __anonymous: true;
 };
 type MyTuple<T> = [T, ...T[]];
 type SeparateUndefined<T> = undefined extends T ? undefined | Exclude<T, undefined> : T;
-type Anonymize<T> = SeparateUndefined<T extends FixedSizeBinary<infer L> ? number extends L ? Binary : FixedSizeBinary<L> : T extends string | number | bigint | boolean | void | undefined | null | symbol | Uint8Array | Enum<any> ? T : T extends AnonymousEnum<infer V> ? Enum<V> : T extends MyTuple<any> ? {
+type Anonymize<T> = SeparateUndefined<T extends string | number | bigint | boolean | void | undefined | null | symbol | Uint8Array | Enum<any> ? T : T extends AnonymousEnum<infer V> ? Enum<V> : T extends MyTuple<any> ? {
     [K in keyof T]: T[K];
 } : T extends [] ? [] : T extends FixedSizeArray<infer L, infer T> ? number extends L ? Array<T> : FixedSizeArray<L, T> : {
     [K in keyof T & string]: T[K];
@@ -35,11 +35,11 @@ type IStorage = {
         /**
          * Map of block numbers to block hashes.
          */
-        BlockHash: StorageDescriptor<[Key: number], FixedSizeBinary<32>, false, never>;
+        BlockHash: StorageDescriptor<[Key: number], SizedHex<32>, false, never>;
         /**
          * Extrinsics data for the current block (maps an extrinsic's index to its data).
          */
-        ExtrinsicData: StorageDescriptor<[Key: number], Binary, false, never>;
+        ExtrinsicData: StorageDescriptor<[Key: number], Uint8Array, false, never>;
         /**
          * The current block number being processed. Set by `execute_block`.
          */
@@ -47,7 +47,7 @@ type IStorage = {
         /**
          * Hash of the previous block.
          */
-        ParentHash: StorageDescriptor<[], FixedSizeBinary<32>, false, never>;
+        ParentHash: StorageDescriptor<[], SizedHex<32>, false, never>;
         /**
          * Digest of the current block, also part of the block header.
          */
@@ -61,7 +61,7 @@ type IStorage = {
          * Events have a large in-memory size. Box the events to not go out-of-memory
          * just in case someone still reads them from within the runtime.
          */
-        Events: StorageDescriptor<[], Anonymize<I2jo1mg7kp0e5u>, false, never>;
+        Events: StorageDescriptor<[], Anonymize<Ibh270f2dkuvvj>, false, never>;
         /**
          * The number of events in the `Events<T>` list.
          */
@@ -78,7 +78,7 @@ type IStorage = {
          * the `EventIndex` then in case if the topic has the same contents on the next block
          * no notification will be triggered thus the event might be lost.
          */
-        EventTopics: StorageDescriptor<[Key: FixedSizeBinary<32>], Anonymize<I95g6i7ilua7lq>, false, never>;
+        EventTopics: StorageDescriptor<[Key: SizedHex<32>], Anonymize<I95g6i7ilua7lq>, false, never>;
         /**
          * Stores the `spec_version` and `spec_name` of when the last runtime upgrade happened.
          */
@@ -135,7 +135,7 @@ type IStorage = {
          * [`:code`][sp_core::storage::well_known_keys::CODE] which will result the next block process
          * with the new validation code. This concludes the upgrade process.
          */
-        PendingValidationCode: StorageDescriptor<[], Binary, false, never>;
+        PendingValidationCode: StorageDescriptor<[], Uint8Array, false, never>;
         /**
          * Validation code that is set by the parachain and is to be communicated to collator and
          * consequently the relay-chain.
@@ -143,11 +143,11 @@ type IStorage = {
          * This will be cleared in `on_initialize` of each new block if no other pallet already set
          * the value.
          */
-        NewValidationCode: StorageDescriptor<[], Binary, true, never>;
+        NewValidationCode: StorageDescriptor<[], Uint8Array, true, never>;
         /**
          * The [`PersistedValidationData`] set for this block.
-         * This value is expected to be set only once per block and it's never stored
-         * in the trie.
+         *
+         * This value is expected to be set only once by the [`Pallet::set_validation_data`] inherent.
          */
         ValidationData: StorageDescriptor<[], Anonymize<Ifn6q3equiq9qi>, true, never>;
         /**
@@ -212,7 +212,7 @@ type IStorage = {
          * This value is loaded before and saved after processing inbound downward messages carried
          * by the system inherent.
          */
-        LastDmqMqcHead: StorageDescriptor<[], FixedSizeBinary<32>, false, never>;
+        LastDmqMqcHead: StorageDescriptor<[], SizedHex<32>, false, never>;
         /**
          * The message queue chain heads we have observed per each channel incoming channel.
          *
@@ -251,13 +251,19 @@ type IStorage = {
         /**
          * Upward messages that were sent in a block.
          *
-         * This will be cleared in `on_initialize` of each new block.
+         * This will be cleared in `on_initialize` for each new block.
          */
         UpwardMessages: StorageDescriptor<[], Anonymize<Itom7fk49o0c9>, false, never>;
         /**
-         * Upward messages that are still pending and not yet send to the relay chain.
+         * Upward messages that are still pending and not yet sent to the relay chain.
          */
         PendingUpwardMessages: StorageDescriptor<[], Anonymize<Itom7fk49o0c9>, false, never>;
+        /**
+         * Upward signals that are still pending and not yet sent to the relay chain.
+         *
+         * This will be cleared in `on_finalize` for each block.
+         */
+        PendingUpwardSignals: StorageDescriptor<[], Anonymize<Itom7fk49o0c9>, false, never>;
         /**
          * The factor to multiply the base delivery fee by for UMP.
          */
@@ -282,7 +288,7 @@ type IStorage = {
          *
          * See `Pallet::set_custom_validation_head_data` for more information.
          */
-        CustomValidationHeadData: StorageDescriptor<[], Binary, true, never>;
+        CustomValidationHeadData: StorageDescriptor<[], Uint8Array, true, never>;
     };
     Timestamp: {
         /**
@@ -307,15 +313,15 @@ type IStorage = {
         /**
          * The request status of a given hash.
          */
-        StatusFor: StorageDescriptor<[Key: FixedSizeBinary<32>], PreimageOldRequestStatus, true, never>;
+        StatusFor: StorageDescriptor<[Key: SizedHex<32>], PreimageOldRequestStatus, true, never>;
         /**
          * The request status of a given hash.
          */
-        RequestStatusFor: StorageDescriptor<[Key: FixedSizeBinary<32>], PreimageRequestStatus, true, never>;
+        RequestStatusFor: StorageDescriptor<[Key: SizedHex<32>], PreimageRequestStatus, true, never>;
         /**
         
          */
-        PreimageFor: StorageDescriptor<[Key: Anonymize<I4pact7n2e9a0i>], Binary, true, never>;
+        PreimageFor: StorageDescriptor<[Key: Anonymize<I4pact7n2e9a0i>], Uint8Array, true, never>;
     };
     Scheduler: {
         /**
@@ -336,7 +342,7 @@ type IStorage = {
          * For v3 -> v4 the previously unbounded identities are Blake2-256 hashed to form the v4
          * identities.
          */
-        Lookup: StorageDescriptor<[Key: FixedSizeBinary<32>], Anonymize<I9jd27rnpm8ttv>, true, never>;
+        Lookup: StorageDescriptor<[Key: SizedHex<32>], Anonymize<I9jd27rnpm8ttv>, true, never>;
     };
     Parameters: {
         /**
@@ -357,7 +363,7 @@ type IStorage = {
          * This is used as blacklist, to not re-execute migrations that have not been removed from the
          * codebase yet. Governance can regularly clear this out via `clear_historic`.
          */
-        Historic: StorageDescriptor<[Key: Binary], null, true, never>;
+        Historic: StorageDescriptor<[Key: Uint8Array], null, true, never>;
     };
     Balances: {
         /**
@@ -411,7 +417,7 @@ type IStorage = {
         /**
          * Holds on account balances.
          */
-        Holds: StorageDescriptor<[Key: SS58String], Anonymize<I523vadfflec6s>, false, never>;
+        Holds: StorageDescriptor<[Key: SS58String], Anonymize<I3a3gt3bf28qh7>, false, never>;
         /**
          * Freeze locks on account balances.
          */
@@ -449,7 +455,7 @@ type IStorage = {
         /**
         
          */
-        Claims: StorageDescriptor<[Key: FixedSizeBinary<20>], bigint, true, never>;
+        Claims: StorageDescriptor<[Key: SizedHex<20>], bigint, true, never>;
         /**
         
          */
@@ -460,15 +466,15 @@ type IStorage = {
          * Second balance is how much should be unlocked per block.
          * The block number is when the vesting should start.
          */
-        Vesting: StorageDescriptor<[Key: FixedSizeBinary<20>], Anonymize<I2phecamkn3pej>, true, never>;
+        Vesting: StorageDescriptor<[Key: SizedHex<20>], Anonymize<I2phecamkn3pej>, true, never>;
         /**
          * The statement kind that must be signed, if any.
          */
-        Signing: StorageDescriptor<[Key: FixedSizeBinary<20>], ClaimsStatementKind, true, never>;
+        Signing: StorageDescriptor<[Key: SizedHex<20>], ClaimsStatementKind, true, never>;
         /**
          * Pre-claimed Ethereum accounts, by the Account ID that they are claimed to.
          */
-        Preclaims: StorageDescriptor<[Key: SS58String], FixedSizeBinary<20>, true, never>;
+        Preclaims: StorageDescriptor<[Key: SS58String], SizedHex<20>, true, never>;
     };
     Authorship: {
         /**
@@ -536,11 +542,18 @@ type IStorage = {
         /**
          * The next session keys for a validator.
          */
-        NextKeys: StorageDescriptor<[Key: SS58String], FixedSizeBinary<32>, true, never>;
+        NextKeys: StorageDescriptor<[Key: SS58String], SizedHex<32>, true, never>;
         /**
          * The owner of a key. The key is the `KeyTypeId` + the encoded key.
          */
         KeyOwner: StorageDescriptor<[Key: Anonymize<I82jm9g7pufuel>], SS58String, true, never>;
+        /**
+         * Accounts whose keys were set via `SessionInterface` (external path) without
+         * incrementing the consumer reference or placing a key deposit. `do_purge_keys`
+         * only decrements consumers for accounts that were registered through the local
+         * session pallet.
+         */
+        ExternallySetKeys: StorageDescriptor<[Key: SS58String], null, true, never>;
     };
     Aura: {
         /**
@@ -595,11 +608,11 @@ type IStorage = {
         /**
          * The messages outbound in a given XCMP channel.
          */
-        OutboundXcmpMessages: StorageDescriptor<Anonymize<I5g2vv0ckl2m8b>, Binary, false, never>;
+        OutboundXcmpMessages: StorageDescriptor<Anonymize<I5g2vv0ckl2m8b>, Uint8Array, false, never>;
         /**
          * Any signal messages waiting to be sent.
          */
-        SignalMessages: StorageDescriptor<[Key: number], Binary, false, never>;
+        SignalMessages: StorageDescriptor<[Key: number], Uint8Array, false, never>;
         /**
          * The configuration which controls the dynamics of the outbound queue.
          */
@@ -628,7 +641,7 @@ type IStorage = {
          * Key is the blake2 256 hash of (origin, versioned `Assets`) pair. Value is the number of
          * times this pair has been trapped (usually just 1 if it exists at all).
          */
-        AssetTraps: StorageDescriptor<[Key: FixedSizeBinary<32>], number, false, never>;
+        AssetTraps: StorageDescriptor<[Key: SizedHex<32>], number, false, never>;
         /**
          * Default version to encode XCM when latest version of destination is unknown. If `None`,
          * then the destinations whose XCM version is unknown are considered unreachable.
@@ -769,6 +782,10 @@ type IStorage = {
          * Metadata of an asset.
          */
         Metadata: StorageDescriptor<[Key: number], Anonymize<I78s05f59eoi8b>, false, never>;
+        /**
+         * Maps an asset to a list of its configured reserve information.
+         */
+        Reserves: StorageDescriptor<[Key: number], Anonymize<I35l6p7kq19mr0>, false, never>;
         /**
          * The asset ID enforced for the next asset creation, if any present. Otherwise, this storage
          * item has no effect.
@@ -912,6 +929,10 @@ type IStorage = {
          */
         Metadata: StorageDescriptor<[Key: Anonymize<If9iqq7i64mur8>], Anonymize<I78s05f59eoi8b>, false, never>;
         /**
+         * Maps an asset to a list of its configured reserve information.
+         */
+        Reserves: StorageDescriptor<[Key: Anonymize<If9iqq7i64mur8>], Anonymize<If2801grpltbp8>, false, never>;
+        /**
          * The asset ID enforced for the next asset creation, if any present. Otherwise, this storage
          * item has no effect.
          *
@@ -943,6 +964,10 @@ type IStorage = {
          * Metadata of an asset.
          */
         Metadata: StorageDescriptor<[Key: number], Anonymize<I78s05f59eoi8b>, false, never>;
+        /**
+         * Maps an asset to a list of its configured reserve information.
+         */
+        Reserves: StorageDescriptor<[Key: number], Anonymize<I35l6p7kq19mr0>, false, never>;
         /**
          * The asset ID enforced for the next asset creation, if any present. Otherwise, this storage
          * item has no effect.
@@ -1048,13 +1073,13 @@ type IStorage = {
          * Consider a garbage collection for a metadata of finished referendums to `unrequest` (remove)
          * large preimages.
          */
-        MetadataOf: StorageDescriptor<[Key: number], FixedSizeBinary<32>, true, never>;
+        MetadataOf: StorageDescriptor<[Key: number], SizedHex<32>, true, never>;
     };
     Whitelist: {
         /**
         
          */
-        WhitelistedCall: StorageDescriptor<[Key: FixedSizeBinary<32>], null, true, never>;
+        WhitelistedCall: StorageDescriptor<[Key: SizedHex<32>], null, true, never>;
     };
     Bounties: {
         /**
@@ -1068,7 +1093,7 @@ type IStorage = {
         /**
          * The description of each bounty.
          */
-        BountyDescriptions: StorageDescriptor<[Key: number], Binary, true, never>;
+        BountyDescriptions: StorageDescriptor<[Key: number], Uint8Array, true, never>;
         /**
          * Bounty indices that have been approved but not yet funded.
          */
@@ -1098,7 +1123,7 @@ type IStorage = {
          *
          * This item replaces the `ChildBountyDescriptions` storage item from the V0 storage version.
          */
-        ChildBountyDescriptionsV1: StorageDescriptor<Anonymize<I9jd27rnpm8ttv>, Binary, true, never>;
+        ChildBountyDescriptionsV1: StorageDescriptor<Anonymize<I9jd27rnpm8ttv>, Uint8Array, true, never>;
         /**
          * The mapping of the child bounty ids from storage version `V0` to the new `V1` version.
          *
@@ -1119,6 +1144,55 @@ type IStorage = {
          * E.g. `native_amount = asset_amount * ConversionRateToNative::<T>::get(asset_kind)`
          */
         ConversionRateToNative: StorageDescriptor<[Key: Anonymize<I2q3ri6itcjj5u>], bigint, true, never>;
+    };
+    MultiAssetBounties: {
+        /**
+         * Number of bounty proposals that have been made.
+         */
+        BountyCount: StorageDescriptor<[], number, false, never>;
+        /**
+         * Bounties that have been made.
+         */
+        Bounties: StorageDescriptor<[Key: number], Anonymize<I64c5iroci157c>, true, never>;
+        /**
+         * Child bounties that have been added.
+         *
+         * Indexed by `(parent_bounty_id, child_bounty_id)`.
+         */
+        ChildBounties: StorageDescriptor<Anonymize<I9jd27rnpm8ttv>, Anonymize<I72g4e3mnj3e6d>, true, never>;
+        /**
+         * Number of active child bounties per parent bounty.
+         *
+         * Indexed by `parent_bounty_id`.
+         */
+        ChildBountiesPerParent: StorageDescriptor<[Key: number], number, false, never>;
+        /**
+         * Number of total child bounties per parent bounty, including completed bounties.
+         *
+         * Indexed by `parent_bounty_id`.
+         */
+        TotalChildBountiesPerParent: StorageDescriptor<[Key: number], number, false, never>;
+        /**
+         * The cumulative child-bounty value for each parent bounty. To be subtracted from the parent
+         * bounty payout when awarding bounty.
+         *
+         * Indexed by `parent_bounty_id`.
+         */
+        ChildBountiesValuePerParent: StorageDescriptor<[Key: number], bigint, false, never>;
+        /**
+         * The consideration cost incurred by the child-/bounty curator for committing to the role.
+         *
+         * Determined by [`pallet::Config::Consideration`]. It is created when the curator accepts the
+         * role, and is either burned if the curator misbehaves or consumed upon successful
+         * completion of the child-/bounty.
+         *
+         * Note: If the parent curator is also assigned to the child-bounty,
+         * the consideration cost is charged only once — when the curator
+         * accepts the role for the parent bounty.
+         *
+         * Indexed by `(parent_bounty_id, child_bounty_id)`.
+         */
+        CuratorDeposit: StorageDescriptor<Anonymize<Ifmarq0v77ok>, bigint, true, never>;
     };
     StateTrieMigration: {
         /**
@@ -1224,7 +1298,7 @@ type IStorage = {
         /**
          * Metadata for the pool.
          */
-        Metadata: StorageDescriptor<[Key: number], Binary, false, never>;
+        Metadata: StorageDescriptor<[Key: number], Uint8Array, false, never>;
         /**
          * Counter for the related counted storage map
          */
@@ -1278,6 +1352,27 @@ type IStorage = {
          * [`Call::rebag`] can be used.
          */
         Lock: StorageDescriptor<[], null, true, never>;
+        /**
+         * Accounts that failed to be inserted into the bags-list due to locking.
+         * These accounts will be processed with priority in `on_idle` or via `rebag` extrinsic.
+         *
+         * Note: This storage is intentionally unbounded. The following factors make bounding
+         * unnecessary:
+         * 1. The storage usage is temporary - accounts are processed and removed in `on_idle`
+         * 2. The pallet is only locked during snapshot generation, which is weight-limited
+         * 3. Processing happens at multiple accounts per block, clearing even large backlogs quickly
+         * 4. An artificial limit could be exhausted by an attacker, preventing legitimate
+         * auto-rebagging from putting accounts in the correct position
+         *
+         * We don't store the score here - it's always fetched from `ScoreProvider` when processing,
+         * ensuring we use the most up-to-date score (accounts may have been slashed, rewarded, etc.
+         * while waiting in the queue).
+         */
+        PendingRebag: StorageDescriptor<[Key: SS58String], null, true, never>;
+        /**
+         * Counter for the related counted storage map
+         */
+        CounterForPendingRebag: StorageDescriptor<[], number, false, never>;
     };
     DelegatedStaking: {
         /**
@@ -1351,7 +1446,7 @@ type IStorage = {
          *
          * The hash is generated using [`frame_system::Config::Hashing`].
          */
-        PagedVoterSnapshotHash: StorageDescriptor<Anonymize<I9jd27rnpm8ttv>, FixedSizeBinary<32>, true, never>;
+        PagedVoterSnapshotHash: StorageDescriptor<Anonymize<I9jd27rnpm8ttv>, SizedHex<32>, true, never>;
         /**
          * Paginated target snapshot.
          *
@@ -1363,7 +1458,7 @@ type IStorage = {
          *
          * The hash is generated using [`frame_system::Config::Hashing`].
          */
-        PagedTargetSnapshotHash: StorageDescriptor<Anonymize<I9jd27rnpm8ttv>, FixedSizeBinary<32>, true, never>;
+        PagedTargetSnapshotHash: StorageDescriptor<Anonymize<I9jd27rnpm8ttv>, SizedHex<32>, true, never>;
     };
     MultiBlockElectionVerifier: {
         /**
@@ -1476,6 +1571,26 @@ type IStorage = {
          */
         MinCommission: StorageDescriptor<[], number, false, never>;
         /**
+         * Whether nominators are slashable or not.
+         *
+         * - When set to `true` (default), nominators are slashed along with validators and must wait
+         * the full [`Config::BondingDuration`] before withdrawing unbonded funds.
+         * - When set to `false`, nominators are not slashed, and can unbond in
+         * [`Config::NominatorFastUnbondDuration`] eras instead of the full
+         * [`Config::BondingDuration`] (see [`StakingInterface::nominator_bonding_duration`]).
+         */
+        AreNominatorsSlashable: StorageDescriptor<[], boolean, false, never>;
+        /**
+         * Per-era snapshot of whether nominators are slashable.
+         *
+         * This is copied from [`AreNominatorsSlashable`] at the start of each era. When processing
+         * offences, we use the value from this storage for the offence era to ensure that the
+         * slashing rules at the time of the offence are applied, not the current rules.
+         *
+         * If an entry does not exist for an era, nominators are assumed to be slashable (default).
+         */
+        ErasNominatorsSlashable: StorageDescriptor<[Key: number], boolean, true, never>;
+        /**
          * Map from all (unlocked) "controller" accounts to the info regarding the staking.
          *
          * Note: All the reads and mutations to this storage *MUST* be done through the methods exposed
@@ -1504,6 +1619,21 @@ type IStorage = {
          * When this value is not set, no limits are enforced.
          */
         MaxValidatorsCount: StorageDescriptor<[], number, true, never>;
+        /**
+         * Tracks the last era in which an account was active as a validator (included in the era's
+         * exposure/snapshot).
+         *
+         * This is used to enforce that accounts who were recently validators must wait the full
+         * [`Config::BondingDuration`] before their funds can be withdrawn, even if they switch to
+         * nominator role. This prevents validators from:
+         * 1. Committing a slashable offence in era N
+         * 2. Switching to nominator role
+         * 3. Using the shorter nominator unbonding duration to withdraw funds before being slashed
+         *
+         * Updated when era snapshots are created (in `ErasStakersPaged`/`ErasStakersOverview`).
+         * Cleaned up when the stash is killed (fully withdrawn/reaped).
+         */
+        LastValidatorEra: StorageDescriptor<[Key: SS58String], number, true, never>;
         /**
          * The map from nominator stash key to their nomination preferences, namely the validators that
          * they wish to support.
@@ -1736,7 +1866,7 @@ type IStorage = {
         /**
          * Tracks the current step of era pruning process for each era being lazily pruned.
          */
-        EraPruningState: StorageDescriptor<[Key: number], Anonymize<I2julfd57mkmap>, true, never>;
+        EraPruningState: StorageDescriptor<[Key: number], Anonymize<I2gkgd7kt1f2bl>, true, never>;
     };
     Revive: {
         /**
@@ -1744,26 +1874,26 @@ type IStorage = {
          * The code's size is bounded by [`crate::limits::BLOB_BYTES`] for PVM and
          * [`revm::primitives::eip170::MAX_CODE_SIZE`] for EVM bytecode.
          */
-        PristineCode: StorageDescriptor<[Key: FixedSizeBinary<32>], Binary, true, never>;
+        PristineCode: StorageDescriptor<[Key: SizedHex<32>], Uint8Array, true, never>;
         /**
          * A mapping from a contract's code hash to its code info.
          */
-        CodeInfoOf: StorageDescriptor<[Key: FixedSizeBinary<32>], Anonymize<I834nfrf667ag1>, true, never>;
+        CodeInfoOf: StorageDescriptor<[Key: SizedHex<32>], Anonymize<I834nfrf667ag1>, true, never>;
         /**
          * The data associated to a contract or externally owned account.
          */
-        AccountInfoOf: StorageDescriptor<[Key: FixedSizeBinary<20>], Anonymize<I14i9pui8lc778>, true, never>;
+        AccountInfoOf: StorageDescriptor<[Key: SizedHex<20>], Anonymize<I14i9pui8lc778>, true, never>;
         /**
          * The immutable data associated with a given account.
          */
-        ImmutableDataOf: StorageDescriptor<[Key: FixedSizeBinary<20>], Binary, true, never>;
+        ImmutableDataOf: StorageDescriptor<[Key: SizedHex<20>], Uint8Array, true, never>;
         /**
          * Evicted contracts that await child trie deletion.
          *
          * Child trie deletion is a heavy operation depending on the amount of storage items
          * stored in said trie. Therefore this operation is performed lazily in `on_idle`.
          */
-        DeletionQueue: StorageDescriptor<[Key: number], Binary, true, never>;
+        DeletionQueue: StorageDescriptor<[Key: number], Uint8Array, true, never>;
         /**
          * A pair of monotonic counters used to track the latest contract marked for deletion
          * and the latest deleted contract in queue.
@@ -1777,7 +1907,7 @@ type IStorage = {
          * Register your `AccountId32` using [`Pallet::map_account`] in order to
          * use it with this pallet.
          */
-        OriginalAccount: StorageDescriptor<[Key: FixedSizeBinary<20>], SS58String, true, never>;
+        OriginalAccount: StorageDescriptor<[Key: SizedHex<20>], SS58String, true, never>;
         /**
          * The current Ethereum block that is stored in the `on_finalize` method.
          *
@@ -1795,7 +1925,7 @@ type IStorage = {
          *
          * The maximum number of elements stored is capped by the block hash count `BLOCK_HASH_COUNT`.
          */
-        BlockHash: StorageDescriptor<[Key: number], FixedSizeBinary<32>, false, never>;
+        BlockHash: StorageDescriptor<[Key: number], SizedHex<32>, false, never>;
         /**
          * The details needed to reconstruct the receipt info offchain.
          *
@@ -2082,7 +2212,7 @@ type ICalls = {
         /**
          * Anonymously schedule a task.
          */
-        schedule: TxDescriptor<Anonymize<I2kt2o3oip6gat>>;
+        schedule: TxDescriptor<Anonymize<I304bsj18ipusd>>;
         /**
          * Cancel an anonymously scheduled task.
          */
@@ -2090,7 +2220,7 @@ type ICalls = {
         /**
          * Schedule a named task.
          */
-        schedule_named: TxDescriptor<Anonymize<Ieeljvqc3s7le3>>;
+        schedule_named: TxDescriptor<Anonymize<I70j4tsj4jnnmm>>;
         /**
          * Cancel a named scheduled task.
          */
@@ -2098,11 +2228,11 @@ type ICalls = {
         /**
          * Anonymously schedule a task after a delay.
          */
-        schedule_after: TxDescriptor<Anonymize<I5k9bsqt4lg5o1>>;
+        schedule_after: TxDescriptor<Anonymize<Iedanerg9go0jc>>;
         /**
          * Schedule a named task after a delay.
          */
-        schedule_named_after: TxDescriptor<Anonymize<I6j4ivvobbgrr6>>;
+        schedule_named_after: TxDescriptor<Anonymize<I6ojmhgbsr6bah>>;
         /**
          * Set a retry configuration for a task so that, in case its scheduled run fails, it will
          * be retried after `period` blocks, for a total amount of `retries` retries or until it
@@ -2976,7 +3106,7 @@ type ICalls = {
          * and the error of the failed call. If all were successful, then the `BatchCompleted`
          * event is deposited.
          */
-        batch: TxDescriptor<Anonymize<Iaifsc8ohbnivh>>;
+        batch: TxDescriptor<Anonymize<I6tmhgfk8n1767>>;
         /**
          * Send a call through an indexed pseudonym of the sender.
          *
@@ -2992,7 +3122,7 @@ type ICalls = {
          *
          * The dispatch origin for this call must be _Signed_.
          */
-        as_derivative: TxDescriptor<Anonymize<Ie9b9ug0pdcb7f>>;
+        as_derivative: TxDescriptor<Anonymize<Iabqr45kt0ojpg>>;
         /**
          * Send a batch of dispatch calls and atomically execute them.
          * The whole transaction will rollback and fail if any of the calls failed.
@@ -3008,7 +3138,7 @@ type ICalls = {
          * ## Complexity
          * - O(C) where C is the number of calls to be batched.
          */
-        batch_all: TxDescriptor<Anonymize<Iaifsc8ohbnivh>>;
+        batch_all: TxDescriptor<Anonymize<I6tmhgfk8n1767>>;
         /**
          * Dispatches a function call with a provided origin.
          *
@@ -3017,7 +3147,7 @@ type ICalls = {
          * ## Complexity
          * - O(1).
          */
-        dispatch_as: TxDescriptor<Anonymize<I1iog9igphiith>>;
+        dispatch_as: TxDescriptor<Anonymize<I9jtl5i42je9s7>>;
         /**
          * Send a batch of dispatch calls.
          * Unlike `batch`, it allows errors and won't interrupt.
@@ -3033,7 +3163,7 @@ type ICalls = {
          * ## Complexity
          * - O(C) where C is the number of calls to be batched.
          */
-        force_batch: TxDescriptor<Anonymize<Iaifsc8ohbnivh>>;
+        force_batch: TxDescriptor<Anonymize<I6tmhgfk8n1767>>;
         /**
          * Dispatch a function call with a specified weight.
          *
@@ -3042,7 +3172,7 @@ type ICalls = {
          *
          * The dispatch origin for this call must be _Root_.
          */
-        with_weight: TxDescriptor<Anonymize<Iavdtbbn92d56q>>;
+        with_weight: TxDescriptor<Anonymize<I81cj956at2rp6>>;
         /**
          * Dispatch a fallback call in the event the main call fails to execute.
          * May be called from any origin except `None`.
@@ -3068,7 +3198,7 @@ type ICalls = {
          * - Some use cases might involve submitting a `batch` type call in either main, fallback
          * or both.
          */
-        if_else: TxDescriptor<Anonymize<I9b6jujt4ckdem>>;
+        if_else: TxDescriptor<Anonymize<I14u2uhn33si1m>>;
         /**
          * Dispatches a function call with a provided origin.
          *
@@ -3076,7 +3206,7 @@ type ICalls = {
          *
          * The dispatch origin for this call must be _Root_.
          */
-        dispatch_as_fallible: TxDescriptor<Anonymize<I1iog9igphiith>>;
+        dispatch_as_fallible: TxDescriptor<Anonymize<I9jtl5i42je9s7>>;
     };
     Multisig: {
         /**
@@ -3093,7 +3223,7 @@ type ICalls = {
          * ## Complexity
          * O(Z + C) where Z is the length of the call and C its execution weight.
          */
-        as_multi_threshold_1: TxDescriptor<Anonymize<Idn3g9e67p0qkf>>;
+        as_multi_threshold_1: TxDescriptor<Anonymize<Ifsm9g1hpgurkb>>;
         /**
          * Register approval for a dispatch to be made from a deterministic composite account if
          * approved by a total of `threshold - 1` of `other_signatories`.
@@ -3135,7 +3265,7 @@ type ICalls = {
          * - Storage: inserts one item, value size bounded by `MaxSignatories`, with a deposit
          * taken for its lifetime of `DepositBase + threshold * DepositFactor`.
          */
-        as_multi: TxDescriptor<Anonymize<I9doqkns1o391l>>;
+        as_multi: TxDescriptor<Anonymize<I7haeg59va2bre>>;
         /**
          * Register approval for a dispatch to be made from a deterministic composite account if
          * approved by a total of `threshold - 1` of `other_signatories`.
@@ -3222,7 +3352,7 @@ type ICalls = {
          * - `force_proxy_type`: Specify the exact proxy type to be used and checked for this call.
          * - `call`: The call to be made by the `real` account.
          */
-        proxy: TxDescriptor<Anonymize<I46a6cqthuf20a>>;
+        proxy: TxDescriptor<Anonymize<Ieob9opmhn5et3>>;
         /**
          * Register a proxy account for the sender that is able to make calls on its behalf.
          *
@@ -3351,7 +3481,7 @@ type ICalls = {
          * - `force_proxy_type`: Specify the exact proxy type to be used and checked for this call.
          * - `call`: The call to be made by the `real` account.
          */
-        proxy_announced: TxDescriptor<Anonymize<I8onfucrniob93>>;
+        proxy_announced: TxDescriptor<Anonymize<I3nal4mj09ue7q>>;
         /**
          * Poke / Adjust deposits made for proxies and announcements based on current values.
          * This can be used by accounts to possibly lower their locked amount.
@@ -4005,6 +4135,18 @@ type ICalls = {
          * guarantee to keep the sender asset account alive (true).
          */
         transfer_all: TxDescriptor<Anonymize<I7f7v8192r1lmq>>;
+        /**
+         * Sets the trusted reserve information of an asset.
+         *
+         * Origin must be the Owner of the asset `id`. The origin must conform to the configured
+         * `CreateOrigin` or be the signed `owner` configured during asset creation.
+         *
+         * - `id`: The identifier of the asset.
+         * - `reserves`: The full list of trusted reserves information.
+         *
+         * Emits `AssetMinBalanceChanged` event when successful.
+         */
+        set_reserves: TxDescriptor<Anonymize<Idjrs24gh0qv5l>>;
     };
     Uniques: {
         /**
@@ -5034,7 +5176,7 @@ type ICalls = {
          * Emits `AttributeSet` if the attributes were provided.
          * Emits `ItemMetadataSet` if the metadata was not empty.
          */
-        mint_pre_signed: TxDescriptor<Anonymize<I3eoft5md071do>>;
+        mint_pre_signed: TxDescriptor<Anonymize<I4dr6q8duftm2l>>;
         /**
          * Set attributes for an item by providing the pre-signed approval.
          *
@@ -5050,7 +5192,7 @@ type ICalls = {
          * Emits `ItemAttributesApprovalAdded` if the approval wasn't set before.
          * Emits `PreSignedAttributesSet` on success.
          */
-        set_attributes_pre_signed: TxDescriptor<Anonymize<I923eug653ra0o>>;
+        set_attributes_pre_signed: TxDescriptor<Anonymize<I4da75oqso1rqj>>;
     };
     ForeignAssets: {
         /**
@@ -5602,6 +5744,18 @@ type ICalls = {
          * guarantee to keep the sender asset account alive (true).
          */
         transfer_all: TxDescriptor<Anonymize<Id1e31ij0c35fv>>;
+        /**
+         * Sets the trusted reserve information of an asset.
+         *
+         * Origin must be the Owner of the asset `id`. The origin must conform to the configured
+         * `CreateOrigin` or be the signed `owner` configured during asset creation.
+         *
+         * - `id`: The identifier of the asset.
+         * - `reserves`: The full list of trusted reserves information.
+         *
+         * Emits `AssetMinBalanceChanged` event when successful.
+         */
+        set_reserves: TxDescriptor<Anonymize<Ic6vatc0h2tbq8>>;
     };
     PoolAssets: {
         /**
@@ -6153,6 +6307,18 @@ type ICalls = {
          * guarantee to keep the sender asset account alive (true).
          */
         transfer_all: TxDescriptor<Anonymize<I7f7v8192r1lmq>>;
+        /**
+         * Sets the trusted reserve information of an asset.
+         *
+         * Origin must be the Owner of the asset `id`. The origin must conform to the configured
+         * `CreateOrigin` or be the signed `owner` configured during asset creation.
+         *
+         * - `id`: The identifier of the asset.
+         * - `reserves`: The full list of trusted reserves information.
+         *
+         * Emits `AssetMinBalanceChanged` event when successful.
+         */
+        set_reserves: TxDescriptor<Anonymize<Idjrs24gh0qv5l>>;
     };
     AssetConversion: {
         /**
@@ -6584,7 +6750,7 @@ type ICalls = {
         /**
         
          */
-        dispatch_whitelisted_call_with_preimage: TxDescriptor<Anonymize<Idtu2sfctrhvdl>>;
+        dispatch_whitelisted_call_with_preimage: TxDescriptor<Anonymize<I4re2nri9v0i54>>;
     };
     Bounties: {
         /**
@@ -6919,6 +7085,244 @@ type ICalls = {
          * - O(1)
          */
         remove: TxDescriptor<Anonymize<Ifplevr9hp8jo3>>;
+    };
+    MultiAssetBounties: {
+        /**
+         * Fund a new bounty with a proposed curator, initiating the payment from the
+         * funding source to the bounty account/location.
+         *
+         * ## Dispatch Origin
+         *
+         * Must be [`Config::SpendOrigin`] with the `Success` value being at least
+         * the bounty value converted to native balance using [`Config::BalanceConverter`].
+         * The converted native amount is validated against the maximum spendable amount
+         * returned by [`Config::SpendOrigin`].
+         *
+         * ## Details
+         *
+         * - The `SpendOrigin` must have sufficient permissions to fund the bounty.
+         * - The bounty `value` (in asset balance) is converted to native balance for validation.
+         * - In case of a funding failure, the bounty status must be updated with the
+         * `check_status` call before retrying with `retry_payment` call.
+         *
+         * ### Parameters
+         * - `asset_kind`: An indicator of the specific asset class to be funded.
+         * - `value`: The total payment amount of this bounty.
+         * - `curator`: Address of bounty curator.
+         * - `metadata`: The hash of an on-chain stored preimage with bounty metadata.
+         *
+         * ## Events
+         *
+         * Emits [`Event::BountyCreated`] and [`Event::Paid`] if successful.
+         */
+        fund_bounty: TxDescriptor<Anonymize<Ic7vv426t45o81>>;
+        /**
+         * Fund a new child-bounty with a proposed curator, initiating the payment from the parent
+         * bounty to the child-bounty account/location.
+         *
+         * ## Dispatch Origin
+         *
+         * Must be signed by the parent curator.
+         *
+         * ## Details
+         *
+         * - If `curator` is not provided, the child-bounty will default to using the parent
+         * curator, allowing the parent curator to immediately call `check_status` and
+         * `award_bounty` to payout the child-bounty.
+         * - In case of a funding failure, the child-/bounty status must be updated with the
+         * `check_status` call before retrying with `retry_payment` call.
+         *
+         * ### Parameters
+         * - `parent_bounty_id`: Index of parent bounty for which child-bounty is being added.
+         * - `value`: The payment amount of this child-bounty.
+         * - `metadata`: The hash of an on-chain stored preimage with child-bounty metadata.
+         * - `curator`: Address of child-bounty curator.
+         *
+         * ## Events
+         *
+         * Emits [`Event::ChildBountyCreated`] and [`Event::Paid`] if successful.
+         */
+        fund_child_bounty: TxDescriptor<Anonymize<Ic5qjcpspmr75n>>;
+        /**
+         * Propose a new curator for a child-/bounty after the previous was unassigned.
+         *
+         * ## Dispatch Origin
+         *
+         * Must be signed by `T::SpendOrigin` for a bounty, or by the parent bounty curator
+         * for a child-bounty.
+         *
+         * ## Details
+         *
+         * - The child-/bounty must be in the `CuratorUnassigned` state.
+         * - For a bounty, the `SpendOrigin` must have sufficient permissions to propose the
+         * curator.
+         *
+         * ### Parameters
+         * - `parent_bounty_id`: Index of bounty.
+         * - `child_bounty_id`: Index of child-bounty.
+         * - `curator`: Account to be proposed as the curator.
+         *
+         * ## Events
+         *
+         * Emits [`Event::CuratorProposed`] if successful.
+         */
+        propose_curator: TxDescriptor<Anonymize<I9usg3e2ik3sk>>;
+        /**
+         * Accept the curator role for a child-/bounty.
+         *
+         * ## Dispatch Origin
+         *
+         * Must be signed by the proposed curator.
+         *
+         * ## Details
+         *
+         * - The child-/bounty must be in the `Funded` state.
+         * - The curator must accept the role by calling this function.
+         * - A deposit will be reserved from the curator and refunded upon successful payout.
+         *
+         * ### Parameters
+         * - `parent_bounty_id`: Index of parent bounty.
+         * - `child_bounty_id`: Index of child-bounty.
+         *
+         * ## Events
+         *
+         * Emits [`Event::BountyBecameActive`] if successful.
+         */
+        accept_curator: TxDescriptor<Anonymize<I9bg8aubpi9e76>>;
+        /**
+         * Unassign curator from a child-/bounty.
+         *
+         * ## Dispatch Origin
+         *
+         * This function can only be called by the `RejectOrigin` or the child-/bounty curator.
+         *
+         * ## Details
+         *
+         * - If this function is called by the `RejectOrigin`, or by the parent curator in the case
+         * of a child bounty, we assume that the curator is malicious or inactive. As a result,
+         * we will slash the curator when possible.
+         * - If the origin is the child-/bounty curator, we take this as a sign they are unable to
+         * do their job and they willingly give up. We could slash them, but for now we allow
+         * them to recover their deposit and exit without issue. (We may want to change this if
+         * it is abused).
+         * - If successful, the child-/bounty status is updated to `CuratorUnassigned`. To
+         * reactivate the bounty, a new curator must be proposed and must accept the role.
+         *
+         * ### Parameters
+         * - `parent_bounty_id`: Index of parent bounty.
+         * - `child_bounty_id`: Index of child-bounty.
+         *
+         * ## Events
+         *
+         * Emits [`Event::CuratorUnassigned`] if successful.
+         */
+        unassign_curator: TxDescriptor<Anonymize<I9bg8aubpi9e76>>;
+        /**
+         * Awards the child-/bounty to a beneficiary account/location,
+         * initiating the payout payments to both the beneficiary and the curator.
+         *
+         * ## Dispatch Origin
+         *
+         * This function can only be called by the `RejectOrigin` or the child-/bounty curator.
+         *
+         * ## Details
+         *
+         * - The child-/bounty must be in the `Active` state.
+         * - if awarding a parent bounty it must not have active or funded child bounties.
+         * - Initiates payout payment from the child-/bounty to the beneficiary account/location.
+         * - If successful the child-/bounty status is updated to `PayoutAttempted`.
+         * - In case of a payout failure, the child-/bounty status must be updated with
+         * `check_status` call before retrying with `retry_payment` call.
+         *
+         * ### Parameters
+         * - `parent_bounty_id`: Index of parent bounty.
+         * - `child_bounty_id`: Index of child-bounty.
+         * - `beneficiary`: Account/location to be awarded the child-/bounty.
+         *
+         * ## Events
+         *
+         * Emits [`Event::BountyAwarded`] and [`Event::Paid`] if successful.
+         */
+        award_bounty: TxDescriptor<Anonymize<I6k9enqukp95rq>>;
+        /**
+         * Cancel an active child-/bounty. A payment to send all the funds to the funding source is
+         * initialized.
+         *
+         * ## Dispatch Origin
+         *
+         * This function can only be called by the `RejectOrigin` or the parent bounty curator.
+         *
+         * ## Details
+         *
+         * - If the child-/bounty is in the `Funded` state, a refund payment is initiated.
+         * - If the child-/bounty is in the `Active` state, a refund payment is initiated and the
+         * child-/bounty status is updated with the curator account/location.
+         * - If the child-/bounty is in the funding or payout phase, it cannot be canceled.
+         * - In case of a refund failure, the child-/bounty status must be updated with the
+         * `check_status` call before retrying with `retry_payment` call.
+         *
+         * ### Parameters
+         * - `parent_bounty_id`: Index of parent bounty.
+         * - `child_bounty_id`: Index of child-bounty.
+         *
+         * ## Events
+         *
+         * Emits [`Event::BountyCanceled`] and [`Event::Paid`] if successful.
+         */
+        close_bounty: TxDescriptor<Anonymize<I9bg8aubpi9e76>>;
+        /**
+         * Check and update the payment status of a child-/bounty.
+         *
+         * ## Dispatch Origin
+         *
+         * Must be signed.
+         *
+         * ## Details
+         *
+         * - If the child-/bounty status is `FundingAttempted`, it checks if the funding payment
+         * has succeeded. If successful, the bounty status becomes `Funded`.
+         * - If the child-/bounty status is `RefundAttempted`, it checks if the refund payment has
+         * succeeded. If successful, the child-/bounty is removed from storage.
+         * - If the child-/bounty status is `PayoutAttempted`, it checks if the payout payment has
+         * succeeded. If successful, the child-/bounty is removed from storage.
+         *
+         * ### Parameters
+         * - `parent_bounty_id`: Index of parent bounty.
+         * - `child_bounty_id`: Index of child-bounty.
+         *
+         * ## Events
+         *
+         * Emits [`Event::BountyBecameActive`] if the child/bounty status transitions to `Active`.
+         * Emits [`Event::BountyRefundProcessed`] if the refund payment has succeed.
+         * Emits [`Event::BountyPayoutProcessed`] if the payout payment has succeed.
+         * Emits [`Event::PaymentFailed`] if the funding, refund our payment payment has failed.
+         */
+        check_status: TxDescriptor<Anonymize<I9bg8aubpi9e76>>;
+        /**
+         * Retry the funding, refund or payout payments.
+         *
+         * ## Dispatch Origin
+         *
+         * Must be signed.
+         *
+         * ## Details
+         *
+         * - If the child-/bounty status is `FundingAttempted`, it retries the funding payment from
+         * funding source the child-/bounty account/location.
+         * - If the child-/bounty status is `RefundAttempted`, it retries the refund payment from
+         * the child-/bounty account/location to the funding source.
+         * - If the child-/bounty status is `PayoutAttempted`, it retries the payout payment from
+         * the child-/bounty account/location to the beneficiary account/location.
+         *
+         * ### Parameters
+         * - `parent_bounty_id`: Index of parent bounty.
+         * - `child_bounty_id`: Index of child-bounty.
+         *
+         * ## Events
+         *
+         * Emits [`Event::Paid`] if the funding, refund or payout payment has initiated.
+         */
+        retry_payment: TxDescriptor<Anonymize<I9bg8aubpi9e76>>;
     };
     StateTrieMigration: {
         /**
@@ -7369,6 +7773,71 @@ type ICalls = {
         
          */
         relay_new_offence_paged: TxDescriptor<Anonymize<Idluhda5fs51me>>;
+        /**
+         * Set session keys for a validator. Keys are validated on AssetHub and forwarded to RC.
+         *
+         * On the first call, a deposit of `KeyDeposit` is held from the stash. Subsequent calls
+         * do not charge again. The deposit is released on `purge_keys`.
+         *
+         * **Validation on AssetHub:**
+         * - Keys are decoded as `T::RelayChainSessionKeys` to ensure they match RC's expected
+         * format.
+         *
+         * If validation passes, only the validated keys are sent to RC (with empty proof),
+         * since RC trusts AH's validation.
+         *
+         * Note: Ownership proof validation requires PR #1739 which is not backported to
+         * stable2512. The proof parameter will be added when that PR is backported.
+         *
+         * **Fees:**
+         * The actual cost of this call is higher than what the weight-based fee estimate shows.
+         * In addition to the local transaction weight fee, the stash account is charged an XCM
+         * fee (delivery + RC execution cost) via `XcmExecutor::charge_fees`. The relay chain
+         * uses `UnpaidExecution`, so the full remote cost is charged upfront on AssetHub.
+         *
+         * When called via a staking proxy, the proxy pays the transaction weight fee,
+         * while the stash (delegating account) pays the XCM fee.
+         *
+         * **Max Fee Limit:**
+         * Users can optionally specify `max_delivery_and_remote_execution_fee` to limit the
+         * delivery + RC execution fee. This does not include the local transaction weight fee. If
+         * the fee exceeds this limit, the operation fails with `FeesExceededMax`. Pass `None` for
+         * unlimited (no cap).
+         *
+         * NOTE: unlike the current flow for new validators on RC (bond -> set_keys -> validate),
+         * users on Asset Hub MUST call bond and validate BEFORE calling set_keys. Attempting to
+         * set keys before declaring intent to validate will fail with NotValidator.
+         */
+        set_keys: TxDescriptor<Anonymize<I5fth63b1m9g33>>;
+        /**
+         * Remove session keys for a validator and release the key deposit.
+         *
+         * This purges the keys from the Relay Chain.
+         *
+         * Unlike `set_keys`, this does not require the caller to be a registered validator.
+         * This is intentional: a validator who has chilled (stopped validating) should still
+         * be able to purge their session keys. This matches the behavior of the original
+         * `pallet-session::purge_keys` which allows anyone to call it.
+         *
+         * The Relay Chain will reject the call with `NoKeys` error if the account has no
+         * keys set.
+         *
+         * **Fees:**
+         * The actual cost of this call is higher than what the weight-based fee estimate shows.
+         * In addition to the local transaction weight fee, the caller is charged an XCM fee
+         * (delivery + RC execution cost) via `XcmExecutor::charge_fees`. The relay chain uses
+         * `UnpaidExecution`, so the full remote cost is charged upfront on AssetHub.
+         *
+         * When called via a staking proxy, the proxy pays the transaction weight fee,
+         * while the delegating account pays the XCM fee.
+         *
+         * **Max Fee Limit:**
+         * Users can optionally specify `max_delivery_and_remote_execution_fee` to limit the
+         * delivery + RC execution fee. This does not include the local transaction weight fee. If
+         * the fee exceeds this limit, the operation fails with `FeesExceededMax`. Pass `None` for
+         * unlimited (no cap).
+         */
+        purge_keys: TxDescriptor<Anonymize<Ial45quj87eu6f>>;
     };
     MultiBlockElection: {
         /**
@@ -7423,7 +7892,7 @@ type ICalls = {
         /**
          * Retract a submission.
          *
-         * A portion of the deposit may be returned, based on the [`Config::BailoutGraceRatio`].
+         * A portion of the deposit may be returned, based on the [`Config::EjectGraceRatio`].
          *
          * This will fully remove the solution from storage.
          */
@@ -7729,7 +8198,7 @@ type ICalls = {
          * NOTE: Existing nominators and validators will not be affected by this update.
          * to kick people under the new limits, `chill_other` should be called.
          */
-        set_staking_configs: TxDescriptor<Anonymize<If1qr0kbbl298c>>;
+        set_staking_configs: TxDescriptor<Anonymize<I1640pio56addk>>;
         /**
          * Declare a `controller` to stop participating as either a validator or nominator.
          *
@@ -8014,7 +8483,7 @@ type ICalls = {
          * * `call`: The Substrate runtime call to execute.
          * * `transaction_encoded`: The RLP encoding of the Ethereum transaction,
          */
-        eth_substrate_call: TxDescriptor<Anonymize<I2n0gaifmvnk9h>>;
+        eth_substrate_call: TxDescriptor<Anonymize<I6epk3rkifmg7p>>;
         /**
          * Upload new `code` without instantiating a contract from it.
          *
@@ -8073,13 +8542,13 @@ type ICalls = {
          * is the `AccountId20` with the last 12 bytes set to `0xEE`. This is essentially a
          * recovery function in case an `AccountId20` was used without creating a mapping first.
          */
-        dispatch_as_fallback_account: TxDescriptor<Anonymize<Idtu2sfctrhvdl>>;
+        dispatch_as_fallback_account: TxDescriptor<Anonymize<I4re2nri9v0i54>>;
     };
     Sudo: {
         /**
          * Authenticates the sudo key and dispatches a function call with `Root` origin.
          */
-        sudo: TxDescriptor<Anonymize<Idtu2sfctrhvdl>>;
+        sudo: TxDescriptor<Anonymize<I4re2nri9v0i54>>;
         /**
          * Authenticates the sudo key and dispatches a function call with `Root` origin.
          * This function does not check the weight of the call, and instead allows the
@@ -8087,7 +8556,7 @@ type ICalls = {
          *
          * The dispatch origin for this call must be _Signed_.
          */
-        sudo_unchecked_weight: TxDescriptor<Anonymize<Iavdtbbn92d56q>>;
+        sudo_unchecked_weight: TxDescriptor<Anonymize<I81cj956at2rp6>>;
         /**
          * Authenticates the current sudo key and sets the given AccountId (`new`) as the new sudo
          * key.
@@ -8099,7 +8568,7 @@ type ICalls = {
          *
          * The dispatch origin for this call must be _Signed_.
          */
-        sudo_as: TxDescriptor<Anonymize<Ibmikog7okp9jd>>;
+        sudo_as: TxDescriptor<Anonymize<Ib96tka8srenvk>>;
         /**
          * Permanently removes the sudo key.
          *
@@ -8323,7 +8792,7 @@ type IEvent = {
         /**
          * An extrinsic failed.
          */
-        ExtrinsicFailed: PlainDescriptor<Anonymize<I4ltu3flme1ias>>;
+        ExtrinsicFailed: PlainDescriptor<Anonymize<Id01msqoi1vkdp>>;
         /**
          * `:code` was updated.
          */
@@ -8351,7 +8820,7 @@ type IEvent = {
         /**
          * A [`Task`] failed during execution.
          */
-        TaskFailed: PlainDescriptor<Anonymize<I44l1j847a2nv8>>;
+        TaskFailed: PlainDescriptor<Anonymize<I2cren9u3sfqmt>>;
         /**
          * An upgrade was authorized.
          */
@@ -8359,7 +8828,7 @@ type IEvent = {
         /**
          * An invalid authorized upgrade was rejected while trying to apply it.
          */
-        RejectedInvalidAuthorizedUpgrade: PlainDescriptor<Anonymize<Ifb8gl934ssbac>>;
+        RejectedInvalidAuthorizedUpgrade: PlainDescriptor<Anonymize<I6lk22bu76jt63>>;
     };
     ParachainSystem: {
         /**
@@ -8413,7 +8882,7 @@ type IEvent = {
         /**
          * Dispatched some task.
          */
-        Dispatched: PlainDescriptor<Anonymize<I984chsf9v7u61>>;
+        Dispatched: PlainDescriptor<Anonymize<Ib5m2ftafin6cg>>;
         /**
          * Set a retry configuration for some task.
          */
@@ -8542,9 +9011,17 @@ type IEvent = {
          */
         Minted: PlainDescriptor<Anonymize<Id5fm4p8lj5qgi>>;
         /**
+         * Some credit was balanced and added to the TotalIssuance.
+         */
+        MintedCredit: PlainDescriptor<Anonymize<I3qt1hgg4djhgb>>;
+        /**
          * Some amount was burned from an account.
          */
         Burned: PlainDescriptor<Anonymize<Id5fm4p8lj5qgi>>;
+        /**
+         * Some debt has been dropped from the Total Issuance.
+         */
+        BurnedDebt: PlainDescriptor<Anonymize<I3qt1hgg4djhgb>>;
         /**
          * Some amount was suspended from an account (it can be restored later).
          */
@@ -8585,6 +9062,26 @@ type IEvent = {
          * The `TotalIssuance` was forcefully changed.
          */
         TotalIssuanceForced: PlainDescriptor<Anonymize<I4fooe9dun9o0t>>;
+        /**
+         * Some balance was placed on hold.
+         */
+        Held: PlainDescriptor<Anonymize<I8jo5jmsfnhqqg>>;
+        /**
+         * Held balance was burned from an account.
+         */
+        BurnedHeld: PlainDescriptor<Anonymize<I8jo5jmsfnhqqg>>;
+        /**
+         * A transfer of `amount` on hold from `source` to `dest` was initiated.
+         */
+        TransferOnHold: PlainDescriptor<Anonymize<I21r16r4j2912m>>;
+        /**
+         * The `transferred` balance is placed on hold at the `dest` account.
+         */
+        TransferAndHold: PlainDescriptor<Anonymize<I672l1i4ipl36t>>;
+        /**
+         * Some balance was released from hold.
+         */
+        Released: PlainDescriptor<Anonymize<I8jo5jmsfnhqqg>>;
         /**
          * An unexpected/defensive event was triggered.
          */
@@ -8854,12 +9351,12 @@ type IEvent = {
          * Downward message is invalid XCM.
          * \[ id \]
          */
-        InvalidFormat: PlainDescriptor<FixedSizeBinary<32>>;
+        InvalidFormat: PlainDescriptor<SizedHex<32>>;
         /**
          * Downward message is unsupported version of XCM.
          * \[ id \]
          */
-        UnsupportedVersion: PlainDescriptor<FixedSizeBinary<32>>;
+        UnsupportedVersion: PlainDescriptor<SizedHex<32>>;
         /**
          * Downward message executed with the given outcome.
          * \[ id, outcome \]
@@ -8909,7 +9406,7 @@ type IEvent = {
          * Batch of dispatches did not complete fully. Index of first failing dispatch given, as
          * well as the error.
          */
-        BatchInterrupted: PlainDescriptor<Anonymize<Iah8ta848qv1ud>>;
+        BatchInterrupted: PlainDescriptor<Anonymize<I2pi79fr5p6fs0>>;
         /**
          * Batch of dispatches completed fully with no error.
          */
@@ -8925,11 +9422,11 @@ type IEvent = {
         /**
          * A single item within a Batch of dispatches has completed with error.
          */
-        ItemFailed: PlainDescriptor<Anonymize<I63bc0tucct525>>;
+        ItemFailed: PlainDescriptor<Anonymize<I8n30a7eej7n16>>;
         /**
          * A call was dispatched.
          */
-        DispatchedAs: PlainDescriptor<Anonymize<I662h6anvimldg>>;
+        DispatchedAs: PlainDescriptor<Anonymize<I8gv6h0r7v7hv>>;
         /**
          * Main call was dispatched.
          */
@@ -8937,7 +9434,7 @@ type IEvent = {
         /**
          * The fallback call was dispatched.
          */
-        IfElseFallbackCalled: PlainDescriptor<Anonymize<Ieht0iu11hhrtr>>;
+        IfElseFallbackCalled: PlainDescriptor<Anonymize<I58tu5pp7i2tgs>>;
     };
     Multisig: {
         /**
@@ -8951,7 +9448,7 @@ type IEvent = {
         /**
          * A multisig operation has been executed.
          */
-        MultisigExecuted: PlainDescriptor<Anonymize<I6dlmjppkjq3k8>>;
+        MultisigExecuted: PlainDescriptor<Anonymize<I3ot064imihdqv>>;
         /**
          * A multisig operation has been cancelled.
          */
@@ -8965,12 +9462,12 @@ type IEvent = {
         /**
          * A proxy was executed correctly, with the given.
          */
-        ProxyExecuted: PlainDescriptor<Anonymize<I662h6anvimldg>>;
+        ProxyExecuted: PlainDescriptor<Anonymize<I8gv6h0r7v7hv>>;
         /**
          * A pure account has been created by new proxy with given
          * disambiguation index and proxy type.
          */
-        PureCreated: PlainDescriptor<Anonymize<I65k0d394bfcb7>>;
+        PureCreated: PlainDescriptor<Anonymize<Icnom4korobbg9>>;
         /**
          * A pure proxy was killed by its spawner.
          */
@@ -9116,6 +9613,14 @@ type IEvent = {
          * Some assets were withdrawn from the account (e.g. for transaction fees).
          */
         Withdrawn: PlainDescriptor<Anonymize<Idusmq77988cmt>>;
+        /**
+         * Reserve information was set or updated for `asset_id`.
+         */
+        ReservesUpdated: PlainDescriptor<Anonymize<Ifhs6ggbuiec5i>>;
+        /**
+         * Reserve information was removed for `asset_id`.
+         */
+        ReservesRemoved: PlainDescriptor<Anonymize<Ia5le7udkgbaq9>>;
     };
     Uniques: {
         /**
@@ -9492,6 +9997,14 @@ type IEvent = {
          * Some assets were withdrawn from the account (e.g. for transaction fees).
          */
         Withdrawn: PlainDescriptor<Anonymize<I1rnkmiu7usb82>>;
+        /**
+         * Reserve information was set or updated for `asset_id`.
+         */
+        ReservesUpdated: PlainDescriptor<Anonymize<Iadvnek4gbu68j>>;
+        /**
+         * Reserve information was removed for `asset_id`.
+         */
+        ReservesRemoved: PlainDescriptor<Anonymize<I22bm4d7re21j9>>;
     };
     PoolAssets: {
         /**
@@ -9599,6 +10112,14 @@ type IEvent = {
          * Some assets were withdrawn from the account (e.g. for transaction fees).
          */
         Withdrawn: PlainDescriptor<Anonymize<Idusmq77988cmt>>;
+        /**
+         * Reserve information was set or updated for `asset_id`.
+         */
+        ReservesUpdated: PlainDescriptor<Anonymize<Ifhs6ggbuiec5i>>;
+        /**
+         * Reserve information was removed for `asset_id`.
+         */
+        ReservesRemoved: PlainDescriptor<Anonymize<Ia5le7udkgbaq9>>;
     };
     AssetConversion: {
         /**
@@ -9682,19 +10203,19 @@ type IEvent = {
         /**
          * An account has delegated their vote to another account. \[who, target\]
          */
-        Delegated: PlainDescriptor<Anonymize<I2na29tt2afp0j>>;
+        Delegated: PlainDescriptor<Anonymize<I7svrbkiu01iec>>;
         /**
          * An \[account\] has cancelled a previous delegation operation.
          */
-        Undelegated: PlainDescriptor<SS58String>;
+        Undelegated: PlainDescriptor<Anonymize<I6ouflveob4eli>>;
         /**
          * An account has voted
          */
-        Voted: PlainDescriptor<Anonymize<I9qfchhljqsjjl>>;
+        Voted: PlainDescriptor<Anonymize<I8cbok7qd7ru4t>>;
         /**
          * A vote has been removed
          */
-        VoteRemoved: PlainDescriptor<Anonymize<I9qfchhljqsjjl>>;
+        VoteRemoved: PlainDescriptor<Anonymize<I8cbok7qd7ru4t>>;
         /**
          * The lockup period of a conviction vote expired, and the funds have been unlocked.
          */
@@ -9778,7 +10299,7 @@ type IEvent = {
         /**
         
          */
-        WhitelistedCallDispatched: PlainDescriptor<Anonymize<I5ihtepn1j7c1e>>;
+        WhitelistedCallDispatched: PlainDescriptor<Anonymize<Icfla2fq51530d>>;
     };
     Bounties: {
         /**
@@ -9861,6 +10382,56 @@ type IEvent = {
         
          */
         AssetRateUpdated: PlainDescriptor<Anonymize<Idrugh2blv81ia>>;
+    };
+    MultiAssetBounties: {
+        /**
+         * A new bounty was created and funding has been initiated.
+         */
+        BountyCreated: PlainDescriptor<Anonymize<I666bl2fqjkejo>>;
+        /**
+         * A new child-bounty was created and funding has been initiated.
+         */
+        ChildBountyCreated: PlainDescriptor<Anonymize<I60p8l86a8cm59>>;
+        /**
+         * The curator accepted role and child-/bounty became active.
+         */
+        BountyBecameActive: PlainDescriptor<Anonymize<I41bt7lr6c2cqa>>;
+        /**
+         * A child-/bounty was awarded to a beneficiary.
+         */
+        BountyAwarded: PlainDescriptor<Anonymize<I200voven22cdm>>;
+        /**
+         * Payout payment to the beneficiary has concluded successfully.
+         */
+        BountyPayoutProcessed: PlainDescriptor<Anonymize<I2j7mp9h804tg2>>;
+        /**
+         * Funding payment has concluded successfully.
+         */
+        BountyFundingProcessed: PlainDescriptor<Anonymize<I1hl2lumftiuhm>>;
+        /**
+         * Refund payment has concluded successfully.
+         */
+        BountyRefundProcessed: PlainDescriptor<Anonymize<I1hl2lumftiuhm>>;
+        /**
+         * A child-/bounty was cancelled.
+         */
+        BountyCanceled: PlainDescriptor<Anonymize<I1hl2lumftiuhm>>;
+        /**
+         * A child-/bounty curator was unassigned.
+         */
+        CuratorUnassigned: PlainDescriptor<Anonymize<I1hl2lumftiuhm>>;
+        /**
+         * A child-/bounty curator was proposed.
+         */
+        CuratorProposed: PlainDescriptor<Anonymize<I41bt7lr6c2cqa>>;
+        /**
+         * A payment failed and can be retried.
+         */
+        PaymentFailed: PlainDescriptor<Anonymize<Iccp9ugd60cntc>>;
+        /**
+         * A payment happened and can be checked.
+         */
+        Paid: PlainDescriptor<Anonymize<Iccp9ugd60cntc>>;
     };
     StateTrieMigration: {
         /**
@@ -10033,6 +10604,12 @@ type IEvent = {
          * A new offence was reported.
          */
         OffenceReceived: PlainDescriptor<Anonymize<I9kd1anrch3gtm>>;
+        /**
+         * Fees were charged for a user operation (set_keys or purge_keys).
+         *
+         * The fee includes both XCM delivery fee and relay chain execution cost.
+         */
+        FeesPaid: PlainDescriptor<Anonymize<I9i3iv964ch4c9>>;
         /**
          * Something occurred that should never happen under normal operation.
          * Logged as an event for fail-safe observability.
@@ -10242,13 +10819,13 @@ type IEvent = {
          * To distinguish reverted calls from successful ones, this event is emitted
          * for failed Ethereum transactions.
          */
-        EthExtrinsicRevert: PlainDescriptor<Anonymize<Iqklri338898o>>;
+        EthExtrinsicRevert: PlainDescriptor<Anonymize<I6r8cv4qc2gp0i>>;
     };
     Sudo: {
         /**
          * A sudo call just took place.
          */
-        Sudid: PlainDescriptor<Anonymize<Ie3nv9l8l9o5pa>>;
+        Sudid: PlainDescriptor<Anonymize<Idv2jr6mgamhml>>;
         /**
          * The sudo key has been updated.
          */
@@ -10260,7 +10837,7 @@ type IEvent = {
         /**
          * A [sudo_as](Pallet::sudo_as) call just took place.
          */
-        SudoAsDone: PlainDescriptor<Anonymize<Ie3nv9l8l9o5pa>>;
+        SudoAsDone: PlainDescriptor<Anonymize<Idv2jr6mgamhml>>;
     };
     AhOps: {
         /**
@@ -11145,6 +11722,10 @@ type IError = {
          * The asset cannot be destroyed because some accounts for this asset contain holds.
          */
         ContainsHolds: PlainDescriptor<undefined>;
+        /**
+         * Tried setting too many reserves.
+         */
+        TooManyReserves: PlainDescriptor<undefined>;
     };
     Uniques: {
         /**
@@ -11514,6 +12095,10 @@ type IError = {
          * The asset cannot be destroyed because some accounts for this asset contain holds.
          */
         ContainsHolds: PlainDescriptor<undefined>;
+        /**
+         * Tried setting too many reserves.
+         */
+        TooManyReserves: PlainDescriptor<undefined>;
     };
     PoolAssets: {
         /**
@@ -11611,6 +12196,10 @@ type IError = {
          * The asset cannot be destroyed because some accounts for this asset contain holds.
          */
         ContainsHolds: PlainDescriptor<undefined>;
+        /**
+         * Tried setting too many reserves.
+         */
+        TooManyReserves: PlainDescriptor<undefined>;
     };
     AssetConversion: {
         /**
@@ -11966,6 +12555,83 @@ type IError = {
          */
         Overflow: PlainDescriptor<undefined>;
     };
+    MultiAssetBounties: {
+        /**
+         * No child-/bounty at that index.
+         */
+        InvalidIndex: PlainDescriptor<undefined>;
+        /**
+         * The reason given is just too big.
+         */
+        ReasonTooBig: PlainDescriptor<undefined>;
+        /**
+         * Invalid child-/bounty value.
+         */
+        InvalidValue: PlainDescriptor<undefined>;
+        /**
+         * The balance of the asset kind is not convertible to the balance of the native asset for
+         * asserting the origin permissions.
+         */
+        FailedToConvertBalance: PlainDescriptor<undefined>;
+        /**
+         * The child-/bounty status is unexpected.
+         */
+        UnexpectedStatus: PlainDescriptor<undefined>;
+        /**
+         * Require child-/bounty curator.
+         */
+        RequireCurator: PlainDescriptor<undefined>;
+        /**
+         * The spend origin is valid but the amount it is allowed to spend is lower than the
+         * requested amount.
+         */
+        InsufficientPermission: PlainDescriptor<undefined>;
+        /**
+         * There was issue with funding the child-/bounty.
+         */
+        FundingError: PlainDescriptor<undefined>;
+        /**
+         * There was issue with refunding the child-/bounty.
+         */
+        RefundError: PlainDescriptor<undefined>;
+        /**
+        
+         */
+        PayoutError: PlainDescriptor<undefined>;
+        /**
+         * Child-/bounty funding has not concluded yet.
+         */
+        FundingInconclusive: PlainDescriptor<undefined>;
+        /**
+         * Child-/bounty refund has not concluded yet.
+         */
+        RefundInconclusive: PlainDescriptor<undefined>;
+        /**
+         * Child-/bounty payout has not concluded yet.
+         */
+        PayoutInconclusive: PlainDescriptor<undefined>;
+        /**
+         * The child-/bounty or funding source account could not be derived from the indexes and
+         * asset kind.
+         */
+        FailedToConvertSource: PlainDescriptor<undefined>;
+        /**
+         * The parent bounty cannot be closed because it has active child bounties.
+         */
+        HasActiveChildBounty: PlainDescriptor<undefined>;
+        /**
+         * Number of child bounties exceeds limit `MaxActiveChildBountyCount`.
+         */
+        TooManyChildBounties: PlainDescriptor<undefined>;
+        /**
+         * The parent bounty value is not enough to add new child-bounty.
+         */
+        InsufficientBountyValue: PlainDescriptor<undefined>;
+        /**
+         * The preimage does not exist.
+         */
+        PreimageNotExist: PlainDescriptor<undefined>;
+    };
     StateTrieMigration: {
         /**
          * Max signed limits not respected.
@@ -12224,6 +12890,32 @@ type IError = {
          * Operation not supported by this pallet.
          */
         NotSupported: PlainDescriptor<undefined>;
+    };
+    StakingRcClient: {
+        /**
+         * Failed to send XCM message to the Relay Chain.
+         */
+        XcmSendFailed: PlainDescriptor<undefined>;
+        /**
+         * The origin account is not a registered validator.
+         *
+         * Only accounts that have called `validate()` can set or purge session keys. When called
+         * via a staking proxy, the origin is the delegating account (stash), which must be a
+         * registered validator.
+         */
+        NotValidator: PlainDescriptor<undefined>;
+        /**
+         * The session keys could not be decoded as the expected RelayChainSessionKeys type.
+         */
+        InvalidKeys: PlainDescriptor<undefined>;
+        /**
+         * The ownership proof for the session keys is invalid.
+         */
+        InvalidProof: PlainDescriptor<undefined>;
+        /**
+         * Delivery fees exceeded the specified maximum.
+         */
+        FeesExceededMax: PlainDescriptor<undefined>;
     };
     MultiBlockElection: {
         /**
@@ -12679,6 +13371,10 @@ type IError = {
          * called or if their caller was being delegate called.
          */
         PrecompileDelegateDenied: PlainDescriptor<undefined>;
+        /**
+         * ECDSA public key recovery failed. Most probably wrong recovery id or signature.
+         */
+        EcdsaRecoveryFailed: PlainDescriptor<undefined>;
     };
     Sudo: {
         /**
@@ -12975,13 +13671,22 @@ type IConstants = {
         /**
         
          */
-        Prefix: PlainDescriptor<Binary>;
+        Prefix: PlainDescriptor<Uint8Array>;
+    };
+    Dap: {
+        /**
+         * The pallet ID used to derive the buffer account.
+         *
+         * Each runtime should configure a unique ID to avoid collisions if multiple
+         * DAP instances are used.
+         */
+        PalletId: PlainDescriptor<SizedHex<8>>;
     };
     CollatorSelection: {
         /**
          * Account Identifier from which the internal Pot is generated.
          */
-        PotId: PlainDescriptor<FixedSizeBinary<8>>;
+        PotId: PlainDescriptor<SizedHex<8>>;
         /**
          * Maximum number of candidates that we should have.
          *
@@ -13399,7 +14104,7 @@ type IConstants = {
         /**
          * The pallet's id, used for deriving its sovereign account ID.
          */
-        PalletId: PlainDescriptor<FixedSizeBinary<8>>;
+        PalletId: PlainDescriptor<SizedHex<8>>;
     };
     Treasury: {
         /**
@@ -13413,7 +14118,7 @@ type IConstants = {
         /**
          * The treasury's pallet id, used for deriving its sovereign account ID.
          */
-        PalletId: PlainDescriptor<FixedSizeBinary<8>>;
+        PalletId: PlainDescriptor<SizedHex<8>>;
         /**
          * DEPRECATED: associated with `spend_local` call and will be removed in May 2025.
          * Refer to <https://github.com/paritytech/polkadot-sdk/pull/5961> for migration to `spend`.
@@ -13533,6 +14238,20 @@ type IConstants = {
          */
         ChildBountyValueMinimum: PlainDescriptor<bigint>;
     };
+    MultiAssetBounties: {
+        /**
+         * Minimum value for a bounty.
+         */
+        BountyValueMinimum: PlainDescriptor<bigint>;
+        /**
+         * Minimum value for a child-bounty.
+         */
+        ChildBountyValueMinimum: PlainDescriptor<bigint>;
+        /**
+         * Maximum number of child bounties that can be added to a parent bounty.
+         */
+        MaxActiveChildBountyCount: PlainDescriptor<number>;
+    };
     StateTrieMigration: {
         /**
          * Maximal number of bytes that a key can have.
@@ -13563,7 +14282,7 @@ type IConstants = {
         /**
          * The nomination pool's pallet id.
          */
-        PalletId: PlainDescriptor<FixedSizeBinary<8>>;
+        PalletId: PlainDescriptor<SizedHex<8>>;
         /**
          * The maximum pool points-to-balance ratio that an `open` pool can have.
          *
@@ -13643,11 +14362,17 @@ type IConstants = {
         /**
          * Injected identifier for the pallet.
          */
-        PalletId: PlainDescriptor<FixedSizeBinary<8>>;
+        PalletId: PlainDescriptor<SizedHex<8>>;
         /**
          * Fraction of the slash that is rewarded to the caller of pending slash to the agent.
          */
         SlashRewardFraction: PlainDescriptor<number>;
+    };
+    StakingRcClient: {
+        /**
+         * Deposit held when a validator sets session keys. Released on `purge_keys`.
+         */
+        KeyDeposit: PlainDescriptor<bigint>;
     };
     MultiBlockElection: {
         /**
@@ -13748,8 +14473,23 @@ type IConstants = {
         PlanningEraOffset: PlainDescriptor<number>;
         /**
          * Number of eras that staked funds must remain bonded for.
+         *
+         * This is the bonding duration for validators. Nominators may have a shorter bonding
+         * duration when [`AreNominatorsSlashable`] is set to `false` (see
+         * [`StakingInterface::nominator_bonding_duration`]).
          */
         BondingDuration: PlainDescriptor<number>;
+        /**
+         * Number of eras nominators must wait to unbond when they are not slashable.
+         *
+         * This duration is used for nominators when [`AreNominatorsSlashable`] is `false`.
+         * When nominators are slashable, they use the full [`Config::BondingDuration`] to ensure
+         * slashes can be applied during the unbonding period.
+         *
+         * Setting this to a lower value (e.g., 1 era) allows for faster withdrawals when
+         * nominators are not subject to slashing risk.
+         */
+        NominatorFastUnbondDuration: PlainDescriptor<number>;
         /**
          * Number of eras that slashes are deferred by, after computation.
          *
@@ -13923,11 +14663,92 @@ type IViewFns = {
         /**
          * Check if a `RuntimeCall` is allowed for a given `ProxyType`.
          */
-        check_permissions: RuntimeDescriptor<[call: Anonymize<I9cpqhfvd2291p>, proxy_type: Anonymize<Idugco9k7jdh0f>], boolean>;
+        check_permissions: RuntimeDescriptor<[call: Anonymize<I7ghpul17sf1lm>, proxy_type: Anonymize<Idugco9k7jdh0f>], boolean>;
         /**
          * Check if one `ProxyType` is a subset of another `ProxyType`.
          */
         is_superset: RuntimeDescriptor<[to_check: Anonymize<Idugco9k7jdh0f>, against: Anonymize<Idugco9k7jdh0f>], boolean>;
+    };
+    Assets: {
+        /**
+         * Provide the asset details for asset `id`.
+         */
+        asset_details: RuntimeDescriptor<[id: number], Anonymize<I6052turo9tavh>>;
+        /**
+         * Provide the balance of `who` for asset `id`.
+         */
+        balance_of: RuntimeDescriptor<[who: SS58String, id: number], Anonymize<I35p85j063s0il>>;
+        /**
+         * Provide the configured metadata for asset `id`.
+         */
+        get_metadata: RuntimeDescriptor<[id: number], Anonymize<Iemk0s5gdc9ruv>>;
+        /**
+         * Provide the configured reserves data for asset `id`.
+         */
+        get_reserves_data: RuntimeDescriptor<[id: number], Anonymize<I35l6p7kq19mr0>>;
+    };
+    ForeignAssets: {
+        /**
+         * Provide the asset details for asset `id`.
+         */
+        asset_details: RuntimeDescriptor<[id: Anonymize<If9iqq7i64mur8>], Anonymize<I6052turo9tavh>>;
+        /**
+         * Provide the balance of `who` for asset `id`.
+         */
+        balance_of: RuntimeDescriptor<[who: SS58String, id: Anonymize<If9iqq7i64mur8>], Anonymize<I35p85j063s0il>>;
+        /**
+         * Provide the configured metadata for asset `id`.
+         */
+        get_metadata: RuntimeDescriptor<[id: Anonymize<If9iqq7i64mur8>], Anonymize<Iemk0s5gdc9ruv>>;
+        /**
+         * Provide the configured reserves data for asset `id`.
+         */
+        get_reserves_data: RuntimeDescriptor<[id: Anonymize<If9iqq7i64mur8>], Anonymize<If2801grpltbp8>>;
+    };
+    PoolAssets: {
+        /**
+         * Provide the asset details for asset `id`.
+         */
+        asset_details: RuntimeDescriptor<[id: number], Anonymize<I6052turo9tavh>>;
+        /**
+         * Provide the balance of `who` for asset `id`.
+         */
+        balance_of: RuntimeDescriptor<[who: SS58String, id: number], Anonymize<I35p85j063s0il>>;
+        /**
+         * Provide the configured metadata for asset `id`.
+         */
+        get_metadata: RuntimeDescriptor<[id: number], Anonymize<Iemk0s5gdc9ruv>>;
+        /**
+         * Provide the configured reserves data for asset `id`.
+         */
+        get_reserves_data: RuntimeDescriptor<[id: number], Anonymize<I35l6p7kq19mr0>>;
+    };
+    AssetConversion: {
+        /**
+         * Returns the balance of each asset in the pool.
+         * The tuple result is in the order requested (not necessarily the same as pool order).
+         */
+        get_reserves: RuntimeDescriptor<[asset1: Anonymize<If9iqq7i64mur8>, asset2: Anonymize<If9iqq7i64mur8>], Anonymize<Ia596n3f2p58pa>>;
+        /**
+         * Gets a quote for swapping an exact amount of `asset1` for `asset2`.
+         *
+         * If `include_fee` is true, the quote will include the liquidity provider fee.
+         * If the pool does not exist or has no liquidity, `None` is returned.
+         * Note that the price may have changed by the time the transaction is executed.
+         * (Use `amount_out_min` to control slippage.)
+         * Returns `Some(quoted_amount)` on success.
+         */
+        quote_price_exact_tokens_for_tokens: RuntimeDescriptor<[asset1: Anonymize<If9iqq7i64mur8>, asset2: Anonymize<If9iqq7i64mur8>, amount: bigint, include_fee: boolean], Anonymize<I35p85j063s0il>>;
+        /**
+         * Gets a quote for swapping `amount` of `asset1` for an exact amount of `asset2`.
+         *
+         * If `include_fee` is true, the quote will include the liquidity provider fee.
+         * If the pool does not exist or has no liquidity, `None` is returned.
+         * Note that the price may have changed by the time the transaction is executed.
+         * (Use `amount_in_max` to control slippage.)
+         * Returns `Some(quoted_amount)` on success.
+         */
+        quote_price_tokens_for_exact_tokens: RuntimeDescriptor<[asset1: Anonymize<If9iqq7i64mur8>, asset2: Anonymize<If9iqq7i64mur8>, amount: bigint, include_fee: boolean], Anonymize<I35p85j063s0il>>;
     };
     VoterList: {
         /**
@@ -14008,7 +14829,7 @@ type IRuntimeCalls = {
          * whose state we are querying against, this must always return `true` as long as the slot
          * is more recent than the included block itself.
          */
-        can_build_upon: RuntimeDescriptor<[included_hash: FixedSizeBinary<32>, slot: bigint], boolean>;
+        can_build_upon: RuntimeDescriptor<[included_hash: SizedHex<32>, slot: bigint], boolean>;
     };
     /**
      * The `Core` runtime api that every Substrate runtime needs to implement.
@@ -14034,7 +14855,7 @@ type IRuntimeCalls = {
         /**
          * Returns the metadata of a runtime.
          */
-        metadata: RuntimeDescriptor<[], Binary>;
+        metadata: RuntimeDescriptor<[], Uint8Array>;
         /**
          * Returns the metadata at a given version.
          *
@@ -14059,7 +14880,7 @@ type IRuntimeCalls = {
          * Returns an inclusion outcome which specifies if this extrinsic is included in
          * this block or not.
          */
-        apply_extrinsic: RuntimeDescriptor<[extrinsic: Binary], Anonymize<Iar90ghe1dk69b>>;
+        apply_extrinsic: RuntimeDescriptor<[extrinsic: Uint8Array], Anonymize<I4ip92cejsh8vu>>;
         /**
          * Finish the current block.
          */
@@ -14088,7 +14909,7 @@ type IRuntimeCalls = {
          * Note that this call may be performed by the pool multiple times and transactions
          * might be verified in any possible order.
          */
-        validate_transaction: RuntimeDescriptor<[source: TransactionValidityTransactionSource, tx: Binary, block_hash: FixedSizeBinary<32>], Anonymize<I9ask1o4tfvcvs>>;
+        validate_transaction: RuntimeDescriptor<[source: TransactionValidityTransactionSource, tx: Uint8Array, block_hash: SizedHex<32>], Anonymize<I9ask1o4tfvcvs>>;
     };
     /**
      * The offchain worker api.
@@ -14112,13 +14933,13 @@ type IRuntimeCalls = {
          *
          * Returns the concatenated SCALE encoded public keys.
          */
-        generate_session_keys: RuntimeDescriptor<[seed: Anonymize<Iabpgqcjikia83>], Binary>;
+        generate_session_keys: RuntimeDescriptor<[seed: Anonymize<Iabpgqcjikia83>], Uint8Array>;
         /**
          * Decode the given public session keys.
          *
          * Returns the list of public raw public keys + key type.
          */
-        decode_session_keys: RuntimeDescriptor<[encoded: Binary], Anonymize<Icerf8h8pdu8ss>>;
+        decode_session_keys: RuntimeDescriptor<[encoded: Uint8Array], Anonymize<Icerf8h8pdu8ss>>;
     };
     /**
      * Runtime API for executing view functions
@@ -14127,7 +14948,7 @@ type IRuntimeCalls = {
         /**
          * Execute a view function query.
          */
-        execute_view_function: RuntimeDescriptor<[query_id: Anonymize<I4gil44d08grh>, input: Binary], Anonymize<I7u915mvkdsb08>>;
+        execute_view_function: RuntimeDescriptor<[query_id: Anonymize<I4gil44d08grh>, input: Uint8Array], Anonymize<I7u915mvkdsb08>>;
     };
     /**
      * The API to query account nonce.
@@ -14145,11 +14966,11 @@ type IRuntimeCalls = {
         /**
         
          */
-        query_info: RuntimeDescriptor<[uxt: Binary, len: number], Anonymize<I6spmpef2c7svf>>;
+        query_info: RuntimeDescriptor<[uxt: Uint8Array, len: number], Anonymize<I6spmpef2c7svf>>;
         /**
         
          */
-        query_fee_details: RuntimeDescriptor<[uxt: Binary, len: number], Anonymize<Iei2mvq0mjvt81>>;
+        query_fee_details: RuntimeDescriptor<[uxt: Uint8Array, len: number], Anonymize<Iei2mvq0mjvt81>>;
         /**
         
          */
@@ -14166,11 +14987,11 @@ type IRuntimeCalls = {
         /**
          * Query information of a dispatch class, weight, and fee of a given encoded `Call`.
          */
-        query_call_info: RuntimeDescriptor<[call: Anonymize<I9cpqhfvd2291p>, len: number], Anonymize<I6spmpef2c7svf>>;
+        query_call_info: RuntimeDescriptor<[call: Anonymize<I7ghpul17sf1lm>, len: number], Anonymize<I6spmpef2c7svf>>;
         /**
          * Query fee details of a given encoded `Call`.
          */
-        query_call_fee_details: RuntimeDescriptor<[call: Anonymize<I9cpqhfvd2291p>, len: number], Anonymize<Iei2mvq0mjvt81>>;
+        query_call_fee_details: RuntimeDescriptor<[call: Anonymize<I7ghpul17sf1lm>, len: number], Anonymize<Iei2mvq0mjvt81>>;
         /**
          * Query the output of the current `WeightToFee` given some input.
          */
@@ -14220,6 +15041,8 @@ type IRuntimeCalls = {
          */
         query_weight_to_asset_fee: RuntimeDescriptor<[weight: Anonymize<I4q39t5hn830vp>, asset: XcmVersionedAssetId], Anonymize<I7ocn4njqde3v5>>;
         /**
+         * Query delivery fees V2.
+         *
          * Get delivery fees for sending a specific `message` to a `destination`.
          * These always come in a specific asset, defined by the chain.
          *
@@ -14229,7 +15052,7 @@ type IRuntimeCalls = {
          * * `destination`: The destination to send the message to. Different destinations may use
          * different senders that charge different fees.
          */
-        query_delivery_fees: RuntimeDescriptor<[destination: XcmVersionedLocation, message: XcmVersionedXcm], Anonymize<Iek7ha36da9mf5>>;
+        query_delivery_fees: RuntimeDescriptor<[destination: XcmVersionedLocation, message: XcmVersionedXcm, asset_id: XcmVersionedAssetId], Anonymize<Iek7ha36da9mf5>>;
     };
     /**
      * API for dry-running extrinsics and XCM programs to get the programs that need to be passed to the fees API.
@@ -14246,11 +15069,11 @@ type IRuntimeCalls = {
         /**
          * Dry run call V2.
          */
-        dry_run_call: RuntimeDescriptor<[origin: Anonymize<I7qpv90droestd>, call: Anonymize<I9cpqhfvd2291p>, result_xcms_version: number], Anonymize<If3hqm69dc23pp>>;
+        dry_run_call: RuntimeDescriptor<[origin: Anonymize<I7qpv90droestd>, call: Anonymize<I7ghpul17sf1lm>, result_xcms_version: number], Anonymize<I5e1f2dmpobegd>>;
         /**
          * Dry run XCM program
          */
-        dry_run_xcm: RuntimeDescriptor<[origin_location: XcmVersionedLocation, xcm: XcmVersionedXcm], Anonymize<Ib57kqg31o21t7>>;
+        dry_run_xcm: RuntimeDescriptor<[origin_location: XcmVersionedLocation, xcm: XcmVersionedXcm], Anonymize<Ia2g9rj22vtc71>>;
     };
     /**
      * API for useful conversions between XCM `Location` and `AccountId`.
@@ -14336,7 +15159,7 @@ type IRuntimeCalls = {
          * Please note that provided JSON blob must contain all `RuntimeGenesisConfig` fields, no
          * defaults will be used.
          */
-        build_state: RuntimeDescriptor<[json: Binary], Anonymize<Ie9sr1iqcg3cgm>>;
+        build_state: RuntimeDescriptor<[json: Uint8Array], Anonymize<Ie9sr1iqcg3cgm>>;
         /**
          * Returns a JSON blob representation of the built-in `RuntimeGenesisConfig` identified by
          * `id`.
@@ -14469,7 +15292,7 @@ type IRuntimeCalls = {
          */
         eras_stakers_page_count: RuntimeDescriptor<[era: number, account: SS58String], number>;
         /**
-         * Returns true if validator `account` has pages to be claimed for the given era.
+         * Returns true if a validator `account` has pages to be claimed for the given era.
          */
         pending_rewards: RuntimeDescriptor<[era: number, account: SS58String], boolean>;
     };
@@ -14514,7 +15337,7 @@ type IRuntimeCalls = {
         /**
          * Returns the free balance of the given `[H160]` address, using EVM decimals.
          */
-        balance: RuntimeDescriptor<[address: FixedSizeBinary<20>], Anonymize<I4totqt881mlti>>;
+        balance: RuntimeDescriptor<[address: SizedHex<20>], Anonymize<I4totqt881mlti>>;
         /**
          * Returns the gas price.
          */
@@ -14522,19 +15345,19 @@ type IRuntimeCalls = {
         /**
          * Returns the nonce of the given `[H160]` address.
          */
-        nonce: RuntimeDescriptor<[address: FixedSizeBinary<20>], number>;
+        nonce: RuntimeDescriptor<[address: SizedHex<20>], number>;
         /**
          * Perform a call from a specified account to a given contract.
          *
          * See [`crate::Pallet::bare_call`].
          */
-        call: RuntimeDescriptor<[origin: SS58String, dest: FixedSizeBinary<20>, value: bigint, gas_limit: Anonymize<Iasb8k6ash5mjn>, storage_deposit_limit: Anonymize<I35p85j063s0il>, input_data: Binary], Anonymize<Ia0r2e8lfrlsp0>>;
+        call: RuntimeDescriptor<[origin: SS58String, dest: SizedHex<20>, value: bigint, gas_limit: Anonymize<Iasb8k6ash5mjn>, storage_deposit_limit: Anonymize<I35p85j063s0il>, input_data: Uint8Array], Anonymize<Iel648dq935909>>;
         /**
          * Instantiate a new contract.
          *
          * See `[crate::Pallet::bare_instantiate]`.
          */
-        instantiate: RuntimeDescriptor<[origin: SS58String, value: bigint, gas_limit: Anonymize<Iasb8k6ash5mjn>, storage_deposit_limit: Anonymize<I35p85j063s0il>, code: Anonymize<I9sijb8gfrns29>, data: Binary, salt: Anonymize<I4s6vifaf8k998>], Anonymize<I68qlusu5li159>>;
+        instantiate: RuntimeDescriptor<[origin: SS58String, value: bigint, gas_limit: Anonymize<Iasb8k6ash5mjn>, storage_deposit_limit: Anonymize<I35p85j063s0il>, code: Anonymize<I9sijb8gfrns29>, data: Uint8Array, salt: Anonymize<I4s6vifaf8k998>], Anonymize<I284b23t92u5po>>;
         /**
          * Perform an Ethereum call.
          *
@@ -14553,7 +15376,7 @@ type IRuntimeCalls = {
          *
          * See [`crate::Pallet::bare_upload_code`].
          */
-        upload_code: RuntimeDescriptor<[origin: SS58String, code: Binary, storage_deposit_limit: Anonymize<I35p85j063s0il>], Anonymize<I6be4suv3r5mn6>>;
+        upload_code: RuntimeDescriptor<[origin: SS58String, code: Uint8Array, storage_deposit_limit: Anonymize<I35p85j063s0il>], Anonymize<Id20o5u3itehte>>;
         /**
          * Query a given storage key in a given contract.
          *
@@ -14561,7 +15384,7 @@ type IRuntimeCalls = {
          * specified account and `Ok(None)` if it doesn't. If the account specified by the address
          * doesn't exist, or doesn't have a contract then `Err` is returned.
          */
-        get_storage: RuntimeDescriptor<[address: FixedSizeBinary<20>, key: FixedSizeBinary<32>], Anonymize<Ibvgael8j9a8om>>;
+        get_storage: RuntimeDescriptor<[address: SizedHex<20>, key: SizedHex<32>], Anonymize<Ieogbgh0dt6bkn>>;
         /**
          * Query a given variable-sized storage key in a given contract.
          *
@@ -14569,7 +15392,7 @@ type IRuntimeCalls = {
          * specified account and `Ok(None)` if it doesn't. If the account specified by the address
          * doesn't exist, or doesn't have a contract then `Err` is returned.
          */
-        get_storage_var_key: RuntimeDescriptor<[address: FixedSizeBinary<20>, key: Binary], Anonymize<Ibvgael8j9a8om>>;
+        get_storage_var_key: RuntimeDescriptor<[address: SizedHex<20>, key: Uint8Array], Anonymize<Ieogbgh0dt6bkn>>;
         /**
          * Traces the execution of an entire block and returns call traces.
          *
@@ -14597,30 +15420,30 @@ type IRuntimeCalls = {
         /**
          * The address of the validator that produced the current block.
          */
-        block_author: RuntimeDescriptor<[], FixedSizeBinary<20>>;
+        block_author: RuntimeDescriptor<[], SizedHex<20>>;
         /**
          * Get the H160 address associated to this account id
          */
-        address: RuntimeDescriptor<[account_id: SS58String], FixedSizeBinary<20>>;
+        address: RuntimeDescriptor<[account_id: SS58String], SizedHex<20>>;
         /**
          * Get the account id associated to this H160 address.
          */
-        account_id: RuntimeDescriptor<[address: FixedSizeBinary<20>], SS58String>;
+        account_id: RuntimeDescriptor<[address: SizedHex<20>], SS58String>;
         /**
          * The address used to call the runtime's pallets dispatchables
          */
-        runtime_pallets_address: RuntimeDescriptor<[], FixedSizeBinary<20>>;
+        runtime_pallets_address: RuntimeDescriptor<[], SizedHex<20>>;
         /**
          * The code at the specified address taking pre-compiles into account.
          */
-        code: RuntimeDescriptor<[address: FixedSizeBinary<20>], Binary>;
+        code: RuntimeDescriptor<[address: SizedHex<20>], Uint8Array>;
         /**
          * Construct the new balance and dust components of this EVM balance.
          */
         new_balance_with_dust: RuntimeDescriptor<[balance: Anonymize<I4totqt881mlti>], Anonymize<I512dtcl0pn07c>>;
     };
 };
-export type PaseoHubDispatchError = Anonymize<Iaf368inbarroo>;
+export type PaseoHubDispatchError = Anonymize<I72ju98lulovhp>;
 type IAsset = PlainDescriptor<Anonymize<If9iqq7i64mur8>>;
 export type PaseoHubExtensions = {};
 type PalletsTypedef = {
@@ -14651,7 +15474,7 @@ export type PaseoHubEvents = EventsFromPalletsDef<PalletsTypedef>;
 export type PaseoHubErrors = ErrorsFromPalletsDef<PalletsTypedef>;
 export type PaseoHubConstants = ConstFromPalletsDef<PalletsTypedef>;
 export type PaseoHubViewFns = ViewFnsFromPalletsDef<PalletsTypedef>;
-export type PaseoHubCallData = Anonymize<I9cpqhfvd2291p> & {
+export type PaseoHubCallData = Anonymize<I7ghpul17sf1lm> & {
     value: {
         type: string;
     };
@@ -14659,7 +15482,7 @@ export type PaseoHubCallData = Anonymize<I9cpqhfvd2291p> & {
 type AllInteractions = {
     storage: {
         System: ['Account', 'ExtrinsicCount', 'InherentsApplied', 'BlockWeight', 'AllExtrinsicsLen', 'BlockHash', 'ExtrinsicData', 'Number', 'ParentHash', 'Digest', 'Events', 'EventCount', 'EventTopics', 'LastRuntimeUpgrade', 'UpgradedToU32RefCount', 'UpgradedToTripleRefCount', 'ExecutionPhase', 'AuthorizedUpgrade', 'ExtrinsicWeightReclaimed'];
-        ParachainSystem: ['UnincludedSegment', 'AggregatedUnincludedSegment', 'PendingValidationCode', 'NewValidationCode', 'ValidationData', 'DidSetValidationCode', 'LastRelayChainBlockNumber', 'UpgradeRestrictionSignal', 'UpgradeGoAhead', 'RelayStateProof', 'RelevantMessagingState', 'HostConfiguration', 'LastDmqMqcHead', 'LastHrmpMqcHeads', 'ProcessedDownwardMessages', 'LastProcessedDownwardMessage', 'HrmpWatermark', 'LastProcessedHrmpMessage', 'HrmpOutboundMessages', 'UpwardMessages', 'PendingUpwardMessages', 'UpwardDeliveryFeeFactor', 'AnnouncedHrmpMessagesPerCandidate', 'ReservedXcmpWeightOverride', 'ReservedDmpWeightOverride', 'CustomValidationHeadData'];
+        ParachainSystem: ['UnincludedSegment', 'AggregatedUnincludedSegment', 'PendingValidationCode', 'NewValidationCode', 'ValidationData', 'DidSetValidationCode', 'LastRelayChainBlockNumber', 'UpgradeRestrictionSignal', 'UpgradeGoAhead', 'RelayStateProof', 'RelevantMessagingState', 'HostConfiguration', 'LastDmqMqcHead', 'LastHrmpMqcHeads', 'ProcessedDownwardMessages', 'LastProcessedDownwardMessage', 'HrmpWatermark', 'LastProcessedHrmpMessage', 'HrmpOutboundMessages', 'UpwardMessages', 'PendingUpwardMessages', 'PendingUpwardSignals', 'UpwardDeliveryFeeFactor', 'AnnouncedHrmpMessagesPerCandidate', 'ReservedXcmpWeightOverride', 'ReservedDmpWeightOverride', 'CustomValidationHeadData'];
         Timestamp: ['Now', 'DidUpdate'];
         ParachainInfo: ['ParachainId'];
         Preimage: ['StatusFor', 'RequestStatusFor', 'PreimageFor'];
@@ -14672,7 +15495,7 @@ type AllInteractions = {
         Claims: ['Claims', 'Total', 'Vesting', 'Signing', 'Preclaims'];
         Authorship: ['Author'];
         CollatorSelection: ['Invulnerables', 'CandidateList', 'LastAuthoredBlock', 'DesiredCandidates', 'CandidacyBond'];
-        Session: ['Validators', 'CurrentIndex', 'QueuedChanged', 'QueuedKeys', 'DisabledValidators', 'NextKeys', 'KeyOwner'];
+        Session: ['Validators', 'CurrentIndex', 'QueuedChanged', 'QueuedKeys', 'DisabledValidators', 'NextKeys', 'KeyOwner', 'ExternallySetKeys'];
         Aura: ['Authorities', 'CurrentSlot'];
         AuraExt: ['Authorities', 'RelaySlotInfo'];
         XcmpQueue: ['InboundXcmpSuspended', 'OutboundXcmpStatus', 'OutboundXcmpMessages', 'SignalMessages', 'QueueConfig', 'QueueSuspended', 'DeliveryFeeFactor'];
@@ -14683,11 +15506,11 @@ type AllInteractions = {
         Multisig: ['Multisigs'];
         Proxy: ['Proxies', 'Announcements'];
         Indices: ['Accounts'];
-        Assets: ['Asset', 'Account', 'Approvals', 'Metadata', 'NextAssetId'];
+        Assets: ['Asset', 'Account', 'Approvals', 'Metadata', 'Reserves', 'NextAssetId'];
         Uniques: ['Class', 'OwnershipAcceptance', 'Account', 'ClassAccount', 'Asset', 'ClassMetadataOf', 'InstanceMetadataOf', 'Attribute', 'ItemPriceOf', 'CollectionMaxSupply'];
         Nfts: ['Collection', 'OwnershipAcceptance', 'Account', 'CollectionAccount', 'CollectionRoleOf', 'Item', 'CollectionMetadataOf', 'ItemMetadataOf', 'Attribute', 'ItemPriceOf', 'ItemAttributesApprovalsOf', 'NextCollectionId', 'PendingSwapOf', 'CollectionConfigOf', 'ItemConfigOf'];
-        ForeignAssets: ['Asset', 'Account', 'Approvals', 'Metadata', 'NextAssetId'];
-        PoolAssets: ['Asset', 'Account', 'Approvals', 'Metadata', 'NextAssetId'];
+        ForeignAssets: ['Asset', 'Account', 'Approvals', 'Metadata', 'Reserves', 'NextAssetId'];
+        PoolAssets: ['Asset', 'Account', 'Approvals', 'Metadata', 'Reserves', 'NextAssetId'];
         AssetConversion: ['Pools', 'NextPoolAssetId'];
         Treasury: ['ProposalCount', 'Proposals', 'Deactivated', 'Approvals', 'SpendCount', 'Spends', 'LastSpendPeriod'];
         ConvictionVoting: ['VotingFor', 'ClassLocksFor'];
@@ -14696,15 +15519,16 @@ type AllInteractions = {
         Bounties: ['BountyCount', 'Bounties', 'BountyDescriptions', 'BountyApprovals'];
         ChildBounties: ['ChildBountyCount', 'ParentChildBounties', 'ParentTotalChildBounties', 'ChildBounties', 'ChildBountyDescriptionsV1', 'V0ToV1ChildBountyIds', 'ChildrenCuratorFees'];
         AssetRate: ['ConversionRateToNative'];
+        MultiAssetBounties: ['BountyCount', 'Bounties', 'ChildBounties', 'ChildBountiesPerParent', 'TotalChildBountiesPerParent', 'ChildBountiesValuePerParent', 'CuratorDeposit'];
         StateTrieMigration: ['MigrationProcess', 'AutoLimits', 'SignedMigrationMaxLimits'];
         NominationPools: ['TotalValueLocked', 'MinJoinBond', 'MinCreateBond', 'MaxPools', 'MaxPoolMembers', 'MaxPoolMembersPerPool', 'GlobalMaxCommission', 'PoolMembers', 'CounterForPoolMembers', 'BondedPools', 'CounterForBondedPools', 'RewardPools', 'CounterForRewardPools', 'SubPoolsStorage', 'CounterForSubPoolsStorage', 'Metadata', 'CounterForMetadata', 'LastPoolId', 'ReversePoolIdLookup', 'CounterForReversePoolIdLookup', 'ClaimPermissions'];
-        VoterList: ['ListNodes', 'CounterForListNodes', 'ListBags', 'NextNodeAutoRebagged', 'Lock'];
+        VoterList: ['ListNodes', 'CounterForListNodes', 'ListBags', 'NextNodeAutoRebagged', 'Lock', 'PendingRebag', 'CounterForPendingRebag'];
         DelegatedStaking: ['Delegators', 'CounterForDelegators', 'Agents', 'CounterForAgents'];
         StakingRcClient: ['IncompleteSessionReport', 'LastSessionReportEndingIndex', 'OutgoingValidatorSet'];
         MultiBlockElection: ['Round', 'CurrentPhase', 'DesiredTargets', 'PagedVoterSnapshot', 'PagedVoterSnapshotHash', 'PagedTargetSnapshot', 'PagedTargetSnapshotHash'];
         MultiBlockElectionVerifier: ['QueuedSolutionX', 'QueuedSolutionY', 'QueuedValidVariant', 'QueuedSolutionBackings', 'QueuedSolutionScore', 'MinimumScore', 'StatusStorage'];
         MultiBlockElectionSigned: ['Invulnerables', 'SortedScores', 'SubmissionStorage', 'SubmissionMetadataStorage'];
-        Staking: ['ValidatorCount', 'Invulnerables', 'Bonded', 'MinNominatorBond', 'MinValidatorBond', 'MinimumActiveStake', 'MinCommission', 'Ledger', 'Payee', 'Validators', 'CounterForValidators', 'MaxValidatorsCount', 'Nominators', 'CounterForNominators', 'VirtualStakers', 'CounterForVirtualStakers', 'MaxNominatorsCount', 'CurrentEra', 'ActiveEra', 'BondedEras', 'ErasStakersOverview', 'ErasStakersPaged', 'ClaimedRewards', 'ErasValidatorPrefs', 'ErasValidatorReward', 'ErasRewardPoints', 'ErasTotalStake', 'ForceEra', 'MaxStakedRewards', 'SlashRewardFraction', 'CanceledSlashPayout', 'OffenceQueue', 'OffenceQueueEras', 'ProcessingOffence', 'UnappliedSlashes', 'CancelledSlashes', 'ValidatorSlashInEra', 'ChillThreshold', 'VoterSnapshotStatus', 'NextElectionPage', 'ElectableStashes', 'EraPruningState'];
+        Staking: ['ValidatorCount', 'Invulnerables', 'Bonded', 'MinNominatorBond', 'MinValidatorBond', 'MinimumActiveStake', 'MinCommission', 'AreNominatorsSlashable', 'ErasNominatorsSlashable', 'Ledger', 'Payee', 'Validators', 'CounterForValidators', 'MaxValidatorsCount', 'LastValidatorEra', 'Nominators', 'CounterForNominators', 'VirtualStakers', 'CounterForVirtualStakers', 'MaxNominatorsCount', 'CurrentEra', 'ActiveEra', 'BondedEras', 'ErasStakersOverview', 'ErasStakersPaged', 'ClaimedRewards', 'ErasValidatorPrefs', 'ErasValidatorReward', 'ErasRewardPoints', 'ErasTotalStake', 'ForceEra', 'MaxStakedRewards', 'SlashRewardFraction', 'CanceledSlashPayout', 'OffenceQueue', 'OffenceQueueEras', 'ProcessingOffence', 'UnappliedSlashes', 'CancelledSlashes', 'ValidatorSlashInEra', 'ChillThreshold', 'VoterSnapshotStatus', 'NextElectionPage', 'ElectableStashes', 'EraPruningState'];
         Revive: ['PristineCode', 'CodeInfoOf', 'AccountInfoOf', 'ImmutableDataOf', 'DeletionQueue', 'DeletionQueueCounter', 'OriginalAccount', 'EthereumBlock', 'BlockHash', 'ReceiptInfoData', 'EthBlockBuilderIR', 'EthBlockBuilderFirstValues', 'DebugSettingsOf'];
         Sudo: ['Key'];
         AhOps: ['RcLeaseReserve', 'RcCrowdloanContribution', 'RcCrowdloanReserve'];
@@ -14732,11 +15556,11 @@ type AllInteractions = {
         Multisig: ['as_multi_threshold_1', 'as_multi', 'approve_as_multi', 'cancel_as_multi', 'poke_deposit'];
         Proxy: ['proxy', 'add_proxy', 'remove_proxy', 'remove_proxies', 'create_pure', 'kill_pure', 'announce', 'remove_announcement', 'reject_announcement', 'proxy_announced', 'poke_deposit'];
         Indices: ['claim', 'transfer', 'free', 'force_transfer', 'freeze', 'poke_deposit'];
-        Assets: ['create', 'force_create', 'start_destroy', 'destroy_accounts', 'destroy_approvals', 'finish_destroy', 'mint', 'burn', 'transfer', 'transfer_keep_alive', 'force_transfer', 'freeze', 'thaw', 'freeze_asset', 'thaw_asset', 'transfer_ownership', 'set_team', 'set_metadata', 'clear_metadata', 'force_set_metadata', 'force_clear_metadata', 'force_asset_status', 'approve_transfer', 'cancel_approval', 'force_cancel_approval', 'transfer_approved', 'touch', 'refund', 'set_min_balance', 'touch_other', 'refund_other', 'block', 'transfer_all'];
+        Assets: ['create', 'force_create', 'start_destroy', 'destroy_accounts', 'destroy_approvals', 'finish_destroy', 'mint', 'burn', 'transfer', 'transfer_keep_alive', 'force_transfer', 'freeze', 'thaw', 'freeze_asset', 'thaw_asset', 'transfer_ownership', 'set_team', 'set_metadata', 'clear_metadata', 'force_set_metadata', 'force_clear_metadata', 'force_asset_status', 'approve_transfer', 'cancel_approval', 'force_cancel_approval', 'transfer_approved', 'touch', 'refund', 'set_min_balance', 'touch_other', 'refund_other', 'block', 'transfer_all', 'set_reserves'];
         Uniques: ['create', 'force_create', 'destroy', 'mint', 'burn', 'transfer', 'redeposit', 'freeze', 'thaw', 'freeze_collection', 'thaw_collection', 'transfer_ownership', 'set_team', 'approve_transfer', 'cancel_approval', 'force_item_status', 'set_attribute', 'clear_attribute', 'set_metadata', 'clear_metadata', 'set_collection_metadata', 'clear_collection_metadata', 'set_accept_ownership', 'set_collection_max_supply', 'set_price', 'buy_item'];
         Nfts: ['create', 'force_create', 'destroy', 'mint', 'force_mint', 'burn', 'transfer', 'redeposit', 'lock_item_transfer', 'unlock_item_transfer', 'lock_collection', 'transfer_ownership', 'set_team', 'force_collection_owner', 'force_collection_config', 'approve_transfer', 'cancel_approval', 'clear_all_transfer_approvals', 'lock_item_properties', 'set_attribute', 'force_set_attribute', 'clear_attribute', 'approve_item_attributes', 'cancel_item_attributes_approval', 'set_metadata', 'clear_metadata', 'set_collection_metadata', 'clear_collection_metadata', 'set_accept_ownership', 'set_collection_max_supply', 'update_mint_settings', 'set_price', 'buy_item', 'pay_tips', 'create_swap', 'cancel_swap', 'claim_swap', 'mint_pre_signed', 'set_attributes_pre_signed'];
-        ForeignAssets: ['create', 'force_create', 'start_destroy', 'destroy_accounts', 'destroy_approvals', 'finish_destroy', 'mint', 'burn', 'transfer', 'transfer_keep_alive', 'force_transfer', 'freeze', 'thaw', 'freeze_asset', 'thaw_asset', 'transfer_ownership', 'set_team', 'set_metadata', 'clear_metadata', 'force_set_metadata', 'force_clear_metadata', 'force_asset_status', 'approve_transfer', 'cancel_approval', 'force_cancel_approval', 'transfer_approved', 'touch', 'refund', 'set_min_balance', 'touch_other', 'refund_other', 'block', 'transfer_all'];
-        PoolAssets: ['create', 'force_create', 'start_destroy', 'destroy_accounts', 'destroy_approvals', 'finish_destroy', 'mint', 'burn', 'transfer', 'transfer_keep_alive', 'force_transfer', 'freeze', 'thaw', 'freeze_asset', 'thaw_asset', 'transfer_ownership', 'set_team', 'set_metadata', 'clear_metadata', 'force_set_metadata', 'force_clear_metadata', 'force_asset_status', 'approve_transfer', 'cancel_approval', 'force_cancel_approval', 'transfer_approved', 'touch', 'refund', 'set_min_balance', 'touch_other', 'refund_other', 'block', 'transfer_all'];
+        ForeignAssets: ['create', 'force_create', 'start_destroy', 'destroy_accounts', 'destroy_approvals', 'finish_destroy', 'mint', 'burn', 'transfer', 'transfer_keep_alive', 'force_transfer', 'freeze', 'thaw', 'freeze_asset', 'thaw_asset', 'transfer_ownership', 'set_team', 'set_metadata', 'clear_metadata', 'force_set_metadata', 'force_clear_metadata', 'force_asset_status', 'approve_transfer', 'cancel_approval', 'force_cancel_approval', 'transfer_approved', 'touch', 'refund', 'set_min_balance', 'touch_other', 'refund_other', 'block', 'transfer_all', 'set_reserves'];
+        PoolAssets: ['create', 'force_create', 'start_destroy', 'destroy_accounts', 'destroy_approvals', 'finish_destroy', 'mint', 'burn', 'transfer', 'transfer_keep_alive', 'force_transfer', 'freeze', 'thaw', 'freeze_asset', 'thaw_asset', 'transfer_ownership', 'set_team', 'set_metadata', 'clear_metadata', 'force_set_metadata', 'force_clear_metadata', 'force_asset_status', 'approve_transfer', 'cancel_approval', 'force_cancel_approval', 'transfer_approved', 'touch', 'refund', 'set_min_balance', 'touch_other', 'refund_other', 'block', 'transfer_all', 'set_reserves'];
         AssetConversion: ['create_pool', 'add_liquidity', 'remove_liquidity', 'swap_exact_tokens_for_tokens', 'swap_tokens_for_exact_tokens', 'touch'];
         Treasury: ['spend_local', 'remove_approval', 'spend', 'payout', 'check_status', 'void_spend'];
         ConvictionVoting: ['vote', 'delegate', 'undelegate', 'unlock', 'remove_vote', 'remove_other_vote'];
@@ -14745,10 +15569,11 @@ type AllInteractions = {
         Bounties: ['propose_bounty', 'approve_bounty', 'propose_curator', 'unassign_curator', 'accept_curator', 'award_bounty', 'claim_bounty', 'close_bounty', 'extend_bounty_expiry', 'approve_bounty_with_curator', 'poke_deposit'];
         ChildBounties: ['add_child_bounty', 'propose_curator', 'accept_curator', 'unassign_curator', 'award_child_bounty', 'claim_child_bounty', 'close_child_bounty'];
         AssetRate: ['create', 'update', 'remove'];
+        MultiAssetBounties: ['fund_bounty', 'fund_child_bounty', 'propose_curator', 'accept_curator', 'unassign_curator', 'award_bounty', 'close_bounty', 'check_status', 'retry_payment'];
         StateTrieMigration: ['control_auto_migration', 'continue_migrate', 'migrate_custom_top', 'migrate_custom_child', 'set_signed_max_limits', 'force_set_progress'];
         NominationPools: ['join', 'bond_extra', 'claim_payout', 'unbond', 'pool_withdraw_unbonded', 'withdraw_unbonded', 'create', 'create_with_pool_id', 'nominate', 'set_state', 'set_metadata', 'set_configs', 'update_roles', 'chill', 'bond_extra_other', 'set_claim_permission', 'claim_payout_other', 'set_commission', 'set_commission_max', 'set_commission_change_rate', 'claim_commission', 'adjust_pool_deposit', 'set_commission_claim_permission', 'apply_slash', 'migrate_delegation', 'migrate_pool_to_delegate_stake'];
         VoterList: ['rebag', 'put_in_front_of', 'put_in_front_of_other'];
-        StakingRcClient: ['relay_session_report', 'relay_new_offence_paged'];
+        StakingRcClient: ['relay_session_report', 'relay_new_offence_paged', 'set_keys', 'purge_keys'];
         MultiBlockElection: ['manage', 'admin'];
         MultiBlockElectionUnsigned: ['submit_unsigned'];
         MultiBlockElectionSigned: ['register', 'submit_page', 'bail', 'clear_old_round_data', 'set_invulnerables'];
@@ -14765,7 +15590,7 @@ type AllInteractions = {
         Scheduler: ['Scheduled', 'Canceled', 'Dispatched', 'RetrySet', 'RetryCancelled', 'CallUnavailable', 'PeriodicFailed', 'RetryFailed', 'PermanentlyOverweight', 'AgendaIncomplete'];
         Parameters: ['Updated'];
         MultiBlockMigrations: ['UpgradeStarted', 'UpgradeCompleted', 'UpgradeFailed', 'MigrationSkipped', 'MigrationAdvanced', 'MigrationCompleted', 'MigrationFailed', 'HistoricCleared'];
-        Balances: ['Endowed', 'DustLost', 'Transfer', 'BalanceSet', 'Reserved', 'Unreserved', 'ReserveRepatriated', 'Deposit', 'Withdraw', 'Slashed', 'Minted', 'Burned', 'Suspended', 'Restored', 'Upgraded', 'Issued', 'Rescinded', 'Locked', 'Unlocked', 'Frozen', 'Thawed', 'TotalIssuanceForced', 'Unexpected'];
+        Balances: ['Endowed', 'DustLost', 'Transfer', 'BalanceSet', 'Reserved', 'Unreserved', 'ReserveRepatriated', 'Deposit', 'Withdraw', 'Slashed', 'Minted', 'MintedCredit', 'Burned', 'BurnedDebt', 'Suspended', 'Restored', 'Upgraded', 'Issued', 'Rescinded', 'Locked', 'Unlocked', 'Frozen', 'Thawed', 'TotalIssuanceForced', 'Held', 'BurnedHeld', 'TransferOnHold', 'TransferAndHold', 'Released', 'Unexpected'];
         TransactionPayment: ['TransactionFeePaid'];
         AssetTxPayment: ['AssetTxFeePaid', 'AssetRefundFailed'];
         Vesting: ['VestingCreated', 'VestingUpdated', 'VestingCompleted'];
@@ -14782,11 +15607,11 @@ type AllInteractions = {
         Multisig: ['NewMultisig', 'MultisigApproval', 'MultisigExecuted', 'MultisigCancelled', 'DepositPoked'];
         Proxy: ['ProxyExecuted', 'PureCreated', 'PureKilled', 'Announced', 'ProxyAdded', 'ProxyRemoved', 'DepositPoked'];
         Indices: ['IndexAssigned', 'IndexFreed', 'IndexFrozen', 'DepositPoked'];
-        Assets: ['Created', 'Issued', 'Transferred', 'Burned', 'TeamChanged', 'OwnerChanged', 'Frozen', 'Thawed', 'AssetFrozen', 'AssetThawed', 'AccountsDestroyed', 'ApprovalsDestroyed', 'DestructionStarted', 'Destroyed', 'ForceCreated', 'MetadataSet', 'MetadataCleared', 'ApprovedTransfer', 'ApprovalCancelled', 'TransferredApproved', 'AssetStatusChanged', 'AssetMinBalanceChanged', 'Touched', 'Blocked', 'Deposited', 'Withdrawn'];
+        Assets: ['Created', 'Issued', 'Transferred', 'Burned', 'TeamChanged', 'OwnerChanged', 'Frozen', 'Thawed', 'AssetFrozen', 'AssetThawed', 'AccountsDestroyed', 'ApprovalsDestroyed', 'DestructionStarted', 'Destroyed', 'ForceCreated', 'MetadataSet', 'MetadataCleared', 'ApprovedTransfer', 'ApprovalCancelled', 'TransferredApproved', 'AssetStatusChanged', 'AssetMinBalanceChanged', 'Touched', 'Blocked', 'Deposited', 'Withdrawn', 'ReservesUpdated', 'ReservesRemoved'];
         Uniques: ['Created', 'ForceCreated', 'Destroyed', 'Issued', 'Transferred', 'Burned', 'Frozen', 'Thawed', 'CollectionFrozen', 'CollectionThawed', 'OwnerChanged', 'TeamChanged', 'ApprovedTransfer', 'ApprovalCancelled', 'ItemStatusChanged', 'CollectionMetadataSet', 'CollectionMetadataCleared', 'MetadataSet', 'MetadataCleared', 'Redeposited', 'AttributeSet', 'AttributeCleared', 'OwnershipAcceptanceChanged', 'CollectionMaxSupplySet', 'ItemPriceSet', 'ItemPriceRemoved', 'ItemBought'];
         Nfts: ['Created', 'ForceCreated', 'Destroyed', 'Issued', 'Transferred', 'Burned', 'ItemTransferLocked', 'ItemTransferUnlocked', 'ItemPropertiesLocked', 'CollectionLocked', 'OwnerChanged', 'TeamChanged', 'TransferApproved', 'ApprovalCancelled', 'AllApprovalsCancelled', 'CollectionConfigChanged', 'CollectionMetadataSet', 'CollectionMetadataCleared', 'ItemMetadataSet', 'ItemMetadataCleared', 'Redeposited', 'AttributeSet', 'AttributeCleared', 'ItemAttributesApprovalAdded', 'ItemAttributesApprovalRemoved', 'OwnershipAcceptanceChanged', 'CollectionMaxSupplySet', 'CollectionMintSettingsUpdated', 'NextCollectionIdIncremented', 'ItemPriceSet', 'ItemPriceRemoved', 'ItemBought', 'TipSent', 'SwapCreated', 'SwapCancelled', 'SwapClaimed', 'PreSignedAttributesSet', 'PalletAttributeSet'];
-        ForeignAssets: ['Created', 'Issued', 'Transferred', 'Burned', 'TeamChanged', 'OwnerChanged', 'Frozen', 'Thawed', 'AssetFrozen', 'AssetThawed', 'AccountsDestroyed', 'ApprovalsDestroyed', 'DestructionStarted', 'Destroyed', 'ForceCreated', 'MetadataSet', 'MetadataCleared', 'ApprovedTransfer', 'ApprovalCancelled', 'TransferredApproved', 'AssetStatusChanged', 'AssetMinBalanceChanged', 'Touched', 'Blocked', 'Deposited', 'Withdrawn'];
-        PoolAssets: ['Created', 'Issued', 'Transferred', 'Burned', 'TeamChanged', 'OwnerChanged', 'Frozen', 'Thawed', 'AssetFrozen', 'AssetThawed', 'AccountsDestroyed', 'ApprovalsDestroyed', 'DestructionStarted', 'Destroyed', 'ForceCreated', 'MetadataSet', 'MetadataCleared', 'ApprovedTransfer', 'ApprovalCancelled', 'TransferredApproved', 'AssetStatusChanged', 'AssetMinBalanceChanged', 'Touched', 'Blocked', 'Deposited', 'Withdrawn'];
+        ForeignAssets: ['Created', 'Issued', 'Transferred', 'Burned', 'TeamChanged', 'OwnerChanged', 'Frozen', 'Thawed', 'AssetFrozen', 'AssetThawed', 'AccountsDestroyed', 'ApprovalsDestroyed', 'DestructionStarted', 'Destroyed', 'ForceCreated', 'MetadataSet', 'MetadataCleared', 'ApprovedTransfer', 'ApprovalCancelled', 'TransferredApproved', 'AssetStatusChanged', 'AssetMinBalanceChanged', 'Touched', 'Blocked', 'Deposited', 'Withdrawn', 'ReservesUpdated', 'ReservesRemoved'];
+        PoolAssets: ['Created', 'Issued', 'Transferred', 'Burned', 'TeamChanged', 'OwnerChanged', 'Frozen', 'Thawed', 'AssetFrozen', 'AssetThawed', 'AccountsDestroyed', 'ApprovalsDestroyed', 'DestructionStarted', 'Destroyed', 'ForceCreated', 'MetadataSet', 'MetadataCleared', 'ApprovedTransfer', 'ApprovalCancelled', 'TransferredApproved', 'AssetStatusChanged', 'AssetMinBalanceChanged', 'Touched', 'Blocked', 'Deposited', 'Withdrawn', 'ReservesUpdated', 'ReservesRemoved'];
         AssetConversion: ['PoolCreated', 'LiquidityAdded', 'LiquidityRemoved', 'SwapExecuted', 'SwapCreditExecuted', 'Touched'];
         Treasury: ['Spending', 'Awarded', 'Burnt', 'Rollover', 'Deposit', 'SpendApproved', 'UpdatedInactive', 'AssetSpendApproved', 'AssetSpendVoided', 'Paid', 'PaymentFailed', 'SpendProcessed'];
         ConvictionVoting: ['Delegated', 'Undelegated', 'Voted', 'VoteRemoved', 'VoteUnlocked'];
@@ -14795,11 +15620,12 @@ type AllInteractions = {
         Bounties: ['BountyProposed', 'BountyRejected', 'BountyBecameActive', 'BountyAwarded', 'BountyClaimed', 'BountyCanceled', 'BountyExtended', 'BountyApproved', 'CuratorProposed', 'CuratorUnassigned', 'CuratorAccepted', 'DepositPoked'];
         ChildBounties: ['Added', 'Awarded', 'Claimed', 'Canceled'];
         AssetRate: ['AssetRateCreated', 'AssetRateRemoved', 'AssetRateUpdated'];
+        MultiAssetBounties: ['BountyCreated', 'ChildBountyCreated', 'BountyBecameActive', 'BountyAwarded', 'BountyPayoutProcessed', 'BountyFundingProcessed', 'BountyRefundProcessed', 'BountyCanceled', 'CuratorUnassigned', 'CuratorProposed', 'PaymentFailed', 'Paid'];
         StateTrieMigration: ['Migrated', 'Slashed', 'AutoMigrationFinished', 'Halted'];
         NominationPools: ['Created', 'Bonded', 'PaidOut', 'Unbonded', 'Withdrawn', 'Destroyed', 'StateChanged', 'MemberRemoved', 'RolesUpdated', 'PoolSlashed', 'UnbondingPoolSlashed', 'PoolCommissionUpdated', 'PoolMaxCommissionUpdated', 'PoolCommissionChangeRateUpdated', 'PoolCommissionClaimPermissionUpdated', 'PoolCommissionClaimed', 'MinBalanceDeficitAdjusted', 'MinBalanceExcessAdjusted', 'MemberClaimPermissionUpdated', 'MetadataUpdated', 'PoolNominationMade', 'PoolNominatorChilled', 'GlobalParamsUpdated'];
         VoterList: ['Rebagged', 'ScoreUpdated'];
         DelegatedStaking: ['Delegated', 'Released', 'Slashed', 'MigratedDelegation'];
-        StakingRcClient: ['SessionReportReceived', 'OffenceReceived', 'Unexpected'];
+        StakingRcClient: ['SessionReportReceived', 'OffenceReceived', 'FeesPaid', 'Unexpected'];
         MultiBlockElection: ['PhaseTransitioned', 'UnexpectedTargetSnapshotFailed', 'UnexpectedVoterSnapshotFailed'];
         MultiBlockElectionVerifier: ['VerificationFailed', 'Verified', 'Queued'];
         MultiBlockElectionSigned: ['Registered', 'Stored', 'Rewarded', 'Slashed', 'Ejected', 'Discarded', 'Bailed'];
@@ -14828,11 +15654,11 @@ type AllInteractions = {
         Multisig: ['MinimumThreshold', 'AlreadyApproved', 'NoApprovalsNeeded', 'TooFewSignatories', 'TooManySignatories', 'SignatoriesOutOfOrder', 'SenderInSignatories', 'NotFound', 'NotOwner', 'NoTimepoint', 'WrongTimepoint', 'UnexpectedTimepoint', 'MaxWeightTooLow', 'AlreadyStored'];
         Proxy: ['TooMany', 'NotFound', 'NotProxy', 'Unproxyable', 'Duplicate', 'NoPermission', 'Unannounced', 'NoSelfProxy'];
         Indices: ['NotAssigned', 'NotOwner', 'InUse', 'NotTransfer', 'Permanent'];
-        Assets: ['BalanceLow', 'NoAccount', 'NoPermission', 'Unknown', 'Frozen', 'InUse', 'BadWitness', 'MinBalanceZero', 'UnavailableConsumer', 'BadMetadata', 'Unapproved', 'WouldDie', 'AlreadyExists', 'NoDeposit', 'WouldBurn', 'LiveAsset', 'AssetNotLive', 'IncorrectStatus', 'NotFrozen', 'CallbackFailed', 'BadAssetId', 'ContainsFreezes', 'ContainsHolds'];
+        Assets: ['BalanceLow', 'NoAccount', 'NoPermission', 'Unknown', 'Frozen', 'InUse', 'BadWitness', 'MinBalanceZero', 'UnavailableConsumer', 'BadMetadata', 'Unapproved', 'WouldDie', 'AlreadyExists', 'NoDeposit', 'WouldBurn', 'LiveAsset', 'AssetNotLive', 'IncorrectStatus', 'NotFrozen', 'CallbackFailed', 'BadAssetId', 'ContainsFreezes', 'ContainsHolds', 'TooManyReserves'];
         Uniques: ['NoPermission', 'UnknownCollection', 'AlreadyExists', 'WrongOwner', 'BadWitness', 'InUse', 'Frozen', 'WrongDelegate', 'NoDelegate', 'Unapproved', 'Unaccepted', 'Locked', 'MaxSupplyReached', 'MaxSupplyAlreadySet', 'MaxSupplyTooSmall', 'UnknownItem', 'NotForSale', 'BidTooLow', 'NoMetadata', 'WrongMetadata', 'AttributeNotFound', 'WrongAttribute'];
         Nfts: ['NoPermission', 'UnknownCollection', 'AlreadyExists', 'ApprovalExpired', 'WrongOwner', 'BadWitness', 'CollectionIdInUse', 'ItemsNonTransferable', 'NotDelegate', 'WrongDelegate', 'Unapproved', 'Unaccepted', 'ItemLocked', 'LockedItemAttributes', 'LockedCollectionAttributes', 'LockedItemMetadata', 'LockedCollectionMetadata', 'MaxSupplyReached', 'MaxSupplyLocked', 'MaxSupplyTooSmall', 'UnknownItem', 'UnknownSwap', 'MetadataNotFound', 'AttributeNotFound', 'NotForSale', 'BidTooLow', 'ReachedApprovalLimit', 'DeadlineExpired', 'WrongDuration', 'MethodDisabled', 'WrongSetting', 'InconsistentItemConfig', 'NoConfig', 'RolesNotCleared', 'MintNotStarted', 'MintEnded', 'AlreadyClaimed', 'IncorrectData', 'WrongOrigin', 'WrongSignature', 'IncorrectMetadata', 'MaxAttributesLimitReached', 'WrongNamespace', 'CollectionNotEmpty', 'WitnessRequired'];
-        ForeignAssets: ['BalanceLow', 'NoAccount', 'NoPermission', 'Unknown', 'Frozen', 'InUse', 'BadWitness', 'MinBalanceZero', 'UnavailableConsumer', 'BadMetadata', 'Unapproved', 'WouldDie', 'AlreadyExists', 'NoDeposit', 'WouldBurn', 'LiveAsset', 'AssetNotLive', 'IncorrectStatus', 'NotFrozen', 'CallbackFailed', 'BadAssetId', 'ContainsFreezes', 'ContainsHolds'];
-        PoolAssets: ['BalanceLow', 'NoAccount', 'NoPermission', 'Unknown', 'Frozen', 'InUse', 'BadWitness', 'MinBalanceZero', 'UnavailableConsumer', 'BadMetadata', 'Unapproved', 'WouldDie', 'AlreadyExists', 'NoDeposit', 'WouldBurn', 'LiveAsset', 'AssetNotLive', 'IncorrectStatus', 'NotFrozen', 'CallbackFailed', 'BadAssetId', 'ContainsFreezes', 'ContainsHolds'];
+        ForeignAssets: ['BalanceLow', 'NoAccount', 'NoPermission', 'Unknown', 'Frozen', 'InUse', 'BadWitness', 'MinBalanceZero', 'UnavailableConsumer', 'BadMetadata', 'Unapproved', 'WouldDie', 'AlreadyExists', 'NoDeposit', 'WouldBurn', 'LiveAsset', 'AssetNotLive', 'IncorrectStatus', 'NotFrozen', 'CallbackFailed', 'BadAssetId', 'ContainsFreezes', 'ContainsHolds', 'TooManyReserves'];
+        PoolAssets: ['BalanceLow', 'NoAccount', 'NoPermission', 'Unknown', 'Frozen', 'InUse', 'BadWitness', 'MinBalanceZero', 'UnavailableConsumer', 'BadMetadata', 'Unapproved', 'WouldDie', 'AlreadyExists', 'NoDeposit', 'WouldBurn', 'LiveAsset', 'AssetNotLive', 'IncorrectStatus', 'NotFrozen', 'CallbackFailed', 'BadAssetId', 'ContainsFreezes', 'ContainsHolds', 'TooManyReserves'];
         AssetConversion: ['InvalidAssetPair', 'PoolExists', 'WrongDesiredAmount', 'AmountOneLessThanMinimal', 'AmountTwoLessThanMinimal', 'ReserveLeftLessThanMinimal', 'AmountOutTooHigh', 'PoolNotFound', 'Overflow', 'AssetOneDepositDidNotMeetMinimum', 'AssetTwoDepositDidNotMeetMinimum', 'AssetOneWithdrawalDidNotMeetMinimum', 'AssetTwoWithdrawalDidNotMeetMinimum', 'OptimalAmountLessThanDesired', 'InsufficientLiquidityMinted', 'ZeroLiquidity', 'ZeroAmount', 'ProvidedMinimumNotSufficientForSwap', 'ProvidedMaximumNotSufficientForSwap', 'InvalidPath', 'NonUniquePath', 'IncorrectPoolAssetId', 'BelowMinimum'];
         Treasury: ['InvalidIndex', 'TooManyApprovals', 'InsufficientPermission', 'ProposalNotApproved', 'FailedToConvertBalance', 'SpendExpired', 'EarlyPayout', 'AlreadyAttempted', 'PayoutError', 'NotAttempted', 'Inconclusive'];
         ConvictionVoting: ['NotOngoing', 'NotVoter', 'NoPermission', 'NoPermissionYet', 'AlreadyDelegating', 'AlreadyVoting', 'InsufficientFunds', 'NotDelegating', 'Nonsense', 'MaxVotesReached', 'ClassNeeded', 'BadClass'];
@@ -14841,14 +15667,16 @@ type AllInteractions = {
         Bounties: ['InsufficientProposersBalance', 'InvalidIndex', 'ReasonTooBig', 'UnexpectedStatus', 'RequireCurator', 'InvalidValue', 'InvalidFee', 'PendingPayout', 'Premature', 'HasActiveChildBounty', 'TooManyQueued', 'NotProposer'];
         ChildBounties: ['ParentBountyNotActive', 'InsufficientBountyBalance', 'TooManyChildBounties'];
         AssetRate: ['UnknownAssetKind', 'AlreadyExists', 'Overflow'];
+        MultiAssetBounties: ['InvalidIndex', 'ReasonTooBig', 'InvalidValue', 'FailedToConvertBalance', 'UnexpectedStatus', 'RequireCurator', 'InsufficientPermission', 'FundingError', 'RefundError', 'PayoutError', 'FundingInconclusive', 'RefundInconclusive', 'PayoutInconclusive', 'FailedToConvertSource', 'HasActiveChildBounty', 'TooManyChildBounties', 'InsufficientBountyValue', 'PreimageNotExist'];
         StateTrieMigration: ['MaxSignedLimits', 'KeyTooLong', 'NotEnoughFunds', 'BadWitness', 'SignedMigrationNotAllowed', 'BadChildRoot'];
         NominationPools: ['PoolNotFound', 'PoolMemberNotFound', 'RewardPoolNotFound', 'SubPoolsNotFound', 'AccountBelongsToOtherPool', 'FullyUnbonding', 'MaxUnbondingLimit', 'CannotWithdrawAny', 'MinimumBondNotMet', 'OverflowRisk', 'NotDestroying', 'NotNominator', 'NotKickerOrDestroying', 'NotOpen', 'MaxPools', 'MaxPoolMembers', 'CanNotChangeState', 'DoesNotHavePermission', 'MetadataExceedsMaxLen', 'Defensive', 'PartialUnbondNotAllowedPermissionlessly', 'MaxCommissionRestricted', 'CommissionExceedsMaximum', 'CommissionExceedsGlobalMaximum', 'CommissionChangeThrottled', 'CommissionChangeRateNotAllowed', 'NoPendingCommission', 'NoCommissionCurrentSet', 'PoolIdInUse', 'InvalidPoolId', 'BondExtraRestricted', 'NothingToAdjust', 'NothingToSlash', 'SlashTooLow', 'AlreadyMigrated', 'NotMigrated', 'NotSupported', 'Restricted'];
         VoterList: ['List', 'Locked'];
         DelegatedStaking: ['NotAllowed', 'AlreadyStaking', 'InvalidRewardDestination', 'InvalidDelegation', 'NotEnoughFunds', 'NotAgent', 'NotDelegator', 'BadState', 'UnappliedSlash', 'NothingToSlash', 'WithdrawFailed', 'NotSupported'];
+        StakingRcClient: ['XcmSendFailed', 'NotValidator', 'InvalidKeys', 'InvalidProof', 'FeesExceededMax'];
         MultiBlockElection: ['Fallback', 'UnexpectedPhase', 'Snapshot'];
         MultiBlockElectionSigned: ['PhaseNotSigned', 'Duplicate', 'QueueFull', 'BadPageIndex', 'NotRegistered', 'NoSubmission', 'RoundNotOver', 'BadWitnessData', 'TooManyInvulnerables'];
         Staking: ['NotController', 'NotStash', 'AlreadyBonded', 'AlreadyPaired', 'EmptyTargets', 'DuplicateIndex', 'InvalidSlashRecord', 'InsufficientBond', 'NoMoreChunks', 'NoUnlockChunk', 'FundedTarget', 'InvalidEraToReward', 'InvalidNumberOfNominations', 'AlreadyClaimed', 'InvalidPage', 'IncorrectHistoryDepth', 'BadState', 'TooManyTargets', 'BadTarget', 'CannotChillOther', 'TooManyNominators', 'TooManyValidators', 'CommissionTooLow', 'BoundNotMet', 'ControllerDeprecated', 'CannotRestoreLedger', 'RewardDestinationRestricted', 'NotEnoughFunds', 'VirtualStakerNotAllowed', 'CannotReapStash', 'AlreadyMigrated', 'EraNotStarted', 'Restricted', 'UnappliedSlashesInPreviousEra', 'EraNotPrunable', 'CancelledSlash'];
-        Revive: ['InvalidSchedule', 'InvalidCallFlags', 'OutOfGas', 'TransferFailed', 'MaxCallDepthReached', 'ContractNotFound', 'CodeNotFound', 'CodeInfoNotFound', 'OutOfBounds', 'DecodingFailed', 'ContractTrapped', 'ValueTooLarge', 'TerminatedWhileReentrant', 'InputForwarded', 'TooManyTopics', 'DuplicateContract', 'TerminatedInConstructor', 'ReentranceDenied', 'ReenteredPallet', 'StateChangeDenied', 'StorageDepositNotEnoughFunds', 'StorageDepositLimitExhausted', 'CodeInUse', 'ContractReverted', 'CodeRejected', 'BlobTooLarge', 'StaticMemoryTooLarge', 'BasicBlockTooLarge', 'InvalidInstruction', 'MaxDelegateDependenciesReached', 'DelegateDependencyNotFound', 'DelegateDependencyAlreadyExists', 'CannotAddSelfAsDelegateDependency', 'OutOfTransientStorage', 'InvalidSyscall', 'InvalidStorageFlags', 'ExecutionFailed', 'BalanceConversionFailed', 'InvalidImmutableAccess', 'AccountUnmapped', 'AccountAlreadyMapped', 'InvalidGenericTransaction', 'RefcountOverOrUnderflow', 'UnsupportedPrecompileAddress', 'CallDataTooLarge', 'ReturnDataTooLarge', 'InvalidJump', 'StackUnderflow', 'StackOverflow', 'TxFeeOverdraw', 'EvmConstructorNonEmptyData', 'EvmConstructedFromHash', 'StorageRefundNotEnoughFunds', 'StorageRefundLocked', 'PrecompileDelegateDenied'];
+        Revive: ['InvalidSchedule', 'InvalidCallFlags', 'OutOfGas', 'TransferFailed', 'MaxCallDepthReached', 'ContractNotFound', 'CodeNotFound', 'CodeInfoNotFound', 'OutOfBounds', 'DecodingFailed', 'ContractTrapped', 'ValueTooLarge', 'TerminatedWhileReentrant', 'InputForwarded', 'TooManyTopics', 'DuplicateContract', 'TerminatedInConstructor', 'ReentranceDenied', 'ReenteredPallet', 'StateChangeDenied', 'StorageDepositNotEnoughFunds', 'StorageDepositLimitExhausted', 'CodeInUse', 'ContractReverted', 'CodeRejected', 'BlobTooLarge', 'StaticMemoryTooLarge', 'BasicBlockTooLarge', 'InvalidInstruction', 'MaxDelegateDependenciesReached', 'DelegateDependencyNotFound', 'DelegateDependencyAlreadyExists', 'CannotAddSelfAsDelegateDependency', 'OutOfTransientStorage', 'InvalidSyscall', 'InvalidStorageFlags', 'ExecutionFailed', 'BalanceConversionFailed', 'InvalidImmutableAccess', 'AccountUnmapped', 'AccountAlreadyMapped', 'InvalidGenericTransaction', 'RefcountOverOrUnderflow', 'UnsupportedPrecompileAddress', 'CallDataTooLarge', 'ReturnDataTooLarge', 'InvalidJump', 'StackUnderflow', 'StackOverflow', 'TxFeeOverdraw', 'EvmConstructorNonEmptyData', 'EvmConstructedFromHash', 'StorageRefundNotEnoughFunds', 'StorageRefundLocked', 'PrecompileDelegateDenied', 'EcdsaRecoveryFailed'];
         Sudo: ['RequireSudo'];
         AhOps: ['NoLeaseReserve', 'NoCrowdloanContribution', 'NoCrowdloanReserve', 'FailedToWithdrawCrowdloanContribution', 'NotYet', 'ContributionsRemaining', 'WrongDerivedTranslation', 'NotSovereign', 'InternalError', 'MigrationNotCompleted', 'ZeroBalance', 'FailedToTransfer', 'AlreadyTranslated', 'TooLongDerivationPath', 'FailedToForceUnstake'];
         AhMigrator: ['FailedToUnreserveDeposit', 'FailedToProcessAccount', 'InsertConflict', 'FailedToConvertType', 'PreimageNotFound', 'FailedToConvertCall', 'FailedToBoundCall', 'XcmError', 'FailedToIntegrateVestingSchedule', 'FailedToCalculateCheckingAccount', 'FailedToBoundVector', 'DmpQueuePriorityAlreadySet', 'InvalidParameter', 'PreimageMissing', 'PreimageTooBig', 'PreimageChunkMissing', 'PreimageStatusInvalid', 'BadXcmVersion', 'InvalidOrigin'];
@@ -14863,6 +15691,7 @@ type AllInteractions = {
         TransactionPayment: ['OperationalFeeMultiplier'];
         Vesting: ['MinVestedTransfer', 'MaxVestingSchedules'];
         Claims: ['Prefix'];
+        Dap: ['PalletId'];
         CollatorSelection: ['PotId', 'MaxCandidates', 'MinEligibleCollators', 'MaxInvulnerables', 'KickThreshold', 'pot_account'];
         Session: ['KeyDeposit'];
         Aura: ['SlotDuration'];
@@ -14884,17 +15713,23 @@ type AllInteractions = {
         Referenda: ['SubmissionDeposit', 'MaxQueued', 'UndecidingTimeout', 'AlarmInterval', 'Tracks'];
         Bounties: ['BountyDepositBase', 'BountyDepositPayoutDelay', 'BountyUpdatePeriod', 'CuratorDepositMultiplier', 'CuratorDepositMax', 'CuratorDepositMin', 'BountyValueMinimum', 'DataDepositPerByte', 'MaximumReasonLength'];
         ChildBounties: ['MaxActiveChildBountyCount', 'ChildBountyValueMinimum'];
+        MultiAssetBounties: ['BountyValueMinimum', 'ChildBountyValueMinimum', 'MaxActiveChildBountyCount'];
         StateTrieMigration: ['MaxKeyLen'];
         NominationPools: ['PalletId', 'MaxPointsToBalance', 'MaxUnbonding'];
         VoterList: ['BagThresholds', 'MaxAutoRebagPerBlock'];
         DelegatedStaking: ['PalletId', 'SlashRewardFraction'];
+        StakingRcClient: ['KeyDeposit'];
         MultiBlockElection: ['UnsignedPhase', 'SignedPhase', 'SignedValidationPhase', 'VoterSnapshotPerBlock', 'TargetSnapshotPerBlock', 'Pages'];
         MultiBlockElectionVerifier: ['SolutionImprovementThreshold', 'MaxBackersPerWinnerFinal', 'MaxBackersPerWinner', 'MaxWinnersPerPage'];
-        Staking: ['HistoryDepth', 'SessionsPerEra', 'PlanningEraOffset', 'BondingDuration', 'SlashDeferDuration', 'MaxExposurePageSize', 'MaxValidatorSet', 'MaxUnlockingChunks', 'MaxInvulnerables', 'MaxEraDuration', 'MaxPruningItems'];
+        Staking: ['HistoryDepth', 'SessionsPerEra', 'PlanningEraOffset', 'BondingDuration', 'NominatorFastUnbondDuration', 'SlashDeferDuration', 'MaxExposurePageSize', 'MaxValidatorSet', 'MaxUnlockingChunks', 'MaxInvulnerables', 'MaxEraDuration', 'MaxPruningItems'];
         Revive: ['DepositPerByte', 'DepositPerItem', 'DepositPerChildTrieItem', 'CodeHashLockupDepositPercent', 'UnsafeUnstableInterface', 'AllowEVMBytecode', 'ChainId', 'NativeToEthRatio', 'MaxEthExtrinsicWeight', 'DebugEnabled', 'GasScale'];
     };
     viewFns: {
         Proxy: ['check_permissions', 'is_superset'];
+        Assets: ['asset_details', 'balance_of', 'get_metadata', 'get_reserves_data'];
+        ForeignAssets: ['asset_details', 'balance_of', 'get_metadata', 'get_reserves_data'];
+        PoolAssets: ['asset_details', 'balance_of', 'get_metadata', 'get_reserves_data'];
+        AssetConversion: ['get_reserves', 'quote_price_exact_tokens_for_tokens', 'quote_price_tokens_for_exact_tokens'];
         VoterList: ['scores'];
         MultiBlockElectionSigned: ['deposit_for'];
     };

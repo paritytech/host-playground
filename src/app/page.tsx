@@ -21,7 +21,7 @@ import { useAccounts } from "@/src/lib/use-accounts";
 import { useConnectionStatus } from "@/src/lib/use-connection-status";
 import { stringify } from "@/src/lib/utils";
 
-const SDK_VERSION = "0.6.17";
+const SDK_VERSION = "0.7.0";
 
 const categoryIcons: Record<TestCategory, string> = {
   extension: "🔌",
@@ -36,6 +36,10 @@ const categoryIcons: Record<TestCategory, string> = {
   navigation: "🧭",
   chain: "⛓️",
   contract: "📄",
+  theme: "🎨",
+  entropy: "🔑",
+  auth: "🔓",
+  payments: "💳",
 };
 
 const categoryInfo: Record<
@@ -89,6 +93,22 @@ const categoryInfo: Record<
   contract: {
     title: "Contract",
     description: "Read and write operations on the HostApiDemo Solidity contract",
+  },
+  theme: {
+    title: "Theme",
+    description: "Subscribe to host theme (light/dark) changes",
+  },
+  entropy: {
+    title: "Entropy",
+    description: "Derive deterministic entropy from keys (RFC-0007)",
+  },
+  auth: {
+    title: "Auth & Login",
+    description: "Login flow and root account access (RFC-0009, RFC-0010)",
+  },
+  payments: {
+    title: "Payments",
+    description: "Balance, top-ups, and payment requests (RFC-0006)",
   },
 };
 

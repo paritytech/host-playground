@@ -29,7 +29,11 @@ export type TestCategory =
   | "notifications"
   | "navigation"
   | "chain"
-  | "contract";
+  | "contract"
+  | "theme"
+  | "entropy"
+  | "payments"
+  | "auth";
 
 export interface ChainConfig {
   name: string;

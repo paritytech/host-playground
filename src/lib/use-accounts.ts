@@ -30,7 +30,7 @@ export const useAccounts = () => {
       }
 
       const accountsProvider = createAccountsProvider();
-      const result = await accountsProvider.getNonProductAccounts();
+      const result = await accountsProvider.getLegacyAccounts();
 
       const mapped = result.match(
         (accs) =>
