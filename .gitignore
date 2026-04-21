@@ -35,8 +35,9 @@ yarn-error.log*
 *.tsbuildinfo
 next-env.d.ts
 
-# PAPI generated
-.papi/
+# PAPI generated output (source config and inputs are tracked)
+.papi/descriptors/
+.papi/metadata/
 
 test-results
 playwright-report
