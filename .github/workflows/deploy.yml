@@ -33,9 +33,6 @@ jobs:
       - name: Install dependencies
         run: yarn install --immutable
 
-      - name: Generate PAPI descriptors
-        run: npx papi generate
-
       - name: Build
         run: yarn build
 

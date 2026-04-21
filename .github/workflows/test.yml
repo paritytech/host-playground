@@ -22,9 +22,6 @@ jobs:
       - name: Install dependencies
         run: yarn install --immutable
 
-      - name: Generate PAPI descriptors
-        run: npx papi generate
-
       - name: Typecheck
         run: yarn typecheck
 
@@ -39,9 +36,6 @@ jobs:
 
       - name: Install dependencies
         run: yarn install --immutable
-
-      - name: Generate PAPI descriptors
-        run: npx papi generate
 
       - name: Install Playwright browsers
         run: npx playwright install --with-deps chromium
