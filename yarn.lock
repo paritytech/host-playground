@@ -659,39 +659,6 @@
   dependencies:
     playwright "1.59.1"
 
-"@polkadot-api/cli@0.20.3":
-  version "0.20.3"
-  resolved "https://registry.yarnpkg.com/@polkadot-api/cli/-/cli-0.20.3.tgz#9c14e3e83b61dc489dca1f1837431b5c3546cbdc"
-  integrity sha512-aEvUuw9Fd+syt430hJjO8q04QNWmuqlOMbD9WZwLdeMAiGR0+F5h/CUF4tSybiNcbL5jDWLTzrraL5qdSfjm3w==
-  dependencies:
-    "@commander-js/extra-typings" "^14.0.0"
-    "@polkadot-api/codegen" "0.22.3"
-    "@polkadot-api/ink-contracts" "0.6.1"
-    "@polkadot-api/json-rpc-provider" "0.2.0"
-    "@polkadot-api/known-chains" "0.11.2"
-    "@polkadot-api/metadata-compatibility" "0.6.1"
-    "@polkadot-api/observable-client" "0.18.4"
-    "@polkadot-api/sm-provider" "0.3.0"
-    "@polkadot-api/smoldot" "0.4.0"
-    "@polkadot-api/substrate-bindings" "0.20.1"
-    "@polkadot-api/substrate-client" "0.7.0"
-    "@polkadot-api/utils" "0.4.0"
-    "@polkadot-api/wasm-executor" "^0.2.3"
-    "@polkadot-api/ws-middleware" "0.3.2"
-    "@polkadot-api/ws-provider" "0.9.0"
-    "@types/node" "^25.6.0"
-    commander "^14.0.3"
-    execa "^9.6.1"
-    fs.promises.exists "^1.1.4"
-    ora "^9.3.0"
-    read-pkg "^10.1.0"
-    rollup "^4.60.1"
-    rollup-plugin-esbuild "^6.2.1"
-    rxjs "^7.8.2"
-    tsc-prog "^2.3.0"
-    typescript "^6.0.2"
-    write-package "^7.2.0"
-
 "@polkadot-api/cli@0.20.4":
   version "0.20.4"
   resolved "https://registry.yarnpkg.com/@polkadot-api/cli/-/cli-0.20.4.tgz#8079b4fd04fdc421a78bd3aabe64a5a69bc77561"
@@ -911,14 +878,6 @@
     "@polkadot-api/substrate-bindings" "0.20.1"
     "@polkadot-api/utils" "0.4.0"
 
-"@polkadot-api/sm-provider@0.3.0":
-  version "0.3.0"
-  resolved "https://registry.yarnpkg.com/@polkadot-api/sm-provider/-/sm-provider-0.3.0.tgz#50dce1f9119e7fef8f0b7dfe2a1f63c2ada91f9c"
-  integrity sha512-Aa7hulTfUfDBavOvweN1ldouqnPJPDpxDI7oTLt23MxoKavHYTansL9aXC+jMoWGx39ycMIsbY0Em04gxFEhDA==
-  dependencies:
-    "@polkadot-api/json-rpc-provider" "0.2.0"
-    "@polkadot-api/json-rpc-provider-proxy" "0.4.0"
-
 "@polkadot-api/sm-provider@0.3.1":
   version "0.3.1"
   resolved "https://registry.yarnpkg.com/@polkadot-api/sm-provider/-/sm-provider-0.3.1.tgz#89e8826d13261a01e8e70fce8a324ade0b2add32"
@@ -926,22 +885,6 @@
   dependencies:
     "@polkadot-api/json-rpc-provider" "0.2.0"
     "@polkadot-api/json-rpc-provider-proxy" "0.4.0"
-
-"@polkadot-api/smoldot-patch@102.0.0":
-  version "102.0.0"
-  resolved "https://registry.yarnpkg.com/@polkadot-api/smoldot-patch/-/smoldot-patch-102.0.0.tgz#a908c9d5a15fe5c3ed4febeb0b356a7462f090ff"
-  integrity sha512-qOI1B3gOdTNYPb3FNH6jxkVSOOyuFazwMtAZqyi8QZi0VcBnSmKIJ9uzgDRemhIMNHV4vou+zDq1dR4bxDIk0w==
-  dependencies:
-    ws "^8.8.1"
-
-"@polkadot-api/smoldot@0.4.0":
-  version "0.4.0"
-  resolved "https://registry.yarnpkg.com/@polkadot-api/smoldot/-/smoldot-0.4.0.tgz#5a1562d66ff720feec666becfdde97e82abd5abc"
-  integrity sha512-bwXxwAh/QTkBBuovfRk5MIAnuqbN4DmnkdTLoeo8TEsHR5I4J/01rXgPAZ/OHpR5KY+hcjhsdn5Ch1RrWsW71g==
-  dependencies:
-    "@polkadot-api/smoldot-patch" "102.0.0"
-    "@types/node" "^25.5.0"
-    smoldot "2.0.40"
 
 "@polkadot-api/smoldot@0.4.1":
   version "0.4.1"
@@ -2102,7 +2045,7 @@
   dependencies:
     undici-types "~6.21.0"
 
-"@types/node@^25.5.0", "@types/node@^25.6.0":
+"@types/node@^25.6.0":
   version "25.6.0"
   resolved "https://registry.yarnpkg.com/@types/node/-/node-25.6.0.tgz#4e09bad9b469871f2d0f68140198cbd714f4edca"
   integrity sha512-+qIYRKdNYJwY3vRCZMdJbPLJAtGjQBudzZzdzwQYkEPQd+PJGixUL5QfvCLDaULoLv+RhT3LDkwEfKaAkgSmNQ==
@@ -4293,32 +4236,7 @@ playwright@1.59.1:
   optionalDependencies:
     fsevents "2.3.2"
 
-polkadot-api@2.0.2:
-  version "2.0.2"
-  resolved "https://registry.yarnpkg.com/polkadot-api/-/polkadot-api-2.0.2.tgz#1a46e63a9be9d09adbf4a23f5eb8fc0427772cdb"
-  integrity sha512-eYj7VUVuZu4CibGnhJGfixqiGc5IIiJX87fNpW+UVvqht3DxVBWpPpUCDwP6AH4lKY97zgNfp4o18HMgp9aV2Q==
-  dependencies:
-    "@polkadot-api/cli" "0.20.3"
-    "@polkadot-api/ink-contracts" "0.6.1"
-    "@polkadot-api/json-rpc-provider" "0.2.0"
-    "@polkadot-api/known-chains" "0.11.2"
-    "@polkadot-api/logs-provider" "0.2.0"
-    "@polkadot-api/metadata-builders" "0.14.1"
-    "@polkadot-api/metadata-compatibility" "0.6.1"
-    "@polkadot-api/observable-client" "0.18.4"
-    "@polkadot-api/pjs-signer" "0.7.1"
-    "@polkadot-api/polkadot-signer" "0.1.6"
-    "@polkadot-api/signer" "0.3.1"
-    "@polkadot-api/sm-provider" "0.3.0"
-    "@polkadot-api/smoldot" "0.4.0"
-    "@polkadot-api/substrate-bindings" "0.20.1"
-    "@polkadot-api/substrate-client" "0.7.0"
-    "@polkadot-api/utils" "0.4.0"
-    "@polkadot-api/ws-middleware" "0.3.2"
-    "@polkadot-api/ws-provider" "0.9.0"
-    "@rx-state/core" "^0.1.4"
-
-polkadot-api@>=2, polkadot-api@^2.0.0-rc.2:
+polkadot-api@>=2, polkadot-api@^2.0.0-rc.2, polkadot-api@^2.1.0:
   version "2.1.0"
   resolved "https://registry.yarnpkg.com/polkadot-api/-/polkadot-api-2.1.0.tgz#18179f3048a53bf31623f08c7b5de6f11cd60f34"
   integrity sha512-0Ud+NGFYQ+n/ibyWFkxufDyzO9HkoFSCXAQe4ngn7l2Q3bKrTob5bUz7g7vBbccfajnjo2xpNnGHLEjR5IYo8Q==
@@ -4561,7 +4479,7 @@ rollup@^4.34.9:
     "@rollup/rollup-win32-x64-msvc" "4.60.0"
     fsevents "~2.3.2"
 
-rollup@^4.60.1, rollup@^4.60.2:
+rollup@^4.60.2:
   version "4.60.2"
   resolved "https://registry.yarnpkg.com/rollup/-/rollup-4.60.2.tgz#ac23fe4bd530304cef9fa61e639d7098b6762cf4"
   integrity sha512-J9qZyW++QK/09NyN/zeO0dG/1GdGfyp9lV8ajHnRVLfo/uFsbji5mHnDgn/qYdUHyCkM2N+8VyspgZclfAh0eQ==
@@ -4783,13 +4701,6 @@ smoldot@2.0.26:
   version "2.0.26"
   resolved "https://registry.npmjs.org/smoldot/-/smoldot-2.0.26.tgz"
   integrity sha512-F+qYmH4z2s2FK+CxGj8moYcd1ekSIKH8ywkdqlOz88Dat35iB1DIYL11aILN46YSGMzQW/lbJNS307zBSDN5Ig==
-  dependencies:
-    ws "^8.8.1"
-
-smoldot@2.0.40:
-  version "2.0.40"
-  resolved "https://registry.npmjs.org/smoldot/-/smoldot-2.0.40.tgz"
-  integrity sha512-h6XC/kKDLdZBBTI0X8y4ZxmaZ2KYVVB0+5isCQm6j26ljeNjHZUDOV+hf8VyoE23+jg00wrxNJ2IVcIAURxwtg==
   dependencies:
     ws "^8.8.1"
 
@@ -5102,7 +5013,7 @@ typescript@^5:
   resolved "https://registry.npmjs.org/typescript/-/typescript-5.9.3.tgz"
   integrity sha512-jl1vZzPDinLr9eUt3J/t7V6FgNEw9QjvBPdysz9KfQDD41fQrC2Y4vKQdiaUpFT4bXlb1RHhLpp8wtm6M5TgSw==
 
-typescript@^6.0.2, typescript@^6.0.3:
+typescript@^6.0.3:
   version "6.0.3"
   resolved "https://registry.yarnpkg.com/typescript/-/typescript-6.0.3.tgz#90251dc007916e972786cb94d74d15b185577d21"
   integrity sha512-y2TvuxSZPDyQakkFRPZHKFm+KKVqIisdg9/CZwm9ftvKXLP8NRWj38/ODjNbr43SsoXqNuAisEf1GdCxqWcdBw==

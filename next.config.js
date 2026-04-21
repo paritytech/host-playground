@@ -17,6 +17,7 @@ const nextConfig = {
   typescript: {
     ignoreBuildErrors: false,
   },
+  transpilePackages: ['@polkadot-api/descriptors'],
 }
 
 export default nextConfig
