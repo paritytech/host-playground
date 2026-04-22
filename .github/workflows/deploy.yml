@@ -99,7 +99,7 @@ jobs:
             echo "dotns=host-playground.dot" >> "$GITHUB_OUTPUT"
           else
             BRANCH="${{ github.event.pull_request.head.ref }}"
-            SAFE_BRANCH=$(echo "$BRANCH" | tr '/' '-' | cut -c1-20)
+            SAFE_BRANCH=$(echo "$BRANCH" | tr '/' '-' | sed 's/[^a-z0-9-]//g' | cut -c1-20)
             echo "dotns=${SAFE_BRANCH}-host-playground.dot" >> "$GITHUB_OUTPUT"
           fi
 
