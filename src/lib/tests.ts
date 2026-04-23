@@ -16,9 +16,8 @@ import {
   createThemeProvider,
   createPaymentManager,
   deriveEntropy,
-  requestDevicePermission,
-  requestPermission,
   WellKnownChain,
+  type RemotePermissionItem,
 } from "@novasamatech/product-sdk";
 import {
   AccountId,
@@ -61,17 +60,48 @@ function error(message: string, details?: unknown): TestResult {
   return { success: false, message, details };
 }
 
-/** Request ChainSubmit permission. Required before any signing operation. */
-async function ensureChainSubmitPermission(log: (msg: string) => void): Promise<TestResult | null> {
-  log("Requesting ChainSubmit permission...");
+/**
+ * Maps host-playground flows to {@link RemotePermissionItem} batches (host-api v1).
+ * There is no separate “sign only” remote permission; hosts gate `host_sign_*` in-app.
+ * `ChainSubmit` is what the reference host checks before `transaction_v1_broadcast`.
+ */
+async function ensureRemotePermissions(
+  log: (msg: string) => void,
+  permissions: RemotePermissionItem[],
+): Promise<TestResult | null> {
+  const tags = permissions.map((p) => p.tag).join(", ");
+  log(`Requesting remote permission(s): ${tags}...`);
   const permissionResult = await hostApi.permission({
     tag: "v1",
-    value: [{ tag: "ChainSubmit", value: undefined }],
+    value: permissions,
   });
   if (permissionResult.isErr()) {
-    return error("ChainSubmit permission denied", permissionResult.error);
+    return error(`Remote permission denied (${tags})`, permissionResult.error);
   }
   return null;
+}
+
+/** Before broadcasting a signed tx through the host (incl. `signSubmitAndWatch` submit step). */
+function ensureChainSubmitForTxBroadcast(log: (msg: string) => void) {
+  return ensureRemotePermissions(log, [{ tag: "ChainSubmit", value: undefined }]);
+}
+
+/** Before `preimageManager.submit` / preimage RPC submit (host gates on PreimageSubmit). */
+function ensurePreimageSubmitPermission(log: (msg: string) => void) {
+  return ensureRemotePermissions(log, [{ tag: "PreimageSubmit", value: undefined }]);
+}
+
+/** Before `statementStore.submit` (host gates on StatementSubmit). */
+function ensureStatementSubmitPermission(log: (msg: string) => void) {
+  return ensureRemotePermissions(log, [{ tag: "StatementSubmit", value: undefined }]);
+}
+
+/** Direct `wsProvider` RPC + tx broadcast: extra `Remote` for the WebSocket endpoint. */
+function ensureDirectWsSignSubmitPermissions(log: (msg: string) => void, wsUrl: string) {
+  return ensureRemotePermissions(log, [
+    { tag: "Remote", value: [wsUrl] },
+    { tag: "ChainSubmit", value: undefined },
+  ]);
 }
 
 // Account Tests
@@ -376,9 +406,6 @@ export const signingTests: TestDefinition[] = [
 
       log(`Account found: ${toHex(publicKey).slice(0, 18)}...`);
 
-      const permissionError = await ensureChainSubmitPermission(log);
-      if (permissionError) return permissionError;
-
       const message =
         args?.message ??
         `Hello from Host Playground! ${new Date().toLocaleString()}`;
@@ -451,7 +478,7 @@ export const signingTests: TestDefinition[] = [
       const client = getClient(chain.genesis);
       const api = client.getUnsafeApi();
 
-      const permissionError = await ensureChainSubmitPermission(log);
+      const permissionError = await ensureChainSubmitForTxBroadcast(log);
       if (permissionError) return permissionError;
 
       log("Preparing transaction...");
@@ -532,9 +559,6 @@ export const signingTests: TestDefinition[] = [
       const tx = api.tx.System.remark({
         remark: Binary.fromText(message),
       });
-
-      const permissionError = await ensureChainSubmitPermission(log);
-      if (permissionError) return permissionError;
 
       log("Signing with legacy account signer...");
 
@@ -629,7 +653,7 @@ export const signingTests: TestDefinition[] = [
       try {
         const api = client.getUnsafeApi();
 
-        const permErr = await ensureChainSubmitPermission(log);
+        const permErr = await ensureDirectWsSignSubmitPermissions(log, chain.wsUrl);
         if (permErr) return permErr;
 
         log("Preparing transaction...");
@@ -781,7 +805,7 @@ export const signingTests: TestDefinition[] = [
         const storeCall1 = makeStoreValueCall();
         const storeCall2 = makeStoreValueCall();
 
-        const permErr = await ensureChainSubmitPermission(log);
+        const permErr = await ensureChainSubmitForTxBroadcast(log);
         if (permErr) return permErr;
 
         // 3. Batch all three calls
@@ -1345,7 +1369,7 @@ export const permissionTests: TestDefinition[] = [
     id: "remote-permission-chain-submit",
     name: "Remote Permission: Chain Submit",
     description: "Requests permission to submit transactions on a chain",
-    api: "hostApi.permission({ tag: 'v1', value: [{ tag: 'ChainSubmit' }] })",
+    api: "hostApi.permission({ tag: 'v1', value: [{ tag: 'ChainSubmit', value: undefined }] })",
     category: "permissions",
     async run(chain) {
       const result = await hostApi.permission({
@@ -1355,6 +1379,44 @@ export const permissionTests: TestDefinition[] = [
 
       return result.match(
         (res) => success(`Chain submit permission for ${chain.name}: ${res.value ? "granted" : "denied"}`),
+        (err) => error(err.value.name, err.value),
+      );
+    },
+  },
+  {
+    id: "remote-permission-preimage-submit",
+    name: "Remote Permission: Preimage Submit",
+    description: "Requests permission to submit preimages via the host",
+    api: "hostApi.permission({ tag: 'v1', value: [{ tag: 'PreimageSubmit', value: undefined }] })",
+    category: "permissions",
+    async run(chain) {
+      const result = await hostApi.permission({
+        tag: "v1",
+        value: [{ tag: "PreimageSubmit", value: undefined }],
+      });
+
+      return result.match(
+        (res) =>
+          success(`Preimage submit permission for ${chain.name}: ${res.value ? "granted" : "denied"}`),
+        (err) => error(err.value.name, err.value),
+      );
+    },
+  },
+  {
+    id: "remote-permission-statement-submit",
+    name: "Remote Permission: Statement Submit",
+    description: "Requests permission to submit statement-store statements",
+    api: "hostApi.permission({ tag: 'v1', value: [{ tag: 'StatementSubmit', value: undefined }] })",
+    category: "permissions",
+    async run(chain) {
+      const result = await hostApi.permission({
+        tag: "v1",
+        value: [{ tag: "StatementSubmit", value: undefined }],
+      });
+
+      return result.match(
+        (res) =>
+          success(`Statement submit permission for ${chain.name}: ${res.value ? "granted" : "denied"}`),
         (err) => error(err.value.name, err.value),
       );
     },
@@ -1566,6 +1628,10 @@ export const chatTests: TestDefinition[] = [
       const statementStore = createStatementStore();
       if (!recipientUsername)
         return error("No recipient username — not signed in?");
+      const log = _logger || (() => {});
+      const permErr = await ensureStatementSubmitPermission(log);
+      if (permErr) return permErr;
+
       const encoder = new TextEncoder();
       const topic = encoder.encode(`host-playground:${recipientUsername}`);
       const data = encoder.encode(messageText);
@@ -1765,6 +1831,8 @@ export const statementTests: TestDefinition[] = [
           topics: [],
           data: messageBytes,
         };
+        const submitPerm = await ensureStatementSubmitPermission(log);
+        if (submitPerm) return submitPerm;
         log("Submitting signed statement...");
         await statementStore.submit(signedStatement);
         return success("Statement submitted successfully");
@@ -1865,7 +1933,11 @@ export const preimageTests: TestDefinition[] = [
     description: "Submits a preimage and gets its hash back",
     api: "preimageManager.submit(data)",
     category: "preimage",
-    async run() {
+    async run(_chain, logger) {
+      const log = logger || (() => {});
+      const permErr = await ensurePreimageSubmitPermission(log);
+      if (permErr) return permErr;
+
       const data = new TextEncoder().encode(`preimage_${Date.now()}`);
       const hash = await preimageManager.submit(data);
 
@@ -1933,7 +2005,11 @@ export const preimageTests: TestDefinition[] = [
     description: "Creates a preimage manager via createPreimageManager",
     api: "createPreimageManager()",
     category: "preimage",
-    async run() {
+    async run(_chain, logger) {
+      const log = logger || (() => {});
+      const permErr = await ensurePreimageSubmitPermission(log);
+      if (permErr) return permErr;
+
       const manager = createPreimageManager();
       const data = new TextEncoder().encode(`factory_${Date.now()}`);
       const hash = await manager.submit(data);
@@ -2791,7 +2867,7 @@ export const contractTests: TestDefinition[] = [
       });
       const origin = AccountId().dec(account.publicKey);
 
-      const permissionError = await ensureChainSubmitPermission(log);
+      const permissionError = await ensureChainSubmitForTxBroadcast(log);
       if (permissionError) return permissionError;
 
       const client = getClient(chain.genesis);
@@ -2906,7 +2982,7 @@ export const contractTests: TestDefinition[] = [
       });
       const origin = AccountId().dec(account.publicKey);
 
-      const permissionError = await ensureChainSubmitPermission(log);
+      const permissionError = await ensureChainSubmitForTxBroadcast(log);
       if (permissionError) return permissionError;
 
       const client = getClient(chain.genesis);
@@ -2968,7 +3044,7 @@ export const contractTests: TestDefinition[] = [
       });
       const origin = AccountId().dec(account.publicKey);
 
-      const permissionError = await ensureChainSubmitPermission(log);
+      const permissionError = await ensureChainSubmitForTxBroadcast(log);
       if (permissionError) return permissionError;
 
       const client = getClient(chain.genesis);
