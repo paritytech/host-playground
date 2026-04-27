@@ -8,12 +8,12 @@ test.describe('Permissions', () => {
     expect(result).toBe('success');
   });
 
-  test('request transaction submit permission', async ({ testHost }) => {
+  test('request chain submit permission', async ({ testHost }) => {
     const frame = await waitForAppReady(testHost);
-    const result = await runTest(frame, 'remote-permission-transaction-submit');
+    const result = await runTest(frame, 'remote-permission-chain-submit');
     expect(result).toBe('success');
 
     const log = await testHost.getPermissionLog();
-    expect(log.some(e => e.tag === 'TransactionSubmit')).toBe(true);
+    expect(log.some(e => e.tag === 'ChainSubmit')).toBe(true);
   });
 });

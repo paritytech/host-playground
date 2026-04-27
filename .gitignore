@@ -35,8 +35,6 @@ yarn-error.log*
 *.tsbuildinfo
 next-env.d.ts
 
-# PAPI generated
-.papi/
 
 test-results
 playwright-report

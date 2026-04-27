@@ -22,13 +22,16 @@ concurrency:
 
 jobs:
   build:
-    runs-on: ubuntu-latest
+    runs-on: parity-default
     steps:
       - uses: actions/checkout@v4
 
       - uses: actions/setup-node@v4
         with:
           node-version: 22
+
+      - name: Enable Corepack
+        run: corepack enable
 
       - name: Install dependencies
         run: yarn install --immutable
@@ -43,7 +46,7 @@ jobs:
 
   deploy:
     needs: build
-    runs-on: ubuntu-latest
+    runs-on: parity-default
     outputs:
       cid: ${{ steps.final.outputs.cid }}
       domain: ${{ steps.final.outputs.domain }}
@@ -99,7 +102,7 @@ jobs:
             echo "dotns=host-playground.dot" >> "$GITHUB_OUTPUT"
           else
             BRANCH="${{ github.event.pull_request.head.ref }}"
-            SAFE_BRANCH=$(echo "$BRANCH" | tr '/' '-' | cut -c1-20)
+            SAFE_BRANCH=$(echo "$BRANCH" | tr '/' '-' | sed 's/[^a-z0-9-]//g' | cut -c1-20)
             echo "dotns=${SAFE_BRANCH}-host-playground.dot" >> "$GITHUB_OUTPUT"
           fi
 
@@ -163,7 +166,7 @@ jobs:
   comment:
     if: github.event_name == 'pull_request'
     needs: deploy
-    runs-on: ubuntu-latest
+    runs-on: parity-default
     permissions:
       pull-requests: write
     steps:

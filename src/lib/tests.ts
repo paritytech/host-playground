@@ -1,5 +1,5 @@
 import {
-  createNonProductExtensionEnableFactory,
+  createLegacyExtensionEnableFactory,
   createMetaProvider,
   createPapiProvider,
   sandboxTransport,
@@ -13,7 +13,11 @@ import {
   hostLocalStorage,
   createPreimageManager,
   preimageManager,
+  createThemeProvider,
+  createPaymentManager,
+  deriveEntropy,
   WellKnownChain,
+  type RemotePermissionItem,
 } from "@novasamatech/product-sdk";
 import {
   AccountId,
@@ -56,35 +60,60 @@ function error(message: string, details?: unknown): TestResult {
   return { success: false, message, details };
 }
 
-/** Request TransactionSubmit permission. Required before any signing operation. */
-async function ensureTransactionPermission(log: (msg: string) => void): Promise<TestResult | null> {
-  log("Requesting TransactionSubmit permission...");
+/** Request a single remote permission from the host. */
+async function ensureRemotePermission(
+  log: (msg: string) => void,
+  permission: RemotePermissionItem,
+): Promise<TestResult | null> {
+  log(`Requesting remote permission: ${permission.tag}...`);
   const permissionResult = await hostApi.permission({
     tag: "v1",
-    value: { tag: "TransactionSubmit", value: undefined },
+    value: permission,
   });
   if (permissionResult.isErr()) {
-    return error("TransactionSubmit permission denied", permissionResult.error);
+    return error(`Remote permission denied (${permission.tag})`, permissionResult.error);
   }
   return null;
+}
+
+/** Before broadcasting a signed tx through the host (incl. `signSubmitAndWatch` submit step). */
+function ensureChainSubmitForTxBroadcast(log: (msg: string) => void) {
+  return ensureRemotePermission(log, { tag: "ChainSubmit", value: undefined });
+}
+
+/** Before `preimageManager.submit` / preimage RPC submit (host gates on PreimageSubmit). */
+function ensurePreimageSubmitPermission(log: (msg: string) => void) {
+  return ensureRemotePermission(log, { tag: "PreimageSubmit", value: undefined });
+}
+
+/** Before `statementStore.submit` (host gates on StatementSubmit). */
+function ensureStatementSubmitPermission(log: (msg: string) => void) {
+  return ensureRemotePermission(log, { tag: "StatementSubmit", value: undefined });
+}
+
+/** Direct `wsProvider` RPC + tx broadcast: requests Remote then ChainSubmit sequentially. */
+async function ensureDirectWsSignSubmitPermissions(log: (msg: string) => void, wsUrl: string) {
+  const remoteErr = await ensureRemotePermission(log, { tag: "Remote", value: [wsUrl] });
+  if (remoteErr) return remoteErr;
+  return ensureRemotePermission(log, { tag: "ChainSubmit", value: undefined });
 }
 
 // Account Tests
 export const accountTests: TestDefinition[] = [
   {
-    id: "accounts-provider-non-product",
-    name: "Non-Product Accounts",
-    description: "Gets non-product accounts via createAccountsProvider",
-    api: "accountsProvider.getNonProductAccounts()",
+    id: "accounts-provider-legacy",
+    name: "Legacy Accounts",
+    description: "Gets legacy accounts via createAccountsProvider",
+    api: "accountsProvider.getLegacyAccounts()",
     category: "accounts",
     async run() {
       const accountsProvider = createAccountsProvider();
-      const result = await accountsProvider.getNonProductAccounts();
+      const result = await accountsProvider.getLegacyAccounts();
 
       return result.match(
         (accounts) =>
           success(
-            `Found ${accounts.length} non-product accounts`,
+            `Found ${accounts.length} legacy accounts`,
             accounts.map((a) => ({
               ...a,
               publicKey: toHex(a.publicKey),
@@ -95,13 +124,13 @@ export const accountTests: TestDefinition[] = [
     },
   },
   {
-    id: "non-product-accounts",
-    name: "Non-Product Accounts (Legacy)",
-    description: "Gets all non-product accounts via legacy hostApi",
-    api: "hostApi.getNonProductAccounts({ tag, value })",
+    id: "legacy-accounts",
+    name: "Legacy Accounts (Legacy)",
+    description: "Gets all legacy accounts via legacy hostApi",
+    api: "hostApi.getLegacyAccounts({ tag, value })",
     category: "accounts",
     async run() {
-      const result = await hostApi.getNonProductAccounts({
+      const result = await hostApi.getLegacyAccounts({
         tag: "v1",
         value: undefined,
       });
@@ -211,27 +240,27 @@ export const accountTests: TestDefinition[] = [
     },
   },
   {
-    id: "accounts-provider-non-product-signer",
-    name: "Non-Product Account Signer",
-    description: "Creates a PolkadotSigner for a non-product account",
-    api: "accountsProvider.getNonProductAccountSigner(account)",
+    id: "accounts-provider-legacy-signer",
+    name: "Legacy Account Signer",
+    description: "Creates a PolkadotSigner for a legacy account",
+    api: "accountsProvider.getLegacyAccountSigner(account)",
     category: "accounts",
     async run() {
       const accountsProvider = createAccountsProvider();
-      const accountsResult = await accountsProvider.getNonProductAccounts();
+      const accountsResult = await accountsProvider.getLegacyAccounts();
 
       return accountsResult.match(
         (accounts) => {
           if (accounts.length === 0) {
-            return error("No non-product accounts available");
+            return error("No legacy accounts available");
           }
           const account = accounts[0];
-          const signer = accountsProvider.getNonProductAccountSigner({
+          const signer = accountsProvider.getLegacyAccountSigner({
             dotNsIdentifier: "",
             derivationIndex: 0,
             publicKey: account.publicKey,
           });
-          return success("Non-product account signer created", {
+          return success("Legacy account signer created", {
             publicKey: toHex(signer.publicKey),
           });
         },
@@ -371,9 +400,6 @@ export const signingTests: TestDefinition[] = [
 
       log(`Account found: ${toHex(publicKey).slice(0, 18)}...`);
 
-      const permissionError = await ensureTransactionPermission(log);
-      if (permissionError) return permissionError;
-
       const message =
         args?.message ??
         `Hello from Host Playground! ${new Date().toLocaleString()}`;
@@ -382,8 +408,8 @@ export const signingTests: TestDefinition[] = [
       const result = await hostApi.signRaw({
         tag: "v1",
         value: {
-          address: AccountId().dec(publicKey),
-          data: { tag: "Bytes", value: messageBytes },
+          account: [dotNsIdentifier, 0],
+          payload: { tag: "Bytes", value: messageBytes },
         },
       });
 
@@ -446,13 +472,13 @@ export const signingTests: TestDefinition[] = [
       const client = getClient(chain.genesis);
       const api = client.getUnsafeApi();
 
-      const permissionError = await ensureTransactionPermission(log);
+      const permissionError = await ensureChainSubmitForTxBroadcast(log);
       if (permissionError) return permissionError;
 
       log("Preparing transaction...");
       const message = args?.message ?? "Remark from Host Playground";
       const tx = api.tx.System.remark({
-        remark: Binary.fromBytes(new TextEncoder().encode(message)),
+        remark: Binary.fromText(message),
       });
 
       log("Signing with product account signer...");
@@ -478,10 +504,10 @@ export const signingTests: TestDefinition[] = [
     },
   },
   {
-    id: "sign-payload-non-product",
-    name: "Sign Payload (Non-Product Account)",
+    id: "sign-payload-legacy",
+    name: "Sign Payload (Legacy Account)",
     description:
-      "Signs a transaction payload using a non-product account (injected extension)",
+      "Signs a transaction payload using a legacy account (injected extension)",
     api: "signer.signPayload(payload)",
     args: [
       {
@@ -494,10 +520,10 @@ export const signingTests: TestDefinition[] = [
     async run(chain: ChainConfig, logger?: TestLogger, args?) {
       const log = logger || (() => {});
 
-      // Get non-product extension via enable factory
-      log("Creating non-product extension...");
+      // Get legacy extension via enable factory
+      log("Creating legacy extension...");
       const enableFactory =
-        await createNonProductExtensionEnableFactory(sandboxTransport);
+        await createLegacyExtensionEnableFactory(sandboxTransport);
 
       if (!enableFactory) {
         return error("Transport not ready - enable factory returned null");
@@ -513,7 +539,7 @@ export const signingTests: TestDefinition[] = [
       const accounts = await injected.accounts.get();
 
       if (accounts.length === 0) {
-        return error("No non-product accounts available for signing");
+        return error("No legacy accounts available for signing");
       }
 
       const account = accounts[0];
@@ -525,13 +551,10 @@ export const signingTests: TestDefinition[] = [
       log("Preparing transaction...");
       const message = args?.message ?? "Remark from Host Playground";
       const tx = api.tx.System.remark({
-        remark: Binary.fromBytes(new TextEncoder().encode(message)),
+        remark: Binary.fromText(message),
       });
 
-      const permissionError = await ensureTransactionPermission(log);
-      if (permissionError) return permissionError;
-
-      log("Signing with non-product signer...");
+      log("Signing with legacy account signer...");
 
       const signer = injected.signer;
 
@@ -540,7 +563,7 @@ export const signingTests: TestDefinition[] = [
       }
 
       const callData = await tx.getEncodedData();
-      const callDataHex = toHex(callData.asBytes());
+      const callDataHex = toHex(callData);
 
       const signResult = await signer.signPayload({
         address,
@@ -624,13 +647,13 @@ export const signingTests: TestDefinition[] = [
       try {
         const api = client.getUnsafeApi();
 
-        const permErr = await ensureTransactionPermission(log);
+        const permErr = await ensureDirectWsSignSubmitPermissions(log, chain.wsUrl);
         if (permErr) return permErr;
 
         log("Preparing transaction...");
         const message = args?.message ?? "Remark from Host Playground";
         const tx = api.tx.System.remark({
-          remark: Binary.fromBytes(new TextEncoder().encode(message)),
+          remark: Binary.fromText(message),
         });
 
         log("Signing with product account signer...");
@@ -720,7 +743,7 @@ export const signingTests: TestDefinition[] = [
         const remarkMsg = args?.remark ?? "Batch test remark";
         log("Preparing remark call...");
         const remarkCall = api.tx.System.remark({
-          remark: Binary.fromBytes(new TextEncoder().encode(remarkMsg)),
+          remark: Binary.fromText(remarkMsg),
         }).decodedCall;
 
         // 2. Two storeValue contract calls
@@ -737,7 +760,8 @@ export const signingTests: TestDefinition[] = [
         );
 
         // Dry run to estimate gas
-        const dryRun = await contractApi.apis.ReviveApi.call(
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const dryRun: any = await contractApi.apis.ReviveApi.call(
           address,
           dest,
           BigInt(0),
@@ -775,7 +799,7 @@ export const signingTests: TestDefinition[] = [
         const storeCall1 = makeStoreValueCall();
         const storeCall2 = makeStoreValueCall();
 
-        const permErr = await ensureTransactionPermission(log);
+        const permErr = await ensureChainSubmitForTxBroadcast(log);
         if (permErr) return permErr;
 
         // 3. Batch all three calls
@@ -806,7 +830,8 @@ export const signingTests: TestDefinition[] = [
         log("Reading stored value...");
         // getStoredValue() selector = 0x12db2ef6
         const getValueData = Binary.fromHex("0x12db2ef6");
-        const readResult = await api.apis.ReviveApi.call(
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const readResult: any = await api.apis.ReviveApi.call(
           address,
           Binary.fromHex(contractAddr),
           BigInt(0),
@@ -897,10 +922,10 @@ export const signingTests: TestDefinition[] = [
     },
   },
   {
-    id: "create-transaction-non-product",
-    name: "Create Transaction (Non-Product)",
-    description: "Creates a transaction with a non-product account",
-    api: "hostApi.createTransactionWithNonProductAccount({ tag, value: payload })",
+    id: "create-transaction-legacy",
+    name: "Create Transaction (Legacy Account)",
+    description: "Creates a transaction with a legacy account",
+    api: "hostApi.createTransactionWithLegacyAccount({ tag, value: payload })",
     category: "signing",
     async run() {
       const txPayload = {
@@ -921,7 +946,7 @@ export const signingTests: TestDefinition[] = [
         },
       };
 
-      const result = await hostApi.createTransactionWithNonProductAccount({
+      const result = await hostApi.createTransactionWithLegacyAccount({
         tag: "v1",
         value: txPayload,
       });
@@ -954,11 +979,11 @@ export const extensionTests: TestDefinition[] = [
     id: "enable-factory",
     name: "Extension Enable Factory",
     description: "Creates and enables the extension factory",
-    api: "createNonProductExtensionEnableFactory(transport)",
+    api: "createLegacyExtensionEnableFactory(transport)",
     category: "extension",
     async run() {
       const enableFactory =
-        await createNonProductExtensionEnableFactory(sandboxTransport);
+        await createLegacyExtensionEnableFactory(sandboxTransport);
       if (!enableFactory) {
         return error("Transport not ready - enable factory returned null");
       }
@@ -1309,14 +1334,14 @@ export const permissionTests: TestDefinition[] = [
     },
   },
   {
-    id: "remote-permission-external-request",
-    name: "Remote Permission: External Request",
-    description: "Requests permission to make an external HTTP request",
-    api: "hostApi.permission({ tag: 'v1', value: { tag: 'ExternalRequest', value } })",
+    id: "remote-permission-remote",
+    name: "Remote Permission: Remote (HTTP/WS)",
+    description: "Requests permission to connect to remote domains",
+    api: "hostApi.permission({ tag: 'v1', value: { tag: 'Remote', value: [url] } })",
     args: [
       {
         name: "url",
-        label: "URL",
+        label: "URL pattern",
         defaultValue: "https://example.com",
       },
     ],
@@ -1325,29 +1350,67 @@ export const permissionTests: TestDefinition[] = [
       const url = args?.url ?? "https://example.com";
       const result = await hostApi.permission({
         tag: "v1",
-        value: { tag: "ExternalRequest", value: url },
+        value: { tag: "Remote", value: [url] },
       });
 
       return result.match(
-        (res) => success(`External request permission: ${res.value ? "granted" : "denied"}`),
+        (res) => success(`Remote permission: ${res.value ? "granted" : "denied"}`),
         (err) => error(err.value.name, err.value),
       );
     },
   },
   {
-    id: "remote-permission-transaction-submit",
-    name: "Remote Permission: Transaction Submit",
+    id: "remote-permission-chain-submit",
+    name: "Remote Permission: Chain Submit",
     description: "Requests permission to submit transactions on a chain",
-    api: "hostApi.permission({ tag: 'v1', value: { tag: 'TransactionSubmit', value: undefined } })",
+    api: "hostApi.permission({ tag: 'v1', value: { tag: 'ChainSubmit', value: undefined } })",
     category: "permissions",
     async run(chain) {
       const result = await hostApi.permission({
         tag: "v1",
-        value: { tag: "TransactionSubmit", value: undefined },
+        value: { tag: "ChainSubmit", value: undefined },
       });
 
       return result.match(
-        (res) => success(`Transaction submit permission for ${chain.name}: ${res.value ? "granted" : "denied"}`),
+        (res) => success(`Chain submit permission for ${chain.name}: ${res.value ? "granted" : "denied"}`),
+        (err) => error(err.value.name, err.value),
+      );
+    },
+  },
+  {
+    id: "remote-permission-preimage-submit",
+    name: "Remote Permission: Preimage Submit",
+    description: "Requests permission to submit preimages via the host",
+    api: "hostApi.permission({ tag: 'v1', value: { tag: 'PreimageSubmit', value: undefined } })",
+    category: "permissions",
+    async run(chain) {
+      const result = await hostApi.permission({
+        tag: "v1",
+        value: { tag: "PreimageSubmit", value: undefined },
+      });
+
+      return result.match(
+        (res) =>
+          success(`Preimage submit permission for ${chain.name}: ${res.value ? "granted" : "denied"}`),
+        (err) => error(err.value.name, err.value),
+      );
+    },
+  },
+  {
+    id: "remote-permission-statement-submit",
+    name: "Remote Permission: Statement Submit",
+    description: "Requests permission to submit statement-store statements",
+    api: "hostApi.permission({ tag: 'v1', value: { tag: 'StatementSubmit', value: undefined } })",
+    category: "permissions",
+    async run(chain) {
+      const result = await hostApi.permission({
+        tag: "v1",
+        value: { tag: "StatementSubmit", value: undefined },
+      });
+
+      return result.match(
+        (res) =>
+          success(`Statement submit permission for ${chain.name}: ${res.value ? "granted" : "denied"}`),
         (err) => error(err.value.name, err.value),
       );
     },
@@ -1530,7 +1593,7 @@ export const chatTests: TestDefinition[] = [
         label: "Recipient Username",
         async defaultValue() {
           const accountsProvider = createAccountsProvider();
-          const result = await accountsProvider.getNonProductAccounts();
+          const result = await accountsProvider.getLegacyAccounts();
           return result.match(
             (accounts) => accounts[0]?.name ?? "",
             () => "",
@@ -1550,7 +1613,7 @@ export const chatTests: TestDefinition[] = [
       let recipientUsername = args?.recipientUsername ?? "";
       if (!recipientUsername) {
         const accountsProvider = createAccountsProvider();
-        const accountsResult = await accountsProvider.getNonProductAccounts();
+        const accountsResult = await accountsProvider.getLegacyAccounts();
         recipientUsername = accountsResult.match(
           (accounts) => accounts[0]?.name ?? "",
           () => "",
@@ -1559,6 +1622,10 @@ export const chatTests: TestDefinition[] = [
       const statementStore = createStatementStore();
       if (!recipientUsername)
         return error("No recipient username — not signed in?");
+      const log = _logger || (() => {});
+      const permErr = await ensureStatementSubmitPermission(log);
+      if (permErr) return permErr;
+
       const encoder = new TextEncoder();
       const topic = encoder.encode(`host-playground:${recipientUsername}`);
       const data = encoder.encode(messageText);
@@ -1758,6 +1825,8 @@ export const statementTests: TestDefinition[] = [
           topics: [],
           data: messageBytes,
         };
+        const submitPerm = await ensureStatementSubmitPermission(log);
+        if (submitPerm) return submitPerm;
         log("Submitting signed statement...");
         await statementStore.submit(signedStatement);
         return success("Statement submitted successfully");
@@ -1775,15 +1844,15 @@ export const statementTests: TestDefinition[] = [
     id: "statement-store-subscribe",
     name: "Subscribe Statements",
     description: "Subscribes to statement store topics (5s)",
-    api: "statementStore.subscribe(topics, callback)",
+    api: "statementStore.subscribe(filter, callback)",
     category: "statements",
     async run() {
       const statementStore = createStatementStore();
 
       return new Promise((resolve) => {
         const received: unknown[] = [];
-        const subscription = statementStore.subscribe([], (statements) => {
-          received.push(...statements);
+        const subscription = statementStore.subscribe({ matchAll: [] }, (page) => {
+          received.push(...page.statements);
         });
 
         setTimeout(() => {
@@ -1858,7 +1927,11 @@ export const preimageTests: TestDefinition[] = [
     description: "Submits a preimage and gets its hash back",
     api: "preimageManager.submit(data)",
     category: "preimage",
-    async run() {
+    async run(_chain, logger) {
+      const log = logger || (() => {});
+      const permErr = await ensurePreimageSubmitPermission(log);
+      if (permErr) return permErr;
+
       const data = new TextEncoder().encode(`preimage_${Date.now()}`);
       const hash = await preimageManager.submit(data);
 
@@ -1926,7 +1999,11 @@ export const preimageTests: TestDefinition[] = [
     description: "Creates a preimage manager via createPreimageManager",
     api: "createPreimageManager()",
     category: "preimage",
-    async run() {
+    async run(_chain, logger) {
+      const log = logger || (() => {});
+      const permErr = await ensurePreimageSubmitPermission(log);
+      if (permErr) return permErr;
+
       const manager = createPreimageManager();
       const data = new TextEncoder().encode(`factory_${Date.now()}`);
       const hash = await manager.submit(data);
@@ -2085,13 +2162,13 @@ export const chainTests: TestDefinition[] = [
     name: "Chain Head: Follow",
     description:
       "Subscribes to chain head events for 10s (blocks, finalization)",
-    api: "hostApi.chainHeadFollow({ tag: 'v1', value: { genesisHash, withRuntime } }, callback)",
+    api: "hostApi.chainHeadFollowSubscribe({ tag: 'v1', value: { genesisHash, withRuntime } }, callback)",
     category: "chain",
     async run(chain: ChainConfig) {
       return new Promise((resolve) => {
         const events: { tag: string; blockHash?: string }[] = [];
 
-        const subscription = hostApi.chainHeadFollow(
+        const subscription = hostApi.chainHeadFollowSubscribe(
           {
             tag: "v1",
             value: { genesisHash: chain.genesis, withRuntime: false },
@@ -2154,7 +2231,7 @@ export const chainTests: TestDefinition[] = [
       log("Starting follow subscription...");
 
       return new Promise((resolve) => {
-        const subscription = hostApi.chainHeadFollow(
+        const subscription = hostApi.chainHeadFollowSubscribe(
           { tag: "v1", value: { genesisHash: chain.genesis, withRuntime: false } },
           async (event) => {
             if (event.tag !== "v1") return;
@@ -2205,7 +2282,7 @@ export const chainTests: TestDefinition[] = [
       log("Starting follow subscription...");
 
       return new Promise((resolve) => {
-        const subscription = hostApi.chainHeadFollow(
+        const subscription = hostApi.chainHeadFollowSubscribe(
           { tag: "v1", value: { genesisHash: chain.genesis, withRuntime: false } },
           async (event) => {
             if (event.tag !== "v1") return;
@@ -2256,7 +2333,7 @@ export const chainTests: TestDefinition[] = [
       log("Starting follow subscription...");
 
       return new Promise((resolve) => {
-        const subscription = hostApi.chainHeadFollow(
+        const subscription = hostApi.chainHeadFollowSubscribe(
           { tag: "v1", value: { genesisHash: chain.genesis, withRuntime: false } },
           async (event) => {
             if (event.tag !== "v1") return;
@@ -2311,7 +2388,7 @@ export const chainTests: TestDefinition[] = [
       log("Starting follow subscription...");
 
       return new Promise((resolve) => {
-        const subscription = hostApi.chainHeadFollow(
+        const subscription = hostApi.chainHeadFollowSubscribe(
           { tag: "v1", value: { genesisHash: chain.genesis, withRuntime: false } },
           async (event) => {
             if (event.tag !== "v1") return;
@@ -2364,7 +2441,7 @@ export const chainTests: TestDefinition[] = [
       log("Starting follow subscription...");
 
       return new Promise((resolve) => {
-        const subscription = hostApi.chainHeadFollow(
+        const subscription = hostApi.chainHeadFollowSubscribe(
           { tag: "v1", value: { genesisHash: chain.genesis, withRuntime: false } },
           async (event) => {
             if (event.tag !== "v1") return;
@@ -2478,7 +2555,7 @@ export const chainTests: TestDefinition[] = [
       log("Starting follow subscription...");
 
       return new Promise((resolve) => {
-        const subscription = hostApi.chainHeadFollow(
+        const subscription = hostApi.chainHeadFollowSubscribe(
           { tag: "v1", value: { genesisHash: chain.genesis, withRuntime: false } },
           async (event) => {
             if (event.tag !== "v1") return;
@@ -2554,7 +2631,7 @@ export const chainTests: TestDefinition[] = [
       log("Starting follow subscription...");
 
       return new Promise((resolve) => {
-        const subscription = hostApi.chainHeadFollow(
+        const subscription = hostApi.chainHeadFollowSubscribe(
           { tag: "v1", value: { genesisHash: chain.genesis, withRuntime: false } },
           async (event) => {
             if (event.tag !== "v1") return;
@@ -2623,25 +2700,10 @@ export const chainTests: TestDefinition[] = [
     name: "JSON-RPC: Send",
     description: "Sends a legacy JSON-RPC message to a chain",
     api: "hostApi.jsonrpcMessageSend({ tag: 'v1', value: [genesisHash, message] })",
-    warning: "Legacy — replaced by typed chain interaction",
+    disabled: "Removed in host-api 0.7.2 — use typed chain interaction instead",
     category: "chain",
-    async run(chain: ChainConfig) {
-      const message = JSON.stringify({
-        jsonrpc: "2.0",
-        id: 1,
-        method: "system_chain",
-        params: [],
-      });
-
-      const result = await hostApi.jsonrpcMessageSend({
-        tag: "v1",
-        value: [chain.genesis, message],
-      });
-
-      return result.match(
-        () => success("JSON-RPC message sent"),
-        (err) => error(err.value.name, err.value),
-      );
+    async run() {
+      return error("Removed in host-api 0.7.2");
     },
   },
   {
@@ -2649,48 +2711,10 @@ export const chainTests: TestDefinition[] = [
     name: "JSON-RPC: Subscribe",
     description: "Subscribes to JSON-RPC responses from a chain for 5s",
     api: "hostApi.jsonrpcMessageSubscribe({ tag: 'v1', value: genesisHash }, callback)",
-    warning: "Legacy — replaced by typed chain interaction",
+    disabled: "Removed in host-api 0.7.2 — use typed chain interaction instead",
     category: "chain",
-    async run(chain: ChainConfig, logger) {
-      const log = logger || (() => {});
-      log("Subscribing to JSON-RPC messages...");
-
-      return new Promise((resolve) => {
-        const messages: string[] = [];
-
-        const subscription = hostApi.jsonrpcMessageSubscribe(
-          { tag: "v1", value: chain.genesis },
-          (msg) => {
-            if (msg.tag === "v1") {
-              messages.push(msg.value);
-              log(`Received ${messages.length} message(s)`);
-            }
-          },
-        );
-
-        // Send a request to trigger a response
-        hostApi.jsonrpcMessageSend({
-          tag: "v1",
-          value: [
-            chain.genesis,
-            JSON.stringify({
-              jsonrpc: "2.0",
-              id: 1,
-              method: "system_chain",
-              params: [],
-            }),
-          ],
-        });
-
-        setTimeout(() => {
-          subscription.unsubscribe();
-          if (messages.length > 0) {
-            resolve(success(`Received ${messages.length} JSON-RPC response(s)`, messages));
-          } else {
-            resolve(success("Subscribed but no responses in 5s"));
-          }
-        }, 5000);
-      });
+    async run() {
+      return error("Removed in host-api 0.7.2");
     },
   },
   {
@@ -2712,7 +2736,8 @@ export const chainTests: TestDefinition[] = [
       const client = getClient(chain.genesis);
       try {
         const api = client.getUnsafeApi();
-        const account = await api.query.System.Account.getValue(address);
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const account: any = await api.query.System.Account.getValue(address);
         const free = account?.data?.free ?? 0;
         const reserved = account?.data?.reserved ?? 0;
         return success(
@@ -2771,19 +2796,19 @@ export const contractTests: TestDefinition[] = [
 
       log("Fetching account...");
       const accountsProvider = createAccountsProvider();
-      const accountsResult = await accountsProvider.getNonProductAccounts();
+      const accountsResult = await accountsProvider.getLegacyAccounts();
       const accounts = accountsResult.match((a) => a, () => null);
       if (!accounts?.length) return error("No accounts available");
 
       const account = accounts[0];
-      const signer = accountsProvider.getNonProductAccountSigner({
+      const signer = accountsProvider.getLegacyAccountSigner({
         dotNsIdentifier: "",
         derivationIndex: 0,
         publicKey: account.publicKey,
       });
       const origin = AccountId().dec(account.publicKey);
 
-      const permissionError = await ensureTransactionPermission(log);
+      const permissionError = await ensureChainSubmitForTxBroadcast(log);
       if (permissionError) return permissionError;
 
       const client = getClient(chain.genesis);
@@ -2799,7 +2824,8 @@ export const contractTests: TestDefinition[] = [
       log("Signing and submitting...");
       await new Promise<void>((resolve, reject) => {
         dryRun.value.send().signSubmitAndWatch(signer).subscribe({
-          next: (ev) => {
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          next: (ev: any) => {
             log(`Event: ${ev.type}`);
             if (ev.type === "txBestBlocksState" && ev.found) resolve();
             if (ev.type === "finalized" && !ev.ok) reject(new Error("Tx failed"));
@@ -2885,19 +2911,19 @@ export const contractTests: TestDefinition[] = [
 
       log("Fetching account...");
       const accountsProvider = createAccountsProvider();
-      const accountsResult = await accountsProvider.getNonProductAccounts();
+      const accountsResult = await accountsProvider.getLegacyAccounts();
       const accounts = accountsResult.match((a) => a, () => null);
       if (!accounts?.length) return error("No accounts available");
 
       const account = accounts[0];
-      const signer = accountsProvider.getNonProductAccountSigner({
+      const signer = accountsProvider.getLegacyAccountSigner({
         dotNsIdentifier: "",
         derivationIndex: 0,
         publicKey: account.publicKey,
       });
       const origin = AccountId().dec(account.publicKey);
 
-      const permissionError = await ensureTransactionPermission(log);
+      const permissionError = await ensureChainSubmitForTxBroadcast(log);
       if (permissionError) return permissionError;
 
       const client = getClient(chain.genesis);
@@ -2915,7 +2941,8 @@ export const contractTests: TestDefinition[] = [
       log("Signing and submitting...");
       await new Promise<void>((resolve, reject) => {
         dryRun.value.send().signSubmitAndWatch(signer).subscribe({
-          next: (ev) => {
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          next: (ev: any) => {
             log(`Event: ${ev.type}`);
             if (ev.type === "txBestBlocksState" && ev.found) resolve();
             if (ev.type === "finalized" && !ev.ok) reject(new Error("Tx failed"));
@@ -2946,19 +2973,19 @@ export const contractTests: TestDefinition[] = [
 
       log("Fetching account...");
       const accountsProvider = createAccountsProvider();
-      const accountsResult = await accountsProvider.getNonProductAccounts();
+      const accountsResult = await accountsProvider.getLegacyAccounts();
       const accounts = accountsResult.match((a) => a, () => null);
       if (!accounts?.length) return error("No accounts available");
 
       const account = accounts[0];
-      const signer = accountsProvider.getNonProductAccountSigner({
+      const signer = accountsProvider.getLegacyAccountSigner({
         dotNsIdentifier: "",
         derivationIndex: 0,
         publicKey: account.publicKey,
       });
       const origin = AccountId().dec(account.publicKey);
 
-      const permissionError = await ensureTransactionPermission(log);
+      const permissionError = await ensureChainSubmitForTxBroadcast(log);
       if (permissionError) return permissionError;
 
       const client = getClient(chain.genesis);
@@ -2977,7 +3004,8 @@ export const contractTests: TestDefinition[] = [
       log("Signing and submitting...");
       await new Promise<void>((resolve, reject) => {
         dryRun.value.send().signSubmitAndWatch(signer).subscribe({
-          next: (ev) => {
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          next: (ev: any) => {
             log(`Event: ${ev.type}`);
             if (ev.type === "txBestBlocksState" && ev.found) resolve();
             if (ev.type === "finalized" && !ev.ok) reject(new Error("Tx failed"));
@@ -3016,6 +3044,204 @@ export const contractTests: TestDefinition[] = [
   },
 ];
 
+// Theme Tests (v0.7)
+export const themeTests: TestDefinition[] = [
+  {
+    id: "theme-subscribe",
+    name: "Subscribe Theme",
+    description: "Subscribes to host theme changes (light/dark)",
+    api: "themeProvider.subscribeTheme(callback)",
+    category: "theme",
+    async run() {
+      const themeProvider = createThemeProvider();
+
+      return new Promise((resolve) => {
+        const themes: string[] = [];
+        const sub = themeProvider.subscribeTheme((theme) => {
+          themes.push(theme);
+        });
+
+        setTimeout(() => {
+          sub.unsubscribe();
+          resolve(
+            success(`Received ${themes.length} theme updates`, themes),
+          );
+        }, 3000);
+      });
+    },
+  },
+];
+
+// Entropy Tests (v0.7 - RFC-0007)
+export const entropyTests: TestDefinition[] = [
+  {
+    id: "derive-entropy",
+    name: "Derive Entropy",
+    description: "Derives deterministic 32-byte entropy from a key (RFC-0007)",
+    api: "deriveEntropy(key)",
+    args: [
+      {
+        name: "key",
+        label: "Key (text)",
+        defaultValue: "my-secret-key",
+      },
+    ],
+    category: "entropy",
+    async run(_chain, _logger, args) {
+      const keyText = args?.key ?? "my-secret-key";
+      const key = new TextEncoder().encode(keyText);
+      const result = await deriveEntropy(key);
+
+      return result.match(
+        (entropy) =>
+          success(`Derived ${entropy.length} bytes of entropy`, {
+            entropyHex: toHex(entropy),
+          }),
+        (err) => error(`${err.name}`, err),
+      );
+    },
+  },
+];
+
+// Auth Tests (v0.7 - RFC-0009, RFC-0010)
+export const authTests: TestDefinition[] = [
+  {
+    id: "request-login",
+    name: "Request Login",
+    description: "Triggers the host login flow (RFC-0009)",
+    api: "accountsProvider.requestLogin(reason)",
+    args: [
+      {
+        name: "reason",
+        label: "Reason",
+        defaultValue: "Please sign in to use this feature",
+      },
+    ],
+    category: "auth",
+    async run(_chain, _logger, args) {
+      const reason = args?.reason ?? "Please sign in to use this feature";
+      const accountsProvider = createAccountsProvider();
+      const result = await accountsProvider.requestLogin(reason);
+
+      return result.match(
+        (loginResult) => success(`Login result: ${loginResult}`),
+        (err) => error(`${err.name}`, err),
+      );
+    },
+  },
+  {
+    id: "get-root-account",
+    name: "Get Root Account",
+    description: "Gets the user's root DotNS-linked account (RFC-0010)",
+    api: "accountsProvider.getRootAccount()",
+    category: "auth",
+    async run() {
+      const accountsProvider = createAccountsProvider();
+      const result = await accountsProvider.getRootAccount();
+
+      return result.match(
+        (account) =>
+          success(`Root account: ${account.name ?? "unnamed"}`, {
+            ...account,
+            publicKey: toHex(account.publicKey),
+          }),
+        (err) => error(`${err.name}`, err),
+      );
+    },
+  },
+];
+
+// Payment Tests (v0.7 - RFC-0006)
+export const paymentTests: TestDefinition[] = [
+  {
+    id: "payment-balance-subscribe",
+    name: "Subscribe Balance",
+    description: "Subscribes to payment balance updates",
+    api: "paymentManager.subscribeBalance(callback)",
+    category: "payments",
+    async run() {
+      const pm = createPaymentManager();
+
+      return new Promise((resolve) => {
+        const balances: unknown[] = [];
+        const sub = pm.subscribeBalance((balance) => {
+          balances.push(balance);
+        });
+
+        setTimeout(() => {
+          sub.unsubscribe();
+          resolve(
+            success(
+              `Received ${balances.length} balance updates`,
+              balances,
+            ),
+          );
+        }, 3000);
+      });
+    },
+  },
+  {
+    id: "payment-top-up",
+    name: "Top Up",
+    description: "Top up the payment balance from a product account",
+    api: "paymentManager.topUp(amount, source)",
+    args: [
+      {
+        name: "dotNsIdentifier",
+        label: "DotNS ID",
+        defaultValue: "host-playground.dot",
+      },
+      {
+        name: "amount",
+        label: "Amount (smallest unit)",
+        defaultValue: "1000000000000",
+      },
+    ],
+    category: "payments",
+    async run(_chain, _logger, args) {
+      const dotNsIdentifier = args?.dotNsIdentifier ?? "host-playground.dot";
+      const amount = BigInt(args?.amount ?? "1000000000000");
+      const pm = createPaymentManager();
+
+      try {
+        await pm.topUp(amount, {
+          type: "productAccount",
+          derivationIndex: 0,
+        });
+        return success(`Topped up ${amount}`);
+      } catch (e) {
+        return error(`Top-up failed: ${e}`);
+      }
+    },
+  },
+  {
+    id: "payment-request",
+    name: "Request Payment",
+    description: "Request a payment to a destination account",
+    api: "paymentManager.requestPayment(amount, destination)",
+    args: [
+      {
+        name: "amount",
+        label: "Amount (smallest unit)",
+        defaultValue: "100000000000",
+      },
+    ],
+    category: "payments",
+    async run(_chain, _logger, args) {
+      const amount = BigInt(args?.amount ?? "100000000000");
+      const pm = createPaymentManager();
+      const destination = new Uint8Array(32); // zero address for test
+
+      try {
+        const receipt = await pm.requestPayment(amount, destination);
+        return success(`Payment requested: ${receipt.id}`, receipt);
+      } catch (e) {
+        return error(`Payment request failed: ${e}`);
+      }
+    },
+  },
+];
+
 export const testsByCategory = {
   accounts: accountTests,
   signing: signingTests,
@@ -3029,4 +3255,8 @@ export const testsByCategory = {
   navigation: navigationTests,
   chain: chainTests,
   contract: contractTests,
+  theme: themeTests,
+  entropy: entropyTests,
+  auth: authTests,
+  payments: paymentTests,
 };
