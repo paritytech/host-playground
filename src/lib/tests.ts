@@ -67,7 +67,7 @@ async function ensureRemotePermission(
 ): Promise<TestResult | null> {
   log(`Requesting remote permission: ${permission.tag}...`);
   const permissionResult = await hostApi.permission({
-    tag: “v1”,
+    tag: "v1",
     value: permission,
   });
   if (permissionResult.isErr()) {
@@ -78,7 +78,7 @@ async function ensureRemotePermission(
 
 /** Before broadcasting a signed tx through the host (incl. `signSubmitAndWatch` submit step). */
 function ensureChainSubmitForTxBroadcast(log: (msg: string) => void) {
-  return ensureRemotePermission(log, { tag: “ChainSubmit”, value: undefined });
+  return ensureRemotePermission(log, { tag: "ChainSubmit", value: undefined });
 }
 
 /** Before `preimageManager.submit` / preimage RPC submit (host gates on PreimageSubmit). */
