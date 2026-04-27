@@ -646,9 +646,9 @@
     scale-ts "1.6.1"
 
 "@parity/host-api-test-sdk@^0.7.0":
-  version "0.7.0"
-  resolved "https://registry.yarnpkg.com/@parity/host-api-test-sdk/-/host-api-test-sdk-0.7.0.tgz#ae0677045c302de35cb86c27448761a21144485e"
-  integrity sha512-4vcmYO8g4aU+23kxX9Tp3RQL5nrji37UVV8AeT3FPnqhmNB558kb60OD4gRx7+hu9nmg9GG5uXxRnpE/cdf9Tw==
+  version "0.7.1"
+  resolved "https://registry.yarnpkg.com/@parity/host-api-test-sdk/-/host-api-test-sdk-0.7.1.tgz#62f29a2af1bbf589e8b994908714e2573e03b0ea"
+  integrity sha512-G6ehWlPC1IvUr8F6wYxpN4M45n19UwVaZ/ex39MXuhPQQsT+gxn+fqjx2MUg8FKArsvMfMwrb0UjcGZLCelsqA==
   dependencies:
     "@novasamatech/host-api" "0.7.0"
 
@@ -1708,15 +1708,10 @@
   resolved "https://registry.yarnpkg.com/@rollup/rollup-linux-x64-gnu/-/rollup-linux-x64-gnu-4.60.0.tgz#5e5139e11819fa38a052368da79422cb4afcf466"
   integrity sha512-EtylprDtQPdS5rXvAayrNDYoJhIz1/vzN2fEubo3yLE7tfAw+948dO0g4M0vkTVFhKojnF+n6C8bDNe+gDRdTg==
 
-"@rollup/rollup-linux-x64-gnu@4.60.2":
+"@rollup/rollup-linux-x64-gnu@4.60.2", "@rollup/rollup-linux-x64-gnu@^4.24.0":
   version "4.60.2"
   resolved "https://registry.yarnpkg.com/@rollup/rollup-linux-x64-gnu/-/rollup-linux-x64-gnu-4.60.2.tgz#6aa8302fa45fd3cbbc510ccd223c9c37bf67e53f"
   integrity sha512-UQjrkIdWrKI626Du8lCQ6MJp/6V1LAo2bOK9OTu4mSn8GGXIkPXk/Vsp4bLHCd9Z9Iz2OTEaokUE90VweJgIYQ==
-
-"@rollup/rollup-linux-x64-gnu@^4.24.0":
-  version "4.60.1"
-  resolved "https://registry.yarnpkg.com/@rollup/rollup-linux-x64-gnu/-/rollup-linux-x64-gnu-4.60.1.tgz#56a6a0d9076f2a05a976031493b24a20ddcc0e77"
-  integrity sha512-77PpsFQUCOiZR9+LQEFg9GClyfkNXj1MP6wRnzYs0EeWbPcHs02AXu4xuUbM1zhwn3wqaizle3AEYg5aeoohhg==
 
 "@rollup/rollup-linux-x64-musl@4.60.0":
   version "4.60.0"
@@ -3925,7 +3920,7 @@ ms@^2.1.1, ms@^2.1.3:
 
 nanoevents@9.1.0:
   version "9.1.0"
-  resolved "https://registry.npmjs.org/nanoevents/-/nanoevents-9.1.0.tgz"
+  resolved "https://registry.yarnpkg.com/nanoevents/-/nanoevents-9.1.0.tgz#76c8c86ed54a26131ada5a0a1c5682f48690dbb7"
   integrity sha512-Jd0fILWG44a9luj8v5kED4WI+zfkkgwKyRQKItTtlPfEsh7Lznfi1kr8/iZ+XAIss4Qq5GqRB0qtWbaz9ceO/A==
 
 nanoid@5.1.9:
@@ -3950,7 +3945,7 @@ natural-compare@^1.4.0:
 
 neverthrow@^8.2.0:
   version "8.2.0"
-  resolved "https://registry.npmjs.org/neverthrow/-/neverthrow-8.2.0.tgz"
+  resolved "https://registry.yarnpkg.com/neverthrow/-/neverthrow-8.2.0.tgz#925d988295758534d01fb7468f998680b62064f2"
   integrity sha512-kOCT/1MCPAxY5iUV3wytNFUMUolzuwd/VF/1KCx7kf6CutrOsTie+84zTGTpgQycjvfLdBBdvBvFLqFD2c0wkQ==
   optionalDependencies:
     "@rollup/rollup-linux-x64-gnu" "^4.24.0"
