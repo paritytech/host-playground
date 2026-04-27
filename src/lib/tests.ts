@@ -63,7 +63,7 @@ function error(message: string, details?: unknown): TestResult {
 /** Request a single remote permission from the host. */
 async function ensureRemotePermission(
   log: (msg: string) => void,
-  permission: { tag: string; value: unknown },
+  permission: RemotePermissionItem,
 ): Promise<TestResult | null> {
   log(`Requesting remote permission: ${permission.tag}...`);
   const permissionResult = await hostApi.permission({
@@ -83,20 +83,19 @@ function ensureChainSubmitForTxBroadcast(log: (msg: string) => void) {
 
 /** Before `preimageManager.submit` / preimage RPC submit (host gates on PreimageSubmit). */
 function ensurePreimageSubmitPermission(log: (msg: string) => void) {
-  return ensureRemotePermissions(log, [{ tag: "PreimageSubmit", value: undefined }]);
+  return ensureRemotePermission(log, { tag: "PreimageSubmit", value: undefined });
 }
 
 /** Before `statementStore.submit` (host gates on StatementSubmit). */
 function ensureStatementSubmitPermission(log: (msg: string) => void) {
-  return ensureRemotePermissions(log, [{ tag: "StatementSubmit", value: undefined }]);
+  return ensureRemotePermission(log, { tag: "StatementSubmit", value: undefined });
 }
 
-/** Direct `wsProvider` RPC + tx broadcast: extra `Remote` for the WebSocket endpoint. */
-function ensureDirectWsSignSubmitPermissions(log: (msg: string) => void, wsUrl: string) {
-  return ensureRemotePermissions(log, [
-    { tag: "Remote", value: [wsUrl] },
-    { tag: "ChainSubmit", value: undefined },
-  ]);
+/** Direct `wsProvider` RPC + tx broadcast: requests Remote then ChainSubmit sequentially. */
+async function ensureDirectWsSignSubmitPermissions(log: (msg: string) => void, wsUrl: string) {
+  const remoteErr = await ensureRemotePermission(log, { tag: "Remote", value: [wsUrl] });
+  if (remoteErr) return remoteErr;
+  return ensureRemotePermission(log, { tag: "ChainSubmit", value: undefined });
 }
 
 // Account Tests
@@ -2163,13 +2162,13 @@ export const chainTests: TestDefinition[] = [
     name: "Chain Head: Follow",
     description:
       "Subscribes to chain head events for 10s (blocks, finalization)",
-    api: "hostApi.chainHeadFollow({ tag: 'v1', value: { genesisHash, withRuntime } }, callback)",
+    api: "hostApi.chainHeadFollowSubscribe({ tag: 'v1', value: { genesisHash, withRuntime } }, callback)",
     category: "chain",
     async run(chain: ChainConfig) {
       return new Promise((resolve) => {
         const events: { tag: string; blockHash?: string }[] = [];
 
-        const subscription = hostApi.chainHeadFollow(
+        const subscription = hostApi.chainHeadFollowSubscribe(
           {
             tag: "v1",
             value: { genesisHash: chain.genesis, withRuntime: false },
@@ -2232,7 +2231,7 @@ export const chainTests: TestDefinition[] = [
       log("Starting follow subscription...");
 
       return new Promise((resolve) => {
-        const subscription = hostApi.chainHeadFollow(
+        const subscription = hostApi.chainHeadFollowSubscribe(
           { tag: "v1", value: { genesisHash: chain.genesis, withRuntime: false } },
           async (event) => {
             if (event.tag !== "v1") return;
@@ -2283,7 +2282,7 @@ export const chainTests: TestDefinition[] = [
       log("Starting follow subscription...");
 
       return new Promise((resolve) => {
-        const subscription = hostApi.chainHeadFollow(
+        const subscription = hostApi.chainHeadFollowSubscribe(
           { tag: "v1", value: { genesisHash: chain.genesis, withRuntime: false } },
           async (event) => {
             if (event.tag !== "v1") return;
@@ -2334,7 +2333,7 @@ export const chainTests: TestDefinition[] = [
       log("Starting follow subscription...");
 
       return new Promise((resolve) => {
-        const subscription = hostApi.chainHeadFollow(
+        const subscription = hostApi.chainHeadFollowSubscribe(
           { tag: "v1", value: { genesisHash: chain.genesis, withRuntime: false } },
           async (event) => {
             if (event.tag !== "v1") return;
@@ -2389,7 +2388,7 @@ export const chainTests: TestDefinition[] = [
       log("Starting follow subscription...");
 
       return new Promise((resolve) => {
-        const subscription = hostApi.chainHeadFollow(
+        const subscription = hostApi.chainHeadFollowSubscribe(
           { tag: "v1", value: { genesisHash: chain.genesis, withRuntime: false } },
           async (event) => {
             if (event.tag !== "v1") return;
@@ -2442,7 +2441,7 @@ export const chainTests: TestDefinition[] = [
       log("Starting follow subscription...");
 
       return new Promise((resolve) => {
-        const subscription = hostApi.chainHeadFollow(
+        const subscription = hostApi.chainHeadFollowSubscribe(
           { tag: "v1", value: { genesisHash: chain.genesis, withRuntime: false } },
           async (event) => {
             if (event.tag !== "v1") return;
@@ -2556,7 +2555,7 @@ export const chainTests: TestDefinition[] = [
       log("Starting follow subscription...");
 
       return new Promise((resolve) => {
-        const subscription = hostApi.chainHeadFollow(
+        const subscription = hostApi.chainHeadFollowSubscribe(
           { tag: "v1", value: { genesisHash: chain.genesis, withRuntime: false } },
           async (event) => {
             if (event.tag !== "v1") return;
@@ -2632,7 +2631,7 @@ export const chainTests: TestDefinition[] = [
       log("Starting follow subscription...");
 
       return new Promise((resolve) => {
-        const subscription = hostApi.chainHeadFollow(
+        const subscription = hostApi.chainHeadFollowSubscribe(
           { tag: "v1", value: { genesisHash: chain.genesis, withRuntime: false } },
           async (event) => {
             if (event.tag !== "v1") return;
@@ -2701,25 +2700,10 @@ export const chainTests: TestDefinition[] = [
     name: "JSON-RPC: Send",
     description: "Sends a legacy JSON-RPC message to a chain",
     api: "hostApi.jsonrpcMessageSend({ tag: 'v1', value: [genesisHash, message] })",
-    warning: "Legacy — replaced by typed chain interaction",
+    disabled: "Removed in host-api 0.7.2 — use typed chain interaction instead",
     category: "chain",
-    async run(chain: ChainConfig) {
-      const message = JSON.stringify({
-        jsonrpc: "2.0",
-        id: 1,
-        method: "system_chain",
-        params: [],
-      });
-
-      const result = await hostApi.jsonrpcMessageSend({
-        tag: "v1",
-        value: [chain.genesis, message],
-      });
-
-      return result.match(
-        () => success("JSON-RPC message sent"),
-        (err) => error(err.value.name, err.value),
-      );
+    async run() {
+      return error("Removed in host-api 0.7.2");
     },
   },
   {
@@ -2727,48 +2711,10 @@ export const chainTests: TestDefinition[] = [
     name: "JSON-RPC: Subscribe",
     description: "Subscribes to JSON-RPC responses from a chain for 5s",
     api: "hostApi.jsonrpcMessageSubscribe({ tag: 'v1', value: genesisHash }, callback)",
-    warning: "Legacy — replaced by typed chain interaction",
+    disabled: "Removed in host-api 0.7.2 — use typed chain interaction instead",
     category: "chain",
-    async run(chain: ChainConfig, logger) {
-      const log = logger || (() => {});
-      log("Subscribing to JSON-RPC messages...");
-
-      return new Promise((resolve) => {
-        const messages: string[] = [];
-
-        const subscription = hostApi.jsonrpcMessageSubscribe(
-          { tag: "v1", value: chain.genesis },
-          (msg) => {
-            if (msg.tag === "v1") {
-              messages.push(msg.value);
-              log(`Received ${messages.length} message(s)`);
-            }
-          },
-        );
-
-        // Send a request to trigger a response
-        hostApi.jsonrpcMessageSend({
-          tag: "v1",
-          value: [
-            chain.genesis,
-            JSON.stringify({
-              jsonrpc: "2.0",
-              id: 1,
-              method: "system_chain",
-              params: [],
-            }),
-          ],
-        });
-
-        setTimeout(() => {
-          subscription.unsubscribe();
-          if (messages.length > 0) {
-            resolve(success(`Received ${messages.length} JSON-RPC response(s)`, messages));
-          } else {
-            resolve(success("Subscribed but no responses in 5s"));
-          }
-        }, 5000);
-      });
+    async run() {
+      return error("Removed in host-api 0.7.2");
     },
   },
   {
@@ -3260,7 +3206,6 @@ export const paymentTests: TestDefinition[] = [
       try {
         await pm.topUp(amount, {
           type: "productAccount",
-          dotNsIdentifier,
           derivationIndex: 0,
         });
         return success(`Topped up ${amount}`);
