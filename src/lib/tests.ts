@@ -60,30 +60,25 @@ function error(message: string, details?: unknown): TestResult {
   return { success: false, message, details };
 }
 
-/**
- * Maps host-playground flows to {@link RemotePermissionItem} batches (host-api v1).
- * There is no separate “sign only” remote permission; hosts gate `host_sign_*` in-app.
- * `ChainSubmit` is what the reference host checks before `transaction_v1_broadcast`.
- */
-async function ensureRemotePermissions(
+/** Request a single remote permission from the host. */
+async function ensureRemotePermission(
   log: (msg: string) => void,
-  permissions: RemotePermissionItem[],
+  permission: { tag: string; value: unknown },
 ): Promise<TestResult | null> {
-  const tags = permissions.map((p) => p.tag).join(", ");
-  log(`Requesting remote permission(s): ${tags}...`);
+  log(`Requesting remote permission: ${permission.tag}...`);
   const permissionResult = await hostApi.permission({
-    tag: "v1",
-    value: permissions,
+    tag: “v1”,
+    value: permission,
   });
   if (permissionResult.isErr()) {
-    return error(`Remote permission denied (${tags})`, permissionResult.error);
+    return error(`Remote permission denied (${permission.tag})`, permissionResult.error);
   }
   return null;
 }
 
 /** Before broadcasting a signed tx through the host (incl. `signSubmitAndWatch` submit step). */
 function ensureChainSubmitForTxBroadcast(log: (msg: string) => void) {
-  return ensureRemotePermissions(log, [{ tag: "ChainSubmit", value: undefined }]);
+  return ensureRemotePermission(log, { tag: “ChainSubmit”, value: undefined });
 }
 
 /** Before `preimageManager.submit` / preimage RPC submit (host gates on PreimageSubmit). */
@@ -1343,7 +1338,7 @@ export const permissionTests: TestDefinition[] = [
     id: "remote-permission-remote",
     name: "Remote Permission: Remote (HTTP/WS)",
     description: "Requests permission to connect to remote domains",
-    api: "hostApi.permission({ tag: 'v1', value: [{ tag: 'Remote', value: [url] }] })",
+    api: "hostApi.permission({ tag: 'v1', value: { tag: 'Remote', value: [url] } })",
     args: [
       {
         name: "url",
@@ -1356,7 +1351,7 @@ export const permissionTests: TestDefinition[] = [
       const url = args?.url ?? "https://example.com";
       const result = await hostApi.permission({
         tag: "v1",
-        value: [{ tag: "Remote", value: [url] }],
+        value: { tag: "Remote", value: [url] },
       });
 
       return result.match(
@@ -1369,12 +1364,12 @@ export const permissionTests: TestDefinition[] = [
     id: "remote-permission-chain-submit",
     name: "Remote Permission: Chain Submit",
     description: "Requests permission to submit transactions on a chain",
-    api: "hostApi.permission({ tag: 'v1', value: [{ tag: 'ChainSubmit', value: undefined }] })",
+    api: "hostApi.permission({ tag: 'v1', value: { tag: 'ChainSubmit', value: undefined } })",
     category: "permissions",
     async run(chain) {
       const result = await hostApi.permission({
         tag: "v1",
-        value: [{ tag: "ChainSubmit", value: undefined }],
+        value: { tag: "ChainSubmit", value: undefined },
       });
 
       return result.match(
@@ -1387,12 +1382,12 @@ export const permissionTests: TestDefinition[] = [
     id: "remote-permission-preimage-submit",
     name: "Remote Permission: Preimage Submit",
     description: "Requests permission to submit preimages via the host",
-    api: "hostApi.permission({ tag: 'v1', value: [{ tag: 'PreimageSubmit', value: undefined }] })",
+    api: "hostApi.permission({ tag: 'v1', value: { tag: 'PreimageSubmit', value: undefined } })",
     category: "permissions",
     async run(chain) {
       const result = await hostApi.permission({
         tag: "v1",
-        value: [{ tag: "PreimageSubmit", value: undefined }],
+        value: { tag: "PreimageSubmit", value: undefined },
       });
 
       return result.match(
@@ -1406,12 +1401,12 @@ export const permissionTests: TestDefinition[] = [
     id: "remote-permission-statement-submit",
     name: "Remote Permission: Statement Submit",
     description: "Requests permission to submit statement-store statements",
-    api: "hostApi.permission({ tag: 'v1', value: [{ tag: 'StatementSubmit', value: undefined }] })",
+    api: "hostApi.permission({ tag: 'v1', value: { tag: 'StatementSubmit', value: undefined } })",
     category: "permissions",
     async run(chain) {
       const result = await hostApi.permission({
         tag: "v1",
-        value: [{ tag: "StatementSubmit", value: undefined }],
+        value: { tag: "StatementSubmit", value: undefined },
       });
 
       return result.match(
