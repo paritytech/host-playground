@@ -168,8 +168,7 @@ export const accountTests: TestDefinition[] = [
 
       return result.match(
         (account) =>
-          success(`Product account: ${account.name ?? "unnamed"}`, {
-            ...account,
+          success('Product account:', {
             publicKey: toHex(account.publicKey),
           }),
         (err) => error(`${err.name}`, err),
@@ -877,6 +876,129 @@ export const signingTests: TestDefinition[] = [
     },
   },
   {
+    id: "sign-raw-legacy",
+    name: "Sign Raw Message (Legacy Account)",
+    description: "Signs a raw message via hostApi.signRawWithLegacyAccount",
+    api: "hostApi.signRawWithLegacyAccount({ tag, value: { signer, payload } })",
+    args: [
+      {
+        name: "message",
+        label: "Message",
+        defaultValue: "Hello from Host Playground!",
+      },
+    ],
+    category: "signing",
+    async run(_chain, logger, args) {
+      const log = logger || (() => {});
+
+      log("Creating account provider...");
+      const accountsProvider = createAccountsProvider();
+      const result = await accountsProvider.getLegacyAccounts();
+
+      return result.match(async (accounts) => {
+        if (accounts.length === 0) {
+          return error('No legacy accounts available')
+        }
+
+        const signerAddress = toHex(accounts[0].publicKey);
+
+        const message =
+          args?.message ??
+          `Hello from Host Playground! ${new Date().toLocaleString()}`;
+        const messageBytes = new TextEncoder().encode(message);
+
+        log(`Signing with legacy account ${signerAddress.slice(0, 10)}...`);
+        const result = await hostApi.signRawWithLegacyAccount({
+          tag: "v1",
+          value: {
+            signer: signerAddress,
+            payload: { tag: "Bytes", value: messageBytes },
+          },
+        });
+
+        return result.match(
+          (res) => success("Message signed", res.value),
+          (err) => error(err.value.name, err.value),
+        );
+      }, (err) => error(err.message))
+    },
+  },
+  {
+    id: "sign-payload-legacy-host-api",
+    name: "Sign Payload (Legacy Account via hostApi)",
+    description:
+      "Signs a remark payload via hostApi.signPayloadWithLegacyAccount",
+    api: "hostApi.signPayloadWithLegacyAccount({ tag, value: { signer, payload } })",
+    args: [
+      {
+        name: "message",
+        label: "Remark",
+        defaultValue: "Remark from Host Playground",
+      },
+    ],
+    category: "signing",
+    async run(chain: ChainConfig, logger?: TestLogger, args?) {
+      const log = logger || (() => {});
+
+      log("Creating account provider...");
+      const accountsProvider = createAccountsProvider();
+      const result = await accountsProvider.getLegacyAccounts();
+
+      return result.match(async (accounts) => {
+        if (accounts.length === 0) {
+          return error('No legacy accounts available')
+        }
+
+        const signerAddress = toHex(accounts[0].publicKey);
+
+        const client = getClient(chain.genesis);
+        const api = client.getUnsafeApi();
+
+        const message = args?.message ?? "Remark from Host Playground";
+        const tx = api.tx.System.remark({
+          remark: Binary.fromText(message),
+        });
+        const callData = await tx.getEncodedData();
+        const callDataHex = toHex(callData) as `0x${string}`;
+
+        log(`Signing payload with legacy account ${signerAddress.slice(0, 10)}...`);
+        const signResult = await hostApi.signPayloadWithLegacyAccount({
+          tag: "v1",
+          value: {
+            signer: signerAddress,
+            payload: {
+              blockHash:
+                "0x0000000000000000000000000000000000000000000000000000000000000000",
+              blockNumber: "0x00000000",
+              era: "0x00",
+              genesisHash: chain.genesis,
+              method: callDataHex,
+              nonce: "0x00000000",
+              specVersion: "0x00000000",
+              tip: "0x00000000000000000000000000000000",
+              transactionVersion: "0x00000000",
+              signedExtensions: [],
+              version: 4,
+              assetId: undefined,
+              metadataHash: undefined,
+              mode: undefined,
+              withSignedTransaction: undefined,
+            },
+          },
+        });
+
+        return signResult.match(
+          (res) =>
+            success(`Payload signed for ${chain.name}`, {
+              signature: res.value.signature,
+              signer: signerAddress,
+            }),
+          (err) => error(err.value.name, err.value),
+        );
+      }, (err) => error(err.message))
+    },
+  },
+  {
     id: "create-transaction",
     name: "Create Transaction",
     description: "Creates a transaction (requires product account)",
@@ -1334,6 +1456,96 @@ export const permissionTests: TestDefinition[] = [
     },
   },
   {
+    id: "device-permission-notifications",
+    name: "Device Permission: Notifications",
+    description: "Requests notifications access from the host",
+    api: "hostApi.devicePermission({ tag: 'v1', value: 'Notifications' })",
+    category: "permissions",
+    async run() {
+      const result = await hostApi.devicePermission({
+        tag: "v1",
+        value: "Notifications",
+      });
+
+      return result.match(
+        (res) => success(`Notifications permission: ${res.value ? "granted" : "denied"}`),
+        (err) => error(err.value.name, err.value),
+      );
+    },
+  },
+  {
+    id: "device-permission-nfc",
+    name: "Device Permission: NFC",
+    description: "Requests NFC access from the host",
+    api: "hostApi.devicePermission({ tag: 'v1', value: 'NFC' })",
+    category: "permissions",
+    async run() {
+      const result = await hostApi.devicePermission({
+        tag: "v1",
+        value: "NFC",
+      });
+
+      return result.match(
+        (res) => success(`NFC permission: ${res.value ? "granted" : "denied"}`),
+        (err) => error(err.value.name, err.value),
+      );
+    },
+  },
+  {
+    id: "device-permission-clipboard",
+    name: "Device Permission: Clipboard",
+    description: "Requests clipboard access from the host",
+    api: "hostApi.devicePermission({ tag: 'v1', value: 'Clipboard' })",
+    category: "permissions",
+    async run() {
+      const result = await hostApi.devicePermission({
+        tag: "v1",
+        value: "Clipboard",
+      });
+
+      return result.match(
+        (res) => success(`Clipboard permission: ${res.value ? "granted" : "denied"}`),
+        (err) => error(err.value.name, err.value),
+      );
+    },
+  },
+  {
+    id: "device-permission-open-url",
+    name: "Device Permission: Open URL",
+    description: "Requests permission to open external URLs",
+    api: "hostApi.devicePermission({ tag: 'v1', value: 'OpenUrl' })",
+    category: "permissions",
+    async run() {
+      const result = await hostApi.devicePermission({
+        tag: "v1",
+        value: "OpenUrl",
+      });
+
+      return result.match(
+        (res) => success(`OpenUrl permission: ${res.value ? "granted" : "denied"}`),
+        (err) => error(err.value.name, err.value),
+      );
+    },
+  },
+  {
+    id: "device-permission-biometrics",
+    name: "Device Permission: Biometrics",
+    description: "Requests biometrics access from the host",
+    api: "hostApi.devicePermission({ tag: 'v1', value: 'Biometrics' })",
+    category: "permissions",
+    async run() {
+      const result = await hostApi.devicePermission({
+        tag: "v1",
+        value: "Biometrics",
+      });
+
+      return result.match(
+        (res) => success(`Biometrics permission: ${res.value ? "granted" : "denied"}`),
+        (err) => error(err.value.name, err.value),
+      );
+    },
+  },
+  {
     id: "remote-permission-remote",
     name: "Remote Permission: Remote (HTTP/WS)",
     description: "Requests permission to connect to remote domains",
@@ -1355,6 +1567,24 @@ export const permissionTests: TestDefinition[] = [
 
       return result.match(
         (res) => success(`Remote permission: ${res.value ? "granted" : "denied"}`),
+        (err) => error(err.value.name, err.value),
+      );
+    },
+  },
+  {
+    id: "remote-permission-webrtc",
+    name: "Remote Permission: WebRTC",
+    description: "Requests permission to use WebRTC",
+    api: "hostApi.permission({ tag: 'v1', value: { tag: 'WebRTC', value: undefined } })",
+    category: "permissions",
+    async run() {
+      const result = await hostApi.permission({
+        tag: "v1",
+        value: { tag: "WebRTC", value: undefined },
+      });
+
+      return result.match(
+        (res) => success(`WebRTC permission: ${res.value ? "granted" : "denied"}`),
         (err) => error(err.value.name, err.value),
       );
     },
@@ -1841,7 +2071,7 @@ export const statementTests: TestDefinition[] = [
     },
   },
   {
-    id: "statement-store-subscribe",
+    id: "statement-store-subscribe-match-all",
     name: "Subscribe Statements",
     description: "Subscribes to statement store topics (5s)",
     api: "statementStore.subscribe(filter, callback)",
@@ -1860,6 +2090,56 @@ export const statementTests: TestDefinition[] = [
           resolve(
             success(
               `Received ${received.length} statements in 5s`,
+              received.slice(-5),
+            ),
+          );
+        }, 5000);
+      });
+    },
+  },
+  {
+    id: "statement-store-subscribe-match-any",
+    name: "Subscribe Statements (matchAny)",
+    description:
+      "Subscribes to statement store using a matchAny topic filter (5s)",
+    api: "statementStore.subscribe({ matchAny: [topic1, topic2] }, callback)",
+    args: [
+      {
+        name: "topicA",
+        label: "Topic A",
+        defaultValue: "host-playground:topic-a",
+      },
+      {
+        name: "topicB",
+        label: "Topic B",
+        defaultValue: "host-playground:topic-b",
+      },
+    ],
+    category: "statements",
+    async run(_chain, _logger, args) {
+      const statementStore = createStatementStore();
+      const encoder = new TextEncoder();
+      const topicA = encoder.encode(
+        args?.topicA ?? "host-playground:topic-a",
+      );
+      const topicB = encoder.encode(
+        args?.topicB ?? "host-playground:topic-b",
+      );
+
+      return new Promise((resolve) => {
+        const received: unknown[] = [];
+        const subscription = statementStore.subscribe(
+          { matchAny: [topicA, topicB] },
+          (page) => {
+            received.push(...page.statements);
+          },
+        );
+
+        setTimeout(() => {
+          subscription.unsubscribe();
+          resolve(
+            success(
+              `Received ${received.length} statements in 5s (matchAny)`,
               received.slice(-5),
             ),
           );
@@ -3130,20 +3410,19 @@ export const authTests: TestDefinition[] = [
     },
   },
   {
-    id: "get-root-account",
-    name: "Get Root Account",
-    description: "Gets the user's root DotNS-linked account (RFC-0010)",
-    api: "accountsProvider.getRootAccount()",
+    id: "get-user-id",
+    name: "Get User Identity",
+    description: "Gets the user's identity (RFC-0014)",
+    api: "accountsProvider.getUserId()",
     category: "auth",
     async run() {
       const accountsProvider = createAccountsProvider();
-      const result = await accountsProvider.getRootAccount();
+      const result = await accountsProvider.getUserId();
 
       return result.match(
         (account) =>
-          success(`Root account: ${account.name ?? "unnamed"}`, {
+          success('User identity', {
             ...account,
-            publicKey: toHex(account.publicKey),
           }),
         (err) => error(`${err.name}`, err),
       );

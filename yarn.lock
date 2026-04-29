@@ -615,7 +615,18 @@
   resolved "https://registry.npmjs.org/@nolyfill/is-core-module/-/is-core-module-1.0.39.tgz"
   integrity sha512-nn5ozdjYQpUCZlWGuxcJY/KpxkWQs4DcbMCmKojjyrYDEAGy4Ce19NN4v5MduafTwJlbKc99UA8YhSVqq9yPZA==
 
-"@novasamatech/host-api@0.7.2", "@novasamatech/host-api@^0.7.2":
+"@novasamatech/host-api@0.7.4":
+  version "0.7.4"
+  resolved "https://registry.yarnpkg.com/@novasamatech/host-api/-/host-api-0.7.4.tgz#6785ee894f38a01746f610aa7ea83e0c579d93c0"
+  integrity sha512-2Nd8QMNmpJI5vIKxJEVEIyVr9nt6+v50GY1/IbqM0yo1TiDXIrZJEW4m9C9sbqTR7wAqgVus47t4osvQtGt6wg==
+  dependencies:
+    "@novasamatech/scale" "0.7.4"
+    nanoevents "9.1.0"
+    nanoid "5.1.9"
+    neverthrow "^8.2.0"
+    scale-ts "1.6.1"
+
+"@novasamatech/host-api@^0.7.2":
   version "0.7.2"
   resolved "https://registry.yarnpkg.com/@novasamatech/host-api/-/host-api-0.7.2.tgz#c9624f7dbc3684e1013df53f71e0ff683305b1a2"
   integrity sha512-5ArbQ1dz0BGAlcdFQ9Iz4HAog4NjmuIavDsaM83dhAkDRk3zPjalbnOQuNd91yvPZkVxWAPy4XXUaDYE9xq4Xg==
@@ -626,12 +637,12 @@
     neverthrow "^8.2.0"
     scale-ts "1.6.1"
 
-"@novasamatech/product-sdk@^0.7.2":
-  version "0.7.2"
-  resolved "https://registry.yarnpkg.com/@novasamatech/product-sdk/-/product-sdk-0.7.2.tgz#fb50cd4e847e844d1734afe61de539338c7a38fb"
-  integrity sha512-gYOwgihIY5u3JMRYYJT0MwddHuiZvS41vJ6QED2d1sCZkGdo5B0r6nQuzdlUVxDIwJ7eqiwAywTPe8PvCHh/MA==
+"@novasamatech/product-sdk@^0.7.4":
+  version "0.7.4"
+  resolved "https://registry.yarnpkg.com/@novasamatech/product-sdk/-/product-sdk-0.7.4.tgz#201bb6242e556570b3fce51a58c237e602111dc0"
+  integrity sha512-abNi+d668qEXvL5OThE/oaSXpiP8BqIiT87fSeqvD3JDl6jwmeL8NpAFV1v25qORRtLh6uxKQcVLoscj9R72OA==
   dependencies:
-    "@novasamatech/host-api" "0.7.2"
+    "@novasamatech/host-api" "0.7.4"
     "@polkadot-api/json-rpc-provider-proxy" "^0.4.0"
     "@polkadot/extension-inject" "^0.63.1"
     neverthrow "^8.2.0"
@@ -641,6 +652,14 @@
   version "0.7.2"
   resolved "https://registry.yarnpkg.com/@novasamatech/scale/-/scale-0.7.2.tgz#0f78ca27a5e2cadcc766aa0238442de61b459b7d"
   integrity sha512-3OXqVdKeX/Y+3Mf+gytxd6cuo+4YrWeZeQbFg/8dNrxwtLo14XsfUXZKRwuKje5i5oN3/RQrRFgXW/0IuGjaWQ==
+  dependencies:
+    "@polkadot-api/utils" "^0.4.0"
+    scale-ts "1.6.1"
+
+"@novasamatech/scale@0.7.4":
+  version "0.7.4"
+  resolved "https://registry.yarnpkg.com/@novasamatech/scale/-/scale-0.7.4.tgz#f5a20d68e4b8aeb862dea5c0cda4de81ba5e1f2a"
+  integrity sha512-kxdKxtSKBkgoXYMWD0iXZMOa4cDXRFZ1mRbMpHvnZG3jNCF9zr1QPo8jnTmut1vbHJ6O3o+At+4dI6CiU6SFOw==
   dependencies:
     "@polkadot-api/utils" "^0.4.0"
     scale-ts "1.6.1"
