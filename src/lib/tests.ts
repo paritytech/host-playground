@@ -3550,7 +3550,7 @@ async function runResourceAllocation(resources: AllocatableResource[]) {
 
 export const allowancesTests: TestDefinition[] = [
   {
-    id: "resource-allocation-statement-store",
+    id: "allowances-statement-store",
     name: "Allocate StatementStore Allowance",
     description: "Requests a statement-store allowance from the host (RFC-0010)",
     api: 'hostApi.requestResourceAllocation({ tag: "v1", value: [{ tag: "StatementStoreAllowance" }] })',
@@ -3562,7 +3562,7 @@ export const allowancesTests: TestDefinition[] = [
     },
   },
   {
-    id: "resource-allocation-bulletin",
+    id: "allowances-bulletin",
     name: "Allocate Bulletin Allowance",
     description: "Requests a bulletin allowance from the host (RFC-0010)",
     api: 'hostApi.requestResourceAllocation({ tag: "v1", value: [{ tag: "BulletInAllowance" }] })',
@@ -3574,7 +3574,7 @@ export const allowancesTests: TestDefinition[] = [
     },
   },
   {
-    id: "resource-allocation-smart-contract",
+    id: "allowances-smart-contract",
     name: "Allocate SmartContract Allowance",
     description:
       "Requests a smart-contract allowance for a derivation index (RFC-0010)",
@@ -3595,7 +3595,7 @@ export const allowancesTests: TestDefinition[] = [
     },
   },
   {
-    id: "resource-allocation-auto-signing",
+    id: "allowances-auto-signing",
     name: "Allocate Auto-Signing",
     description: "Requests auto-signing capability from the host (RFC-0010)",
     api: 'hostApi.requestResourceAllocation({ tag: "v1", value: [{ tag: "AutoSigning" }] })',
@@ -3607,7 +3607,7 @@ export const allowancesTests: TestDefinition[] = [
     },
   },
   {
-    id: "resource-allocation-all",
+    id: "allowances-all",
     name: "Allocate All Resources",
     description:
       "Requests every supported resource in a single call; outcomes are reported per resource",
