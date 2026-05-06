@@ -33,7 +33,8 @@ export type TestCategory =
   | "theme"
   | "entropy"
   | "payments"
-  | "auth";
+  | "auth"
+  | "allowances";
 
 export interface ChainConfig {
   name: string;
