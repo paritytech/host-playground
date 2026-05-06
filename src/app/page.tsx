@@ -21,7 +21,7 @@ import { useAccounts } from "@/src/lib/use-accounts";
 import { useConnectionStatus } from "@/src/lib/use-connection-status";
 import { stringify } from "@/src/lib/utils";
 
-const SDK_VERSION = "0.7.0";
+const SDK_VERSION = "0.7.6";
 
 const categoryIcons: Record<TestCategory, string> = {
   extension: "🔌",
@@ -40,6 +40,7 @@ const categoryIcons: Record<TestCategory, string> = {
   entropy: "🔑",
   auth: "🔓",
   payments: "💳",
+  resourceAllocation: "📦",
 };
 
 const categoryInfo: Record<
@@ -109,6 +110,11 @@ const categoryInfo: Record<
   payments: {
     title: "Payments",
     description: "Balance, top-ups, and payment requests (RFC-0006)",
+  },
+  resourceAllocation: {
+    title: "Resource Allocation",
+    description:
+      "Request statement-store, bulletin, smart-contract, and auto-signing allocations (RFC-0010)",
   },
 };
 

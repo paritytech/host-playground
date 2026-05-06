@@ -3521,6 +3521,117 @@ export const paymentTests: TestDefinition[] = [
   },
 ];
 
+type AllocatableResource =
+  | { tag: "StatementStoreAllowance"; value: undefined }
+  | { tag: "BulletInAllowance"; value: undefined }
+  | { tag: "SmartContractAllowance"; value: number }
+  | { tag: "AutoSigning"; value: undefined };
+
+async function runResourceAllocation(resources: AllocatableResource[]) {
+  const result = await hostApi.requestResourceAllocation({
+    tag: "v1",
+    value: resources,
+  });
+
+  return result.match(
+    (res) => {
+      const outcomes = res.value.map((o, i) => ({
+        resource: resources[i].tag,
+        outcome: o.tag,
+      }));
+      return success(
+        `Received ${outcomes.length} outcome(s)`,
+        outcomes,
+      );
+    },
+    (err) => error(err.value.name, err.value),
+  );
+}
+
+export const resourceAllocationTests: TestDefinition[] = [
+  {
+    id: "resource-allocation-statement-store",
+    name: "Allocate StatementStore Allowance",
+    description: "Requests a statement-store allowance from the host (RFC-0010)",
+    api: 'hostApi.requestResourceAllocation({ tag: "v1", value: [{ tag: "StatementStoreAllowance" }] })',
+    category: "resourceAllocation",
+    async run() {
+      return runResourceAllocation([
+        { tag: "StatementStoreAllowance", value: undefined },
+      ]);
+    },
+  },
+  {
+    id: "resource-allocation-bulletin",
+    name: "Allocate Bulletin Allowance",
+    description: "Requests a bulletin allowance from the host (RFC-0010)",
+    api: 'hostApi.requestResourceAllocation({ tag: "v1", value: [{ tag: "BulletInAllowance" }] })',
+    category: "resourceAllocation",
+    async run() {
+      return runResourceAllocation([
+        { tag: "BulletInAllowance", value: undefined },
+      ]);
+    },
+  },
+  {
+    id: "resource-allocation-smart-contract",
+    name: "Allocate SmartContract Allowance",
+    description:
+      "Requests a smart-contract allowance for a derivation index (RFC-0010)",
+    api: 'hostApi.requestResourceAllocation({ tag: "v1", value: [{ tag: "SmartContractAllowance", value: derivationIndex }] })',
+    args: [
+      {
+        name: "derivationIndex",
+        label: "Derivation index",
+        defaultValue: "0",
+      },
+    ],
+    category: "resourceAllocation",
+    async run(_chain, _logger, args) {
+      const derivationIndex = Number(args?.derivationIndex ?? "0");
+      return runResourceAllocation([
+        { tag: "SmartContractAllowance", value: derivationIndex },
+      ]);
+    },
+  },
+  {
+    id: "resource-allocation-auto-signing",
+    name: "Allocate Auto-Signing",
+    description: "Requests auto-signing capability from the host (RFC-0010)",
+    api: 'hostApi.requestResourceAllocation({ tag: "v1", value: [{ tag: "AutoSigning" }] })',
+    category: "resourceAllocation",
+    async run() {
+      return runResourceAllocation([
+        { tag: "AutoSigning", value: undefined },
+      ]);
+    },
+  },
+  {
+    id: "resource-allocation-all",
+    name: "Allocate All Resources",
+    description:
+      "Requests every supported resource in a single call; outcomes are reported per resource",
+    api: 'hostApi.requestResourceAllocation({ tag: "v1", value: [...] })',
+    args: [
+      {
+        name: "derivationIndex",
+        label: "SmartContract derivation index",
+        defaultValue: "0",
+      },
+    ],
+    category: "resourceAllocation",
+    async run(_chain, _logger, args) {
+      const derivationIndex = Number(args?.derivationIndex ?? "0");
+      return runResourceAllocation([
+        { tag: "StatementStoreAllowance", value: undefined },
+        { tag: "BulletInAllowance", value: undefined },
+        { tag: "SmartContractAllowance", value: derivationIndex },
+        { tag: "AutoSigning", value: undefined },
+      ]);
+    },
+  },
+];
+
 export const testsByCategory = {
   accounts: accountTests,
   signing: signingTests,
@@ -3538,4 +3649,5 @@ export const testsByCategory = {
   entropy: entropyTests,
   auth: authTests,
   payments: paymentTests,
+  resourceAllocation: resourceAllocationTests,
 };
