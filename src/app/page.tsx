@@ -40,7 +40,7 @@ const categoryIcons: Record<TestCategory, string> = {
   entropy: "🔑",
   auth: "🔓",
   payments: "💳",
-  resourceAllocation: "📦",
+  allowances: "📦",
 };
 
 const categoryInfo: Record<
@@ -111,8 +111,8 @@ const categoryInfo: Record<
     title: "Payments",
     description: "Balance, top-ups, and payment requests (RFC-0006)",
   },
-  resourceAllocation: {
-    title: "Resource Allocation",
+  allowances: {
+    title: "Allowances",
     description:
       "Request statement-store, bulletin, smart-contract, and auto-signing allocations (RFC-0010)",
   },

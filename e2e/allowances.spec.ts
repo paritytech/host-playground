@@ -7,7 +7,7 @@ import { waitForAppReady, runTest } from './helpers';
 // once the test host SDK ships an RFC-0010 handler.
 const RFC_0010_TEST_HOST_READY = false;
 
-test.describe('Resource Allocation', () => {
+test.describe('Allowances', () => {
   test.skip(
     !RFC_0010_TEST_HOST_READY,
     'host-api-test-sdk does not yet implement host_request_resource_allocation',

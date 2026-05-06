@@ -34,7 +34,7 @@ export type TestCategory =
   | "entropy"
   | "payments"
   | "auth"
-  | "resourceAllocation";
+  | "allowances";
 
 export interface ChainConfig {
   name: string;

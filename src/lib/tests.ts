@@ -3548,13 +3548,13 @@ async function runResourceAllocation(resources: AllocatableResource[]) {
   );
 }
 
-export const resourceAllocationTests: TestDefinition[] = [
+export const allowancesTests: TestDefinition[] = [
   {
     id: "resource-allocation-statement-store",
     name: "Allocate StatementStore Allowance",
     description: "Requests a statement-store allowance from the host (RFC-0010)",
     api: 'hostApi.requestResourceAllocation({ tag: "v1", value: [{ tag: "StatementStoreAllowance" }] })',
-    category: "resourceAllocation",
+    category: "allowances",
     async run() {
       return runResourceAllocation([
         { tag: "StatementStoreAllowance", value: undefined },
@@ -3566,7 +3566,7 @@ export const resourceAllocationTests: TestDefinition[] = [
     name: "Allocate Bulletin Allowance",
     description: "Requests a bulletin allowance from the host (RFC-0010)",
     api: 'hostApi.requestResourceAllocation({ tag: "v1", value: [{ tag: "BulletInAllowance" }] })',
-    category: "resourceAllocation",
+    category: "allowances",
     async run() {
       return runResourceAllocation([
         { tag: "BulletInAllowance", value: undefined },
@@ -3586,7 +3586,7 @@ export const resourceAllocationTests: TestDefinition[] = [
         defaultValue: "0",
       },
     ],
-    category: "resourceAllocation",
+    category: "allowances",
     async run(_chain, _logger, args) {
       const derivationIndex = Number(args?.derivationIndex ?? "0");
       return runResourceAllocation([
@@ -3599,7 +3599,7 @@ export const resourceAllocationTests: TestDefinition[] = [
     name: "Allocate Auto-Signing",
     description: "Requests auto-signing capability from the host (RFC-0010)",
     api: 'hostApi.requestResourceAllocation({ tag: "v1", value: [{ tag: "AutoSigning" }] })',
-    category: "resourceAllocation",
+    category: "allowances",
     async run() {
       return runResourceAllocation([
         { tag: "AutoSigning", value: undefined },
@@ -3619,7 +3619,7 @@ export const resourceAllocationTests: TestDefinition[] = [
         defaultValue: "0",
       },
     ],
-    category: "resourceAllocation",
+    category: "allowances",
     async run(_chain, _logger, args) {
       const derivationIndex = Number(args?.derivationIndex ?? "0");
       return runResourceAllocation([
@@ -3649,5 +3649,5 @@ export const testsByCategory = {
   entropy: entropyTests,
   auth: authTests,
   payments: paymentTests,
-  resourceAllocation: resourceAllocationTests,
+  allowances: allowancesTests,
 };
