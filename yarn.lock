@@ -615,61 +615,42 @@
   resolved "https://registry.npmjs.org/@nolyfill/is-core-module/-/is-core-module-1.0.39.tgz"
   integrity sha512-nn5ozdjYQpUCZlWGuxcJY/KpxkWQs4DcbMCmKojjyrYDEAGy4Ce19NN4v5MduafTwJlbKc99UA8YhSVqq9yPZA==
 
-"@novasamatech/host-api@0.7.6":
-  version "0.7.6"
-  resolved "https://registry.yarnpkg.com/@novasamatech/host-api/-/host-api-0.7.6.tgz#d83a446b0a89fe74c53043405777072a435142b6"
-  integrity sha512-0lv6tnNOa/sfBlyCfI+kkfU4pB+fBRi+Lwq1zsrCUbaK9AAcq4UrYrtZCSeBD+sT/c3hgTIK3a9ruZZkrzcLjA==
+"@novasamatech/host-api@0.7.7", "@novasamatech/host-api@^0.7.7":
+  version "0.7.7"
+  resolved "https://registry.yarnpkg.com/@novasamatech/host-api/-/host-api-0.7.7.tgz#192d81e38c7088e1f2c0f6251732c63a0c7dfad2"
+  integrity sha512-2aU6ZIZrfYkdRj39PP9+Rsg+hl5KlzjyC7dUsbcV4mepWtyHFYCCkt621Zg3TmCrT4oDJoY107DOxankB4UV3Q==
   dependencies:
-    "@novasamatech/scale" "0.7.6"
+    "@novasamatech/scale" "0.7.7"
     nanoevents "9.1.0"
     nanoid "5.1.9"
     neverthrow "^8.2.0"
     scale-ts "1.6.1"
 
-"@novasamatech/host-api@^0.7.2":
-  version "0.7.2"
-  resolved "https://registry.yarnpkg.com/@novasamatech/host-api/-/host-api-0.7.2.tgz#c9624f7dbc3684e1013df53f71e0ff683305b1a2"
-  integrity sha512-5ArbQ1dz0BGAlcdFQ9Iz4HAog4NjmuIavDsaM83dhAkDRk3zPjalbnOQuNd91yvPZkVxWAPy4XXUaDYE9xq4Xg==
+"@novasamatech/product-sdk@^0.7.7":
+  version "0.7.7"
+  resolved "https://registry.yarnpkg.com/@novasamatech/product-sdk/-/product-sdk-0.7.7.tgz#ccd177b015e62fe3ae4a3d419314986cba6ef9c5"
+  integrity sha512-Jh3AXmbt1OblniHfzSdaRS4esXEeaP9Gbstv7/wqgAiMPMmJvmMTYFmNVCLWxFrz55P4NwTwhG1V+yeU940Dmw==
   dependencies:
-    "@novasamatech/scale" "0.7.2"
-    nanoevents "9.1.0"
-    nanoid "5.1.9"
-    neverthrow "^8.2.0"
-    scale-ts "1.6.1"
-
-"@novasamatech/product-sdk@0.7.6":
-  version "0.7.6"
-  resolved "https://registry.yarnpkg.com/@novasamatech/product-sdk/-/product-sdk-0.7.6.tgz#404966d44684dc036f63794039dedc4febec8ad3"
-  integrity sha512-AbzfoZzNI9tE4t9+OfgU/6udOvY4WPI01mWx+uZsbpL9yfU00wlCNhyJS+8iPfD1R5zvvDZGa0fcIKyhUtseGQ==
-  dependencies:
-    "@novasamatech/host-api" "0.7.6"
+    "@novasamatech/host-api" "0.7.7"
     "@polkadot-api/json-rpc-provider-proxy" "^0.4.0"
     "@polkadot/extension-inject" "^0.63.1"
     neverthrow "^8.2.0"
     polkadot-api ">=2"
 
-"@novasamatech/scale@0.7.2":
-  version "0.7.2"
-  resolved "https://registry.yarnpkg.com/@novasamatech/scale/-/scale-0.7.2.tgz#0f78ca27a5e2cadcc766aa0238442de61b459b7d"
-  integrity sha512-3OXqVdKeX/Y+3Mf+gytxd6cuo+4YrWeZeQbFg/8dNrxwtLo14XsfUXZKRwuKje5i5oN3/RQrRFgXW/0IuGjaWQ==
+"@novasamatech/scale@0.7.7":
+  version "0.7.7"
+  resolved "https://registry.yarnpkg.com/@novasamatech/scale/-/scale-0.7.7.tgz#a56fa6f11619c239ce55ff100688ccdce32d0910"
+  integrity sha512-t4qdnp9gsG8B0LoxKUWpOHB3JAy7/jS7n2vUn3ynPJDDBsKgbqg5GKfWD6QCRdDhtilzR6k9H0LpDS5yCLFvog==
   dependencies:
     "@polkadot-api/utils" "^0.4.0"
     scale-ts "1.6.1"
 
-"@novasamatech/scale@0.7.6":
-  version "0.7.6"
-  resolved "https://registry.yarnpkg.com/@novasamatech/scale/-/scale-0.7.6.tgz#d60d93d3ea0f44113ddccde6bd996223005f2916"
-  integrity sha512-G6SSdoVY0sRa1wOmUKpVHr8DmCFWbUL7Fha0qo2it9baBW3YfZVlCw1h+mQIV1FE/mvIAOb8O6WRD/L267g9+Q==
+"@parity/host-api-test-sdk@^0.7.4":
+  version "0.7.4"
+  resolved "https://registry.yarnpkg.com/@parity/host-api-test-sdk/-/host-api-test-sdk-0.7.4.tgz#94df2cb6036918149f1491ad3ada5bd68b1bd66f"
+  integrity sha512-AUbbQzClVmTPZwYoPpfqFux9+M3l4A9lKuJj/7qyqst2vjalxtmwotYfKZFLaxxnpA3FDkLcACkOk7HuLAY7qw==
   dependencies:
-    "@polkadot-api/utils" "^0.4.0"
-    scale-ts "1.6.1"
-
-"@parity/host-api-test-sdk@^0.7.0":
-  version "0.7.2"
-  resolved "https://registry.yarnpkg.com/@parity/host-api-test-sdk/-/host-api-test-sdk-0.7.2.tgz#15801c6c305309d6cd776fd88de759db6e1154c4"
-  integrity sha512-q+wbAWN0LqIs2mAW9wBMEGQsWM+5uwRDLWKVe1rIneQ/G2Q7ixCoM9yyGacQUy3FWFcBBeZahEpLw3nQAs4Syw==
-  dependencies:
-    "@novasamatech/host-api" "^0.7.2"
+    "@novasamatech/host-api" "^0.7.7"
 
 "@playwright/test@^1.59.1":
   version "1.59.1"
