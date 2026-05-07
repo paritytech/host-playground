@@ -22,7 +22,7 @@ concurrency:
 
 jobs:
   build:
-    runs-on: parity-default
+    runs-on: parity-int-ubuntu
     steps:
       - uses: actions/checkout@v4
 
@@ -46,7 +46,7 @@ jobs:
 
   deploy:
     needs: build
-    runs-on: parity-default
+    runs-on: parity-int-ubuntu
     outputs:
       cid: ${{ steps.final.outputs.cid }}
       domain: ${{ steps.final.outputs.domain }}
@@ -166,7 +166,7 @@ jobs:
   comment:
     if: github.event_name == 'pull_request'
     needs: deploy
-    runs-on: parity-default
+    runs-on: parity-int-ubuntu
     permissions:
       pull-requests: write
     steps:

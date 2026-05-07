@@ -11,7 +11,7 @@ concurrency:
 
 jobs:
   typecheck:
-    runs-on: parity-default
+    runs-on: parity-int-ubuntu
     steps:
       - uses: actions/checkout@v4
 
@@ -29,7 +29,7 @@ jobs:
         run: yarn typecheck
 
   e2e:
-    runs-on: parity-default
+    runs-on: parity-int-ubuntu
     steps:
       - uses: actions/checkout@v4
 
