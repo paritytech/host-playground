@@ -21,7 +21,7 @@ import { useAccounts } from "@/src/lib/use-accounts";
 import { useConnectionStatus } from "@/src/lib/use-connection-status";
 import { stringify } from "@/src/lib/utils";
 
-const SDK_VERSION = "0.7.7";
+const SDK_VERSION = "0.7.8";
 
 const categoryIcons: Record<TestCategory, string> = {
   extension: "🔌",
