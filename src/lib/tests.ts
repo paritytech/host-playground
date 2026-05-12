@@ -1996,8 +1996,8 @@ export const statementTests: TestDefinition[] = [
           data: messageBytes,
         });
 
-        const proofValue = proof.value as { signature?: Uint8Array };
-        const sig = proofValue.signature
+        const proofValue = proof.value;
+        const sig = 'signature' in proofValue
           ? toHex(proofValue.signature).slice(0, 20)
           : "onchain";
         return success(`Proof type: ${proof.tag}, sig: ${sig}...`);
@@ -2009,6 +2009,41 @@ export const statementTests: TestDefinition[] = [
             : String(e),
         );
       }
+    },
+  },
+  {
+    id: "statement-store-create-proof-authorized",
+    name: "Create Proof Authorized",
+    description: "Creates a statement store proof via authorized account",
+    api: "host.statementStoreCreateProofAuthorized",
+    category: "statements",
+    async run(_chain, _logger, args) {
+      const messageBytes = new TextEncoder().encode(`Statement: ${Date.now()}`);
+      const proof = await hostApi.statementStoreCreateProofAuthorized({
+        tag: 'v1',
+        value: {
+          proof: undefined,
+          decryptionKey: undefined,
+          expiry: undefined,
+          channel: undefined,
+          topics: [],
+          data: messageBytes,
+        }
+      });
+
+      return proof.match(
+        proof => {
+          const proofValue = proof.value.value;
+          const signature = 'signature' in proofValue
+            ? toHex(proofValue.signature).slice(0, 20)
+            : "onchain";
+
+          return success(`Proof type: ${proof.tag}, sig: ${signature}...`);
+        },
+        err => {
+          return error(err.value.toString())
+        }
+      )
     },
   },
   {
