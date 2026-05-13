@@ -41,6 +41,8 @@ export interface ChainConfig {
   network: string;
   genesis: `0x${string}`;
   wsUrl: string;
+  ipfs?: string;
+  ss58Prefix: number;
 }
 
 export interface TestArg {
@@ -68,19 +70,14 @@ export interface TestDefinition {
 
 // Chain configurations
 export const CHAINS = {
-  PASEO_ASSET_HUB: {
-    name: "Paseo Hub",
+  PASEO_NEXT_V2_ASSET_HUB: {
+    name: "Paseo Next v2 Hub",
     network: "Testnet",
     genesis:
-      "0xd6eec26135305a8ad257a20d003357284c8aa03d0bdb2b357ab0a22371e11ef2" as const,
-    wsUrl: "wss://sys.ibp.network/asset-hub-paseo",
-  },
-  POLKADOT_ASSET_HUB: {
-    name: "Polkadot Hub",
-    network: "Mainnet",
-    genesis:
-      "0x68d56f15f85d3136970ec16946040bc1752654e906147f7e43e9d539d7c3de2f" as const,
-    wsUrl: "wss://sys.ibp.network/asset-hub-polkadot",
+      "0x173cea9df45656cf612c8b8ece56e04e9a693c69cfaac47d3628dae735067af8" as const,
+    wsUrl: "wss://paseo-asset-hub-next-rpc.polkadot.io",
+    ipfs: "https://paseo-bulletin-next-ipfs.polkadot.io",
+    ss58Prefix: 0,
   },
   PREVIEWNET_ASSET_HUB: {
     name: "Previewnet Hub",
@@ -88,6 +85,17 @@ export const CHAINS = {
     genesis:
       "0x4bad3ce960c32a1d55005d258883d14fc6eca4486af35500bed93c314fbdb192" as const,
     wsUrl: "wss://previewnet.substrate.dev/asset-hub",
+    ipfs: "https://previewnet.substrate.dev/ipfs/",
+    ss58Prefix: 0,
+  },
+  PASEO_ASSET_HUB: {
+    name: "Paseo Hub v1 (deprecated)",
+    network: "Testnet",
+    genesis:
+      "0xd6eec26135305a8ad257a20d003357284c8aa03d0bdb2b357ab0a22371e11ef2" as const,
+    wsUrl: "wss://sys.ibp.network/asset-hub-paseo",
+    ipfs: "https://paseo-ipfs.polkadot.io/ipfs",
+    ss58Prefix: 0,
   },
 } as const;
 

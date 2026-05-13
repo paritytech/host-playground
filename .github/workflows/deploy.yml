@@ -8,7 +8,7 @@ on:
   workflow_dispatch:
     inputs:
       skip-cache:
-        description: 'Skip deployment cache and force redeploy'
+        description: "Skip deployment cache and force redeploy"
         type: boolean
         default: false
 
@@ -103,7 +103,7 @@ jobs:
           else
             BRANCH="${{ github.event.pull_request.head.ref }}"
             SAFE_BRANCH=$(echo "$BRANCH" | tr '/' '-' | sed 's/[^a-z0-9-]//g' | cut -c1-20)
-            echo "dotns=${SAFE_BRANCH}-host-playground.dot" >> "$GITHUB_OUTPUT"
+            echo "dotns=${SAFE_BRANCH}-host-playground00.dot" >> "$GITHUB_OUTPUT"
           fi
 
       - name: Deploy

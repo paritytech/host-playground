@@ -28,6 +28,10 @@ import {
 import { toHex } from "polkadot-api/utils";
 import { createInkSdk } from "@polkadot-api/sdk-ink";
 import { contracts } from "@polkadot-api/descriptors";
+import { CID } from "multiformats/cid";
+import { create as createMultihashDigest } from "multiformats/hashes/digest";
+import { sha256 } from "multiformats/hashes/sha2";
+import { blake2b } from "@noble/hashes/blake2b";
 import { CHAINS } from "./types";
 import deployment from "../../programs/deployment.json";
 import {
@@ -91,11 +95,103 @@ function ensureStatementSubmitPermission(log: (msg: string) => void) {
   return ensureRemotePermission(log, { tag: "StatementSubmit", value: undefined });
 }
 
+function bytesEqual(a: Uint8Array, b: Uint8Array): boolean {
+  if (a.length !== b.length) return false;
+  for (let i = 0; i < a.length; i++) if (a[i] !== b[i]) return false;
+  return true;
+}
+
+// IPFS multicodec / multihash constants
+const IPFS_CODEC_RAW = 0x55;
+const IPFS_HASH_BLAKE2B_256 = 0xb220;
+
+async function candidateCidsForBytes(
+  data: Uint8Array,
+): Promise<Array<{ algo: string; cid: string }>> {
+  const sha = await sha256.digest(data);
+  const blake = blake2b(data, { dkLen: 32 });
+  const blakeMh = createMultihashDigest(IPFS_HASH_BLAKE2B_256, blake);
+  return [
+    { algo: "sha2-256", cid: CID.createV1(IPFS_CODEC_RAW, sha).toString() },
+    { algo: "blake2b-256", cid: CID.createV1(IPFS_CODEC_RAW, blakeMh).toString() },
+  ];
+}
+
+function lookupPreimageWithTimeout(
+  hash: `0x${string}`,
+  timeoutMs: number,
+): Promise<Uint8Array | null> {
+  return new Promise((resolve) => {
+    let done = false;
+    const sub = preimageManager.lookup(hash, (preimage) => {
+      if (done) return;
+      done = true;
+      sub.unsubscribe();
+      resolve(preimage);
+    });
+    setTimeout(() => {
+      if (done) return;
+      done = true;
+      sub.unsubscribe();
+      resolve(null);
+    }, timeoutMs);
+  });
+}
+
 /** Direct `wsProvider` RPC + tx broadcast: requests Remote then ChainSubmit sequentially. */
 async function ensureDirectWsSignSubmitPermissions(log: (msg: string) => void, wsUrl: string) {
   const remoteErr = await ensureRemotePermission(log, { tag: "Remote", value: [wsUrl] });
   if (remoteErr) return remoteErr;
   return ensureRemotePermission(log, { tag: "ChainSubmit", value: undefined });
+}
+
+/**
+ * Before any signing/broadcast/submit operation that requires an authenticated
+ * session. Idempotent: `requestLogin` returns `alreadyConnected` without
+ * prompting if a session already exists.
+ */
+async function ensureLoggedIn(
+  log: (msg: string) => void,
+  reason = "Sign in to use this feature",
+): Promise<TestResult | null> {
+  const accountsProvider = createAccountsProvider();
+  const result = await accountsProvider.requestLogin(reason);
+  if (result.isErr()) {
+    return error(`Login failed: ${result.error.name}`, result.error);
+  }
+  if (result.value === "rejected") {
+    return error("User rejected login");
+  }
+  log(`Login: ${result.value}`);
+  return null;
+}
+
+/** Request a device permission with a friendly error if denied. */
+async function ensureDevicePermission(
+  log: (msg: string) => void,
+  permission:
+    | "Notifications"
+    | "Camera"
+    | "Microphone"
+    | "Bluetooth"
+    | "NFC"
+    | "Location"
+    | "Clipboard"
+    | "OpenUrl"
+    | "Biometrics",
+): Promise<TestResult | null> {
+  log(`Requesting device permission: ${permission}...`);
+  const result = await hostApi.devicePermission({
+    tag: "v1",
+    value: permission,
+  });
+  return result.match(
+    (res) =>
+      res.value
+        ? null
+        : error(`Device permission not granted: ${permission}`, res),
+    (err) => error(`Device permission denied (${permission})`, err.value),
+  );
 }
 
 // Account Tests
@@ -325,6 +421,9 @@ export const accountTests: TestDefinition[] = [
         "0xd6eec26135305a8ad257a20d003357284c8aa03d0bdb2b357ab0a22371e11ef2";
       const ringRootHash = (args?.ringRootHash as `0x${string}`) ?? "0x";
 
+      const loginErr = await ensureLoggedIn(log, "Sign in to create a Ring VRF proof");
+      if (loginErr) return loginErr;
+
       const accountsProvider = createAccountsProvider();
       const message = new TextEncoder().encode(`ring-vrf-test:${Date.now()}`);
 
@@ -346,6 +445,85 @@ export const accountTests: TestDefinition[] = [
             proofHex: toHex(proof).slice(0, 40) + "...",
             proofLength: proof.length,
           }),
+        (err) => error(`${err.name}`, err),
+      );
+    },
+  },
+  {
+    id: "accounts-derive-ss58-root",
+    name: "Derive SS58 (Root Account)",
+    description:
+      "Encodes the first legacy (root) account's public key as an SS58 address using the current chain's prefix",
+    api: "AccountId(chain.ss58Prefix).dec(legacyAccount.publicKey)",
+    category: "accounts",
+    async run(chain, logger) {
+      const log = logger || (() => {});
+      const accountsProvider = createAccountsProvider();
+      const result = await accountsProvider.getLegacyAccounts();
+      return result.match(
+        (accounts) => {
+          if (accounts.length === 0) {
+            return error("No legacy accounts available — is the user signed in?");
+          }
+          const account = accounts[0];
+          const address = AccountId(chain.ss58Prefix).dec(account.publicKey);
+          log(`Root account: ${account.name ?? "<unnamed>"} → ${address}`);
+          return success(`Root SS58 (prefix ${chain.ss58Prefix}): ${address}`, {
+            name: account.name,
+            publicKey: toHex(account.publicKey),
+            ss58Prefix: chain.ss58Prefix,
+            ss58Address: address,
+            chain: chain.name,
+          });
+        },
+        (err) => error(`${err.name}`, err),
+      );
+    },
+  },
+  {
+    id: "accounts-derive-ss58-product",
+    name: "Derive SS58 (Product Account)",
+    description:
+      "Encodes a product account's public key as an SS58 address using the current chain's prefix",
+    api: "AccountId(chain.ss58Prefix).dec(productAccount.publicKey)",
+    args: [
+      {
+        name: "dotNsIdentifier",
+        label: "DotNS ID",
+        defaultValue: "host-playground.dot",
+      },
+      {
+        name: "derivationIndex",
+        label: "Derivation index",
+        defaultValue: "0",
+      },
+    ],
+    category: "accounts",
+    async run(chain, logger, args) {
+      const log = logger || (() => {});
+      const dotNsIdentifier = args?.dotNsIdentifier ?? "host-playground.dot";
+      const derivationIndex = Number(args?.derivationIndex ?? "0");
+      const accountsProvider = createAccountsProvider();
+      const result = await accountsProvider.getProductAccount(
+        dotNsIdentifier,
+        derivationIndex,
+      );
+      return result.match(
+        (account) => {
+          const address = AccountId(chain.ss58Prefix).dec(account.publicKey);
+          log(`Product account ${dotNsIdentifier}/${derivationIndex} → ${address}`);
+          return success(
+            `Product SS58 (prefix ${chain.ss58Prefix}): ${address}`,
+            {
+              dotNsIdentifier,
+              derivationIndex,
+              publicKey: toHex(account.publicKey),
+              ss58Prefix: chain.ss58Prefix,
+              ss58Address: address,
+              chain: chain.name,
+            },
+          );
+        },
         (err) => error(`${err.name}`, err),
       );
     },
@@ -375,6 +553,9 @@ export const signingTests: TestDefinition[] = [
     async run(_chain, logger, args) {
       const log = logger || (() => {});
       const dotNsIdentifier = args?.dotNsIdentifier ?? "host-playground.dot";
+
+      const loginErr = await ensureLoggedIn(log, "Sign in to sign messages");
+      if (loginErr) return loginErr;
 
       log(`Fetching product account for ${dotNsIdentifier}...`);
       const accountsProvider = createAccountsProvider();
@@ -440,6 +621,9 @@ export const signingTests: TestDefinition[] = [
     async run(chain: ChainConfig, logger?: TestLogger, args?) {
       const log = logger || (() => {});
       const dotNsIdentifier = args?.dotNsIdentifier ?? "host-playground.dot";
+
+      const loginErr = await ensureLoggedIn(log, "Sign in to sign and submit a remark");
+      if (loginErr) return loginErr;
 
       log(`Fetching product account for ${dotNsIdentifier}...`);
       const accountsProvider = createAccountsProvider();
@@ -518,6 +702,9 @@ export const signingTests: TestDefinition[] = [
     category: "signing",
     async run(chain: ChainConfig, logger?: TestLogger, args?) {
       const log = logger || (() => {});
+
+      const loginErr = await ensureLoggedIn(log, "Sign in to use a legacy signer");
+      if (loginErr) return loginErr;
 
       // Get legacy extension via enable factory
       log("Creating legacy extension...");
@@ -614,6 +801,9 @@ export const signingTests: TestDefinition[] = [
       const log = logger || (() => {});
       const dotNsIdentifier = args?.dotNsIdentifier ?? "host-playground.dot";
 
+      const loginErr = await ensureLoggedIn(log, "Sign in to sign via direct WebSocket");
+      if (loginErr) return loginErr;
+
       log(`Fetching product account for ${dotNsIdentifier}...`);
       const accountsProvider = createAccountsProvider();
       const accountResult =
@@ -704,6 +894,9 @@ export const signingTests: TestDefinition[] = [
     async run(chain: ChainConfig, logger?: TestLogger, args?) {
       const log = logger || (() => {});
       const dotNsIdentifier = args?.dotNsIdentifier ?? "host-playground.dot";
+
+      const loginErr = await ensureLoggedIn(log, "Sign in to sign and submit a batch");
+      if (loginErr) return loginErr;
 
       log(`Fetching product account for ${dotNsIdentifier}...`);
       const accountsProvider = createAccountsProvider();
@@ -891,6 +1084,9 @@ export const signingTests: TestDefinition[] = [
     async run(_chain, logger, args) {
       const log = logger || (() => {});
 
+      const loginErr = await ensureLoggedIn(log, "Sign in to sign with a legacy account");
+      if (loginErr) return loginErr;
+
       log("Creating account provider...");
       const accountsProvider = createAccountsProvider();
       const result = await accountsProvider.getLegacyAccounts();
@@ -939,6 +1135,9 @@ export const signingTests: TestDefinition[] = [
     category: "signing",
     async run(chain: ChainConfig, logger?: TestLogger, args?) {
       const log = logger || (() => {});
+
+      const loginErr = await ensureLoggedIn(log, "Sign in to sign with a legacy account");
+      if (loginErr) return loginErr;
 
       log("Creating account provider...");
       const accountsProvider = createAccountsProvider();
@@ -1853,6 +2052,8 @@ export const chatTests: TestDefinition[] = [
       if (!recipientUsername)
         return error("No recipient username — not signed in?");
       const log = _logger || (() => {});
+      const loginErr = await ensureLoggedIn(log, "Sign in to message another user");
+      if (loginErr) return loginErr;
       const permErr = await ensureStatementSubmitPermission(log);
       if (permErr) return permErr;
 
@@ -1981,8 +2182,13 @@ export const statementTests: TestDefinition[] = [
       },
     ],
     category: "statements",
-    async run(_chain, _logger, args) {
+    async run(_chain, logger, args) {
+      const log = logger || (() => {});
       const dotNsIdentifier = args?.dotNsIdentifier ?? "host-playground.dot";
+
+      const loginErr = await ensureLoggedIn(log, "Sign in to create a statement proof");
+      if (loginErr) return loginErr;
+
       const statementStore = createStatementStore();
       const messageBytes = new TextEncoder().encode(`Statement: ${Date.now()}`);
 
@@ -2017,7 +2223,12 @@ export const statementTests: TestDefinition[] = [
     description: "Creates a statement store proof via authorized account",
     api: "host.statementStoreCreateProofAuthorized",
     category: "statements",
-    async run(_chain, _logger, args) {
+    async run(_chain, logger) {
+      const log = logger || (() => {});
+
+      const loginErr = await ensureLoggedIn(log, "Sign in to create a statement proof");
+      if (loginErr) return loginErr;
+
       const messageBytes = new TextEncoder().encode(`Statement: ${Date.now()}`);
       const proof = await hostApi.statementStoreCreateProofAuthorized({
         tag: 'v1',
@@ -2062,6 +2273,10 @@ export const statementTests: TestDefinition[] = [
     async run(_chain, logger, args) {
       const log = logger || (() => {});
       const dotNsIdentifier = args?.dotNsIdentifier ?? "host-playground.dot";
+
+      const loginErr = await ensureLoggedIn(log, "Sign in to submit a statement");
+      if (loginErr) return loginErr;
+
       const statementStore = createStatementStore();
       const messageBytes = new TextEncoder().encode(`Statement: ${Date.now()}`);
 
@@ -2195,8 +2410,13 @@ export const statementTests: TestDefinition[] = [
       },
     ],
     category: "statements",
-    async run(_chain, _logger, args) {
+    async run(_chain, logger, args) {
+      const log = logger || (() => {});
       const dotNsIdentifier = args?.dotNsIdentifier ?? "host-playground.dot";
+
+      const loginErr = await ensureLoggedIn(log, "Sign in to create a legacy statement proof");
+      if (loginErr) return loginErr;
+
       const message = `Statement: ${Date.now()}`;
       const messageBytes = new TextEncoder().encode(message);
 
@@ -2244,6 +2464,8 @@ export const preimageTests: TestDefinition[] = [
     category: "preimage",
     async run(_chain, logger) {
       const log = logger || (() => {});
+      const loginErr = await ensureLoggedIn(log, "Sign in to submit a preimage");
+      if (loginErr) return loginErr;
       const permErr = await ensurePreimageSubmitPermission(log);
       if (permErr) return permErr;
 
@@ -2316,6 +2538,8 @@ export const preimageTests: TestDefinition[] = [
     category: "preimage",
     async run(_chain, logger) {
       const log = logger || (() => {});
+      const loginErr = await ensureLoggedIn(log, "Sign in to submit a preimage");
+      if (loginErr) return loginErr;
       const permErr = await ensurePreimageSubmitPermission(log);
       if (permErr) return permErr;
 
@@ -2327,6 +2551,163 @@ export const preimageTests: TestDefinition[] = [
         `Factory preimage submitted, hash: ${hash.slice(0, 20)}...`,
         {
           hash,
+        },
+      );
+    },
+  },
+  {
+    id: "bulletin-upload-and-verify",
+    name: "Upload File to Bulletin & Verify via IPFS",
+    description:
+      "Submits a timestamped text file, retrieves it via host lookup, and fetches it through the chain's IPFS gateway. Asserts three-way byte equality.",
+    api: "preimageManager.submit + preimageManager.lookup + fetch(`${chain.ipfs}/${cid}`)",
+    category: "preimage",
+    async run(chain, logger) {
+      const log = logger || (() => {});
+
+      const loginErr = await ensureLoggedIn(log, "Sign in to upload a file to Bulletin");
+      if (loginErr) return loginErr;
+
+      // Allowance + permission setup (mirrors e2e/allowance-flows.spec.ts)
+      log("Requesting BulletInAllowance...");
+      const allocRes = await hostApi.requestResourceAllocation({
+        tag: "v1",
+        value: [{ tag: "BulletInAllowance", value: undefined }],
+      });
+      if (allocRes.isErr()) {
+        return error("Bulletin allowance request failed", allocRes.error);
+      }
+      const permErr = await ensurePreimageSubmitPermission(log);
+      if (permErr) return permErr;
+
+      // 1. Generate timestamped file
+      const ts = new Date().toISOString();
+      const filename = `host-playground-upload-${Date.now()}.txt`;
+      const content =
+        `host-playground bulletin upload\n` +
+        `timestamp: ${ts}\n` +
+        `chain: ${chain.name} (${chain.network})\n` +
+        `genesis: ${chain.genesis}\n`;
+      const payload = new TextEncoder().encode(content);
+      log(`Generated ${payload.length} bytes (${filename})`);
+
+      // 2. Submit via host
+      log("Submitting via preimageManager.submit...");
+      const hash = await preimageManager.submit(payload);
+      log(`Host returned hash: ${hash}`);
+
+      // 3. Lookup via host — proves bytes round-trip through the host's bulletin path
+      log("Looking up via preimageManager.lookup (10s)...");
+      const lookupBytes = await lookupPreimageWithTimeout(hash, 10_000);
+      if (!lookupBytes) {
+        return error("Host lookup returned null / timed out", {
+          hash,
+          submitted: toHex(payload),
+        });
+      }
+      const payloadEqualsLookup = bytesEqual(payload, lookupBytes);
+      log(`Host lookup: ${lookupBytes.length} bytes, equal=${payloadEqualsLookup}`);
+      if (!payloadEqualsLookup) {
+        return error("Host lookup bytes ≠ submitted payload", {
+          hash,
+          submitted: toHex(payload),
+          lookup: toHex(lookupBytes),
+        });
+      }
+
+      // 4. Compute candidate CIDs (host SDK returns a raw hash, not a CID — we
+      //    try the two realistic (codec, hashing) defaults the bulletin runtime
+      //    accepts).
+      const candidates = await candidateCidsForBytes(payload);
+      log(
+        `Candidate CIDs: ${candidates
+          .map((c) => `${c.algo}=${c.cid.slice(0, 14)}…`)
+          .join(", ")}`,
+      );
+
+      if (!chain.ipfs) {
+        return success(
+          `Submit + host lookup OK (${payload.length} bytes); IPFS skipped — no gateway configured for ${chain.name}`,
+          {
+            filename,
+            content,
+            hash,
+            submittedBytes: payload.length,
+            lookupBytes: lookupBytes.length,
+            payloadEqualsLookup,
+            candidateCids: candidates,
+            ipfsStatus: "skipped: chain.ipfs not configured",
+          },
+        );
+      }
+
+      // 5. Try each candidate against the gateway; first byte-equal match wins.
+      const gateway = chain.ipfs.replace(/\/$/, "");
+      type Probe = {
+        algo: string;
+        cid: string;
+        url: string;
+        status: number | string;
+        bytes?: number;
+        equal?: boolean;
+      };
+      const probes: Probe[] = [];
+      let matched: { algo: string; cid: string; bytes: Uint8Array } | null =
+        null;
+
+      for (const cand of candidates) {
+        const url = `${gateway}/${cand.cid}`;
+        log(`Fetching ${url} ...`);
+        const probe: Probe = { algo: cand.algo, cid: cand.cid, url, status: "" };
+        try {
+          const r = await fetch(url, { signal: AbortSignal.timeout(15_000) });
+          probe.status = r.status;
+          if (r.ok) {
+            const bytes = new Uint8Array(await r.arrayBuffer());
+            probe.bytes = bytes.length;
+            probe.equal = bytesEqual(payload, bytes);
+            if (probe.equal) {
+              matched = { algo: cand.algo, cid: cand.cid, bytes };
+            }
+          }
+        } catch (e) {
+          probe.status = `error: ${e instanceof Error ? e.message : String(e)}`;
+        }
+        probes.push(probe);
+        if (matched) break;
+      }
+
+      if (!matched) {
+        return success(
+          `Submit + host lookup OK (${payload.length} bytes); IPFS verification inconclusive — no candidate CID resolved at ${gateway}`,
+          {
+            filename,
+            content,
+            hash,
+            submittedBytes: payload.length,
+            lookupBytes: lookupBytes.length,
+            payloadEqualsLookup,
+            ipfsStatus: "inconclusive: no candidate CID resolved or matched",
+            probes,
+          },
+        );
+      }
+
+      return success(
+        `Three-way verified: submit + host lookup + IPFS (${matched.algo}) all ${payload.length} bytes`,
+        {
+          filename,
+          content,
+          hash,
+          cid: matched.cid,
+          cidAlgo: matched.algo,
+          gatewayUrl: `${gateway}/${matched.cid}`,
+          submittedBytes: payload.length,
+          lookupBytes: lookupBytes.length,
+          ipfsBytes: matched.bytes.length,
+          payloadEqualsLookup: true,
+          payloadEqualsIpfs: true,
+          probes,
         },
       );
     },
@@ -2345,9 +2726,13 @@ export const notificationTests: TestDefinition[] = [
       { name: "deeplink", label: "Deeplink (optional)", defaultValue: "" },
     ],
     category: "notifications",
-    async run(_chain, _logger, args) {
+    async run(_chain, logger, args) {
+      const log = logger || (() => {});
       const text = args?.text ?? "Hello from demo product!";
       const deeplink = args?.deeplink?.trim() || undefined;
+
+      const permErr = await ensureDevicePermission(log, "Notifications");
+      if (permErr) return permErr;
 
       const result = await hostApi.pushNotification({
         tag: "v1",
@@ -2387,8 +2772,11 @@ export const navigationTests: TestDefinition[] = [
     api: "hostApi.navigateTo({ tag: 'v1', value: url })",
     args: [{ name: "url", label: "URL", defaultValue: "https://search.dot" }],
     category: "navigation",
-    async run(_chain, _logger, args) {
+    async run(_chain, logger, args) {
+      const log = logger || (() => {});
       const url = args?.url ?? "https://search.dot";
+      const permErr = await ensureDevicePermission(log, "OpenUrl");
+      if (permErr) return permErr;
       const result = await hostApi.navigateTo({ tag: "v1", value: url });
       return result.match(
         () => success(`Navigated to ${url}`),
@@ -2403,8 +2791,11 @@ export const navigationTests: TestDefinition[] = [
     api: "hostApi.navigateTo({ tag: 'v1', value: url })",
     args: [{ name: "url", label: "URL", defaultValue: "https://polkadot.com" }],
     category: "navigation",
-    async run(_chain, _logger, args) {
+    async run(_chain, logger, args) {
+      const log = logger || (() => {});
       const url = args?.url ?? "https://polkadot.com";
+      const permErr = await ensureDevicePermission(log, "OpenUrl");
+      if (permErr) return permErr;
       const result = await hostApi.navigateTo({ tag: "v1", value: url });
       return result.match(
         () => success(`Navigated to ${url}`),
@@ -3109,6 +3500,9 @@ export const contractTests: TestDefinition[] = [
     async run(chain: ChainConfig, logger?: TestLogger, args?) {
       const log = logger || (() => {});
 
+      const loginErr = await ensureLoggedIn(log, "Sign in to call a contract");
+      if (loginErr) return loginErr;
+
       log("Fetching account...");
       const accountsProvider = createAccountsProvider();
       const accountsResult = await accountsProvider.getLegacyAccounts();
@@ -3224,6 +3618,9 @@ export const contractTests: TestDefinition[] = [
     async run(chain: ChainConfig, logger?: TestLogger, args?) {
       const log = logger || (() => {});
 
+      const loginErr = await ensureLoggedIn(log, "Sign in to call a contract");
+      if (loginErr) return loginErr;
+
       log("Fetching account...");
       const accountsProvider = createAccountsProvider();
       const accountsResult = await accountsProvider.getLegacyAccounts();
@@ -3285,6 +3682,9 @@ export const contractTests: TestDefinition[] = [
     category: "contract",
     async run(chain: ChainConfig, logger?: TestLogger, args?) {
       const log = logger || (() => {});
+
+      const loginErr = await ensureLoggedIn(log, "Sign in to call a contract");
+      if (loginErr) return loginErr;
 
       log("Fetching account...");
       const accountsProvider = createAccountsProvider();
@@ -3473,7 +3873,11 @@ export const paymentTests: TestDefinition[] = [
     description: "Subscribes to payment balance updates",
     api: "paymentManager.subscribeBalance(callback)",
     category: "payments",
-    async run() {
+    async run(_chain, logger) {
+      const log = logger || (() => {});
+      const loginErr = await ensureLoggedIn(log, "Sign in to view your balance");
+      if (loginErr) return loginErr;
+
       const pm = createPaymentManager();
 
       return new Promise((resolve) => {
@@ -3512,9 +3916,14 @@ export const paymentTests: TestDefinition[] = [
       },
     ],
     category: "payments",
-    async run(_chain, _logger, args) {
+    async run(_chain, logger, args) {
+      const log = logger || (() => {});
       const dotNsIdentifier = args?.dotNsIdentifier ?? "host-playground.dot";
       const amount = BigInt(args?.amount ?? "1000000000000");
+
+      const loginErr = await ensureLoggedIn(log, "Sign in to top up your balance");
+      if (loginErr) return loginErr;
+
       const pm = createPaymentManager();
 
       try {
@@ -3541,8 +3950,13 @@ export const paymentTests: TestDefinition[] = [
       },
     ],
     category: "payments",
-    async run(_chain, _logger, args) {
+    async run(_chain, logger, args) {
+      const log = logger || (() => {});
       const amount = BigInt(args?.amount ?? "100000000000");
+
+      const loginErr = await ensureLoggedIn(log, "Sign in to request a payment");
+      if (loginErr) return loginErr;
+
       const pm = createPaymentManager();
       const destination = new Uint8Array(32); // zero address for test
 
