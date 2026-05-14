@@ -646,10 +646,10 @@
     "@polkadot-api/utils" "^0.4.0"
     scale-ts "1.6.1"
 
-"@parity/host-api-test-sdk@^0.8.1":
-  version "0.8.1"
-  resolved "https://registry.yarnpkg.com/@parity/host-api-test-sdk/-/host-api-test-sdk-0.8.1.tgz#bf1a2285b21072e93ce5d7aa1a5eba0303f0ffd9"
-  integrity sha512-xLs9HydPRby5IXgXG4ugavQ7sDUsQ83U5bnu9sYriMLqWxU9ysV++2Pqwhbo7OyPxpHv3+CWblbwYUP4UWNZew==
+"@parity/host-api-test-sdk@^0.8.2":
+  version "0.8.2"
+  resolved "https://registry.yarnpkg.com/@parity/host-api-test-sdk/-/host-api-test-sdk-0.8.2.tgz#75709cafb16d87df9730913cbb4079898e8daca7"
+  integrity sha512-lSZLDDemNmf3s7xHvKrx5Z0fHJcs/UkUHydvFMrJqESfIhxaGxnvFzknCY3JhkggCx6QLRNvSC4aF9yyCf0KaQ==
   dependencies:
     "@novasamatech/host-api" "0.7.9-4"
 
