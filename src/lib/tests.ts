@@ -25,7 +25,7 @@ import {
   createClient,
   type PolkadotClient,
 } from "polkadot-api";
-import { toHex } from "polkadot-api/utils";
+import { toHex, fromHex } from "polkadot-api/utils";
 import { createInkSdk } from "@polkadot-api/sdk-ink";
 import { contracts } from "@polkadot-api/descriptors";
 import { CID } from "multiformats/cid";
@@ -350,11 +350,7 @@ export const accountTests: TestDefinition[] = [
             return error("No legacy accounts available");
           }
           const account = accounts[0];
-          const signer = accountsProvider.getLegacyAccountSigner({
-            dotNsIdentifier: "",
-            derivationIndex: 0,
-            publicKey: account.publicKey,
-          });
+          const signer = accountsProvider.getLegacyAccountSigner(account);
           return success("Legacy account signer created", {
             publicKey: toHex(signer.publicKey),
           });
@@ -1210,29 +1206,17 @@ export const signingTests: TestDefinition[] = [
       },
     ],
     category: "signing",
-    async run(_chain, _logger, args) {
+    async run(chain, _logger, args) {
       const dotNsIdentifier = args?.dotNsIdentifier ?? "host-playground.dot";
-      const txPayload = {
-        version: 1 as const,
-        signer: null,
-        callData: "0x0000" as `0x${string}`,
-        extensions: [] as Array<{
-          id: string;
-          extra: `0x${string}`;
-          additionalSigned: `0x${string}`;
-        }>,
-        txExtVersion: 0,
-        context: {
-          metadata: "0x" as `0x${string}`,
-          tokenSymbol: "DOT",
-          tokenDecimals: 10,
-          bestBlockHeight: 0,
-        },
-      };
-
       const result = await hostApi.createTransaction({
         tag: "v1",
-        value: [[dotNsIdentifier, 0], txPayload],
+        value: {
+          signer: [dotNsIdentifier, 0],
+          genesisHash: fromHex(chain.genesis),
+          callData: new Uint8Array([0, 0]),
+          extensions: [],
+          txExtVersion: 0,
+        },
       });
 
       return result.match(
@@ -1248,28 +1232,21 @@ export const signingTests: TestDefinition[] = [
     description: "Creates a transaction with a legacy account",
     api: "hostApi.createTransactionWithLegacyAccount({ tag, value: payload })",
     category: "signing",
-    async run() {
-      const txPayload = {
-        version: 1 as const,
-        signer: null,
-        callData: "0x0000" as `0x${string}`,
-        extensions: [] as Array<{
-          id: string;
-          extra: `0x${string}`;
-          additionalSigned: `0x${string}`;
-        }>,
-        txExtVersion: 0,
-        context: {
-          metadata: "0x" as `0x${string}`,
-          tokenSymbol: "DOT",
-          tokenDecimals: 10,
-          bestBlockHeight: 0,
-        },
-      };
+    async run(chain) {
+      const accountsProvider = createAccountsProvider();
+      const accountsResult = await accountsProvider.getLegacyAccounts();
+      const accounts = accountsResult.match((a) => a, () => null);
+      if (!accounts?.length) return error("No legacy accounts available");
 
       const result = await hostApi.createTransactionWithLegacyAccount({
         tag: "v1",
-        value: txPayload,
+        value: {
+          signer: accounts[0].publicKey,
+          genesisHash: fromHex(chain.genesis),
+          callData: new Uint8Array([0, 0]),
+          extensions: [],
+          txExtVersion: 0,
+        },
       });
 
       return result.match(
@@ -3505,16 +3482,11 @@ export const contractTests: TestDefinition[] = [
 
       log("Fetching account...");
       const accountsProvider = createAccountsProvider();
-      const accountsResult = await accountsProvider.getLegacyAccounts();
-      const accounts = accountsResult.match((a) => a, () => null);
-      if (!accounts?.length) return error("No accounts available");
+      const accountResult = await accountsProvider.getProductAccount("host-playground.dot", 0);
+      const account = accountResult.match((a) => a, () => null);
+      if (!account) return error("No product account available");
 
-      const account = accounts[0];
-      const signer = accountsProvider.getLegacyAccountSigner({
-        dotNsIdentifier: "",
-        derivationIndex: 0,
-        publicKey: account.publicKey,
-      });
+      const signer = accountsProvider.getProductAccountSigner(account, "createTransaction");
       const origin = AccountId().dec(account.publicKey);
 
       const permissionError = await ensureChainSubmitForTxBroadcast(log);
@@ -3623,16 +3595,11 @@ export const contractTests: TestDefinition[] = [
 
       log("Fetching account...");
       const accountsProvider = createAccountsProvider();
-      const accountsResult = await accountsProvider.getLegacyAccounts();
-      const accounts = accountsResult.match((a) => a, () => null);
-      if (!accounts?.length) return error("No accounts available");
+      const accountResult = await accountsProvider.getProductAccount("host-playground.dot", 0);
+      const account = accountResult.match((a) => a, () => null);
+      if (!account) return error("No product account available");
 
-      const account = accounts[0];
-      const signer = accountsProvider.getLegacyAccountSigner({
-        dotNsIdentifier: "",
-        derivationIndex: 0,
-        publicKey: account.publicKey,
-      });
+      const signer = accountsProvider.getProductAccountSigner(account, "createTransaction");
       const origin = AccountId().dec(account.publicKey);
 
       const permissionError = await ensureChainSubmitForTxBroadcast(log);
@@ -3688,16 +3655,11 @@ export const contractTests: TestDefinition[] = [
 
       log("Fetching account...");
       const accountsProvider = createAccountsProvider();
-      const accountsResult = await accountsProvider.getLegacyAccounts();
-      const accounts = accountsResult.match((a) => a, () => null);
-      if (!accounts?.length) return error("No accounts available");
+      const accountResult = await accountsProvider.getProductAccount("host-playground.dot", 0);
+      const account = accountResult.match((a) => a, () => null);
+      if (!account) return error("No product account available");
 
-      const account = accounts[0];
-      const signer = accountsProvider.getLegacyAccountSigner({
-        dotNsIdentifier: "",
-        derivationIndex: 0,
-        publicKey: account.publicKey,
-      });
+      const signer = accountsProvider.getProductAccountSigner(account, "createTransaction");
       const origin = AccountId().dec(account.publicKey);
 
       const permissionError = await ensureChainSubmitForTxBroadcast(log);
