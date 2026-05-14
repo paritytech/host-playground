@@ -150,7 +150,7 @@ export default function SdkTestPage() {
   const { logs, log, updateLog, clearLogs, exportLogs } = useLogs();
   const [runningTest, setRunningTest] = useState<string | null>(null);
   const [selectedChain, setSelectedChain] =
-    useState<ChainId>("PASEO_ASSET_HUB");
+    useState<ChainId>("PASEO_NEXT_V2_ASSET_HUB");
 
   const currentChain: ChainConfig = CHAINS[selectedChain];
 

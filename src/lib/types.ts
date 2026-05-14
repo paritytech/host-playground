@@ -68,6 +68,13 @@ export interface TestDefinition {
 
 // Chain configurations
 export const CHAINS = {
+  PASEO_NEXT_V2_ASSET_HUB: {
+    name: "Paseo Next V2",
+    network: "Testnet",
+    genesis:
+      "0x173cea9df45656cf612c8b8ece56e04e9a693c69cfaac47d3628dae735067af8" as const,
+    wsUrl: "wss://paseo-asset-hub-next-rpc.polkadot.io",
+  },
   PASEO_ASSET_HUB: {
     name: "Paseo Hub",
     network: "Testnet",
