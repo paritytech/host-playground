@@ -25,7 +25,7 @@ import {
   createClient,
   type PolkadotClient,
 } from "polkadot-api";
-import { toHex } from "polkadot-api/utils";
+import { fromHex, toHex } from "polkadot-api/utils";
 import { createInkSdk } from "@polkadot-api/sdk-ink";
 import { contracts } from "@polkadot-api/descriptors";
 import { CHAINS } from "./types";
@@ -255,9 +255,8 @@ export const accountTests: TestDefinition[] = [
           }
           const account = accounts[0];
           const signer = accountsProvider.getLegacyAccountSigner({
-            dotNsIdentifier: "",
-            derivationIndex: 0,
             publicKey: account.publicKey,
+            name: account.name,
           });
           return success("Legacy account signer created", {
             publicKey: toHex(signer.publicKey),
@@ -1002,7 +1001,7 @@ export const signingTests: TestDefinition[] = [
     id: "create-transaction",
     name: "Create Transaction",
     description: "Creates a transaction (requires product account)",
-    api: "hostApi.createTransaction({ tag, value: [accountId, payload] })",
+    api: "hostApi.createTransaction({ tag, value: ProductAccountTransaction })",
     args: [
       {
         name: "dotNsIdentifier",
@@ -1011,29 +1010,23 @@ export const signingTests: TestDefinition[] = [
       },
     ],
     category: "signing",
-    async run(_chain, _logger, args) {
+    async run(chain, _logger, args) {
       const dotNsIdentifier = args?.dotNsIdentifier ?? "host-playground.dot";
       const txPayload = {
-        version: 1 as const,
-        signer: null,
-        callData: "0x0000" as `0x${string}`,
-        extensions: [] as Array<{
+        signer: [dotNsIdentifier, 0] as [string, number],
+        genesisHash: fromHex(chain.genesis),
+        callData: new Uint8Array([0, 0]),
+        extensions: [] as {
           id: string;
-          extra: `0x${string}`;
-          additionalSigned: `0x${string}`;
-        }>,
+          extra: Uint8Array;
+          additionalSigned: Uint8Array;
+        }[],
         txExtVersion: 0,
-        context: {
-          metadata: "0x" as `0x${string}`,
-          tokenSymbol: "DOT",
-          tokenDecimals: 10,
-          bestBlockHeight: 0,
-        },
       };
 
       const result = await hostApi.createTransaction({
         tag: "v1",
-        value: [[dotNsIdentifier, 0], txPayload],
+        value: txPayload,
       });
 
       return result.match(
@@ -1047,25 +1040,29 @@ export const signingTests: TestDefinition[] = [
     id: "create-transaction-legacy",
     name: "Create Transaction (Legacy Account)",
     description: "Creates a transaction with a legacy account",
-    api: "hostApi.createTransactionWithLegacyAccount({ tag, value: payload })",
+    api: "hostApi.createTransactionWithLegacyAccount({ tag, value: LegacyTransaction })",
     category: "signing",
-    async run() {
+    async run(chain) {
+      const accountsProvider = createAccountsProvider();
+      const accountsResult = await accountsProvider.getLegacyAccounts();
+      const accounts = accountsResult.match(
+        (a) => a,
+        () => null,
+      );
+      if (!accounts || accounts.length === 0) {
+        return error("No legacy accounts available");
+      }
+
       const txPayload = {
-        version: 1 as const,
-        signer: null,
-        callData: "0x0000" as `0x${string}`,
-        extensions: [] as Array<{
+        signer: accounts[0].publicKey,
+        genesisHash: fromHex(chain.genesis),
+        callData: new Uint8Array([0, 0]),
+        extensions: [] as {
           id: string;
-          extra: `0x${string}`;
-          additionalSigned: `0x${string}`;
-        }>,
+          extra: Uint8Array;
+          additionalSigned: Uint8Array;
+        }[],
         txExtVersion: 0,
-        context: {
-          metadata: "0x" as `0x${string}`,
-          tokenSymbol: "DOT",
-          tokenDecimals: 10,
-          bestBlockHeight: 0,
-        },
       };
 
       const result = await hostApi.createTransactionWithLegacyAccount({
@@ -3117,9 +3114,8 @@ export const contractTests: TestDefinition[] = [
 
       const account = accounts[0];
       const signer = accountsProvider.getLegacyAccountSigner({
-        dotNsIdentifier: "",
-        derivationIndex: 0,
         publicKey: account.publicKey,
+        name: account.name,
       });
       const origin = AccountId().dec(account.publicKey);
 
@@ -3232,9 +3228,8 @@ export const contractTests: TestDefinition[] = [
 
       const account = accounts[0];
       const signer = accountsProvider.getLegacyAccountSigner({
-        dotNsIdentifier: "",
-        derivationIndex: 0,
         publicKey: account.publicKey,
+        name: account.name,
       });
       const origin = AccountId().dec(account.publicKey);
 
@@ -3294,9 +3289,8 @@ export const contractTests: TestDefinition[] = [
 
       const account = accounts[0];
       const signer = accountsProvider.getLegacyAccountSigner({
-        dotNsIdentifier: "",
-        derivationIndex: 0,
         publicKey: account.publicKey,
+        name: account.name,
       });
       const origin = AccountId().dec(account.publicKey);
 
