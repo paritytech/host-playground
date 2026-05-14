@@ -115,7 +115,7 @@ jobs:
           max_attempts: 3
           retry_wait_seconds: 10
           command: |
-            export MNEMONIC='${{ secrets.PASEO_DEPLOYER_MNEMONIC }}'
+            export MNEMONIC='${{ secrets.MNEMONIC }}'
             export IPFS_CID='${{ steps.cached-deploy.outputs.cid }}'
             export NODE_OPTIONS='--max-old-space-size=8192'
             bulletin-deploy --env paseo-next-v2 --skip-dotns-cli 'build' '${{ steps.domain-input.outputs.dotns }}'
