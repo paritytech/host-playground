@@ -118,7 +118,7 @@ jobs:
             export MNEMONIC='${{ secrets.MNEMONIC }}'
             export IPFS_CID='${{ steps.cached-deploy.outputs.cid }}'
             export NODE_OPTIONS='--max-old-space-size=8192'
-            bulletin-deploy --env paseo-next-v2 --skip-dotns-cli 'build' '${{ steps.domain-input.outputs.dotns }}'
+            bulletin-deploy --env paseo-next-v2 'build' '${{ steps.domain-input.outputs.dotns }}'
 
       - name: Validate deployment outputs
         if: steps.cache.outputs.cache-hit != 'true'
