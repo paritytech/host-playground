@@ -56,6 +56,41 @@ function getClient(genesis: `0x${string}`): PolkadotClient {
 const HOSTAPI_DEMO_ADDRESS = deployment.hostApiDemo;
 const READ_ORIGIN = "5GrwvaEF5zXb26Fz9rcQpDWS57CtERHpNehXCPcNoHGKutQY";
 
+// The DotNS identifier the host bound this product under. The desktop's
+// handleCreateTransaction gate rejects with PermissionDenied when the signer's
+// dotNsIdentifier doesn't match the binding identifier — and that identifier
+// comes from the URL. We mirror the dotli shell's BASE_DOMAIN rule
+// (packages/config/src/config.ts) inverted: the shell takes the last two
+// segments of the hostname as the registrable root (dot.li, paseo.li,
+// paseoli.dev, ephemeral previews, ...) so the *label* is everything before
+// it. Appending ".dot" gives the canonical DotNS identifier that's stable
+// across shell deployments.
+//
+// Cases:
+//   - <name>.dot                       → use as-is
+//   - <name>.<root>.<tld>              → <name>.dot (handles .dot.li,
+//     <name>.<sub>.<root>.<tld>          .paseo.li, .paseoli.dev, etc.)
+//   - localhost / 127.0.0.1 / *.localhost → window.location.host
+//     (desktop dev mode and Playwright both report the local host:port
+//      and the desktop binds local URLs under "localhost[:port]")
+//   - anything else                    → fall back to the prod identifier
+const SELF_DOTNS = (() => {
+  const fallback = "host-playground" + ".dot";
+  if (typeof window === "undefined") return fallback;
+  const hostname = window.location.hostname.toLowerCase();
+  if (
+    hostname === "localhost" ||
+    hostname.endsWith(".localhost") ||
+    hostname === "127.0.0.1"
+  ) {
+    return window.location.host.toLowerCase();
+  }
+  if (hostname.endsWith(".dot")) return hostname;
+  const segments = hostname.split(".");
+  if (segments.length >= 3) return `${segments.slice(0, -2).join(".")}.dot`;
+  return fallback;
+})();
+
 function success(message: string, details?: unknown): TestResult {
   return { success: true, message, details };
 }
@@ -253,12 +288,12 @@ export const accountTests: TestDefinition[] = [
       {
         name: "dotNsIdentifier",
         label: "DotNS ID",
-        defaultValue: "host-playground.dot",
+        defaultValue: SELF_DOTNS,
       },
     ],
     category: "accounts",
     async run(_chain, _logger, args) {
-      const dotNsIdentifier = args?.dotNsIdentifier ?? "host-playground.dot";
+      const dotNsIdentifier = args?.dotNsIdentifier ?? SELF_DOTNS;
       const accountsProvider = createAccountsProvider();
       const result = await accountsProvider.getProductAccount(dotNsIdentifier);
 
@@ -280,12 +315,12 @@ export const accountTests: TestDefinition[] = [
       {
         name: "dotNsIdentifier",
         label: "DotNS ID",
-        defaultValue: "host-playground.dot",
+        defaultValue: SELF_DOTNS,
       },
     ],
     category: "accounts",
     async run(_chain, _logger, args) {
-      const dotNsIdentifier = args?.dotNsIdentifier ?? "host-playground.dot";
+      const dotNsIdentifier = args?.dotNsIdentifier ?? SELF_DOTNS;
       const accountsProvider = createAccountsProvider();
       const result =
         await accountsProvider.getProductAccountAlias(dotNsIdentifier);
@@ -309,12 +344,12 @@ export const accountTests: TestDefinition[] = [
       {
         name: "dotNsIdentifier",
         label: "DotNS ID",
-        defaultValue: "host-playground.dot",
+        defaultValue: SELF_DOTNS,
       },
     ],
     category: "accounts",
     async run(_chain, _logger, args) {
-      const dotNsIdentifier = args?.dotNsIdentifier ?? "host-playground.dot";
+      const dotNsIdentifier = args?.dotNsIdentifier ?? SELF_DOTNS;
       const accountsProvider = createAccountsProvider();
       const accountResult =
         await accountsProvider.getProductAccount(dotNsIdentifier);
@@ -394,7 +429,7 @@ export const accountTests: TestDefinition[] = [
       {
         name: "dotNsIdentifier",
         label: "DotNS ID",
-        defaultValue: "host-playground.dot",
+        defaultValue: SELF_DOTNS,
       },
       {
         name: "genesisHash",
@@ -411,7 +446,7 @@ export const accountTests: TestDefinition[] = [
     category: "accounts",
     async run(_chain, logger, args) {
       const log = logger || (() => {});
-      const dotNsIdentifier = args?.dotNsIdentifier ?? "host-playground.dot";
+      const dotNsIdentifier = args?.dotNsIdentifier ?? SELF_DOTNS;
       const genesisHash =
         (args?.genesisHash as `0x${string}`) ??
         "0xd6eec26135305a8ad257a20d003357284c8aa03d0bdb2b357ab0a22371e11ef2";
@@ -445,85 +480,6 @@ export const accountTests: TestDefinition[] = [
       );
     },
   },
-  {
-    id: "accounts-derive-ss58-root",
-    name: "Derive SS58 (Root Account)",
-    description:
-      "Encodes the first legacy (root) account's public key as an SS58 address using the current chain's prefix",
-    api: "AccountId(chain.ss58Prefix).dec(legacyAccount.publicKey)",
-    category: "accounts",
-    async run(chain, logger) {
-      const log = logger || (() => {});
-      const accountsProvider = createAccountsProvider();
-      const result = await accountsProvider.getLegacyAccounts();
-      return result.match(
-        (accounts) => {
-          if (accounts.length === 0) {
-            return error("No legacy accounts available — is the user signed in?");
-          }
-          const account = accounts[0];
-          const address = AccountId(chain.ss58Prefix).dec(account.publicKey);
-          log(`Root account: ${account.name ?? "<unnamed>"} → ${address}`);
-          return success(`Root SS58 (prefix ${chain.ss58Prefix}): ${address}`, {
-            name: account.name,
-            publicKey: toHex(account.publicKey),
-            ss58Prefix: chain.ss58Prefix,
-            ss58Address: address,
-            chain: chain.name,
-          });
-        },
-        (err) => error(`${err.name}`, err),
-      );
-    },
-  },
-  {
-    id: "accounts-derive-ss58-product",
-    name: "Derive SS58 (Product Account)",
-    description:
-      "Encodes a product account's public key as an SS58 address using the current chain's prefix",
-    api: "AccountId(chain.ss58Prefix).dec(productAccount.publicKey)",
-    args: [
-      {
-        name: "dotNsIdentifier",
-        label: "DotNS ID",
-        defaultValue: "host-playground.dot",
-      },
-      {
-        name: "derivationIndex",
-        label: "Derivation index",
-        defaultValue: "0",
-      },
-    ],
-    category: "accounts",
-    async run(chain, logger, args) {
-      const log = logger || (() => {});
-      const dotNsIdentifier = args?.dotNsIdentifier ?? "host-playground.dot";
-      const derivationIndex = Number(args?.derivationIndex ?? "0");
-      const accountsProvider = createAccountsProvider();
-      const result = await accountsProvider.getProductAccount(
-        dotNsIdentifier,
-        derivationIndex,
-      );
-      return result.match(
-        (account) => {
-          const address = AccountId(chain.ss58Prefix).dec(account.publicKey);
-          log(`Product account ${dotNsIdentifier}/${derivationIndex} → ${address}`);
-          return success(
-            `Product SS58 (prefix ${chain.ss58Prefix}): ${address}`,
-            {
-              dotNsIdentifier,
-              derivationIndex,
-              publicKey: toHex(account.publicKey),
-              ss58Prefix: chain.ss58Prefix,
-              ss58Address: address,
-              chain: chain.name,
-            },
-          );
-        },
-        (err) => error(`${err.name}`, err),
-      );
-    },
-  },
 ];
 
 // Signing Tests
@@ -537,7 +493,7 @@ export const signingTests: TestDefinition[] = [
       {
         name: "dotNsIdentifier",
         label: "DotNS ID",
-        defaultValue: "host-playground.dot",
+        defaultValue: SELF_DOTNS,
       },
       {
         name: "message",
@@ -548,7 +504,7 @@ export const signingTests: TestDefinition[] = [
     category: "signing",
     async run(_chain, logger, args) {
       const log = logger || (() => {});
-      const dotNsIdentifier = args?.dotNsIdentifier ?? "host-playground.dot";
+      const dotNsIdentifier = args?.dotNsIdentifier ?? SELF_DOTNS;
 
       const loginErr = await ensureLoggedIn(log, "Sign in to sign messages");
       if (loginErr) return loginErr;
@@ -605,7 +561,7 @@ export const signingTests: TestDefinition[] = [
       {
         name: "dotNsIdentifier",
         label: "DotNS ID",
-        defaultValue: "host-playground.dot",
+        defaultValue: SELF_DOTNS,
       },
       {
         name: "message",
@@ -616,7 +572,7 @@ export const signingTests: TestDefinition[] = [
     category: "signing",
     async run(chain: ChainConfig, logger?: TestLogger, args?) {
       const log = logger || (() => {});
-      const dotNsIdentifier = args?.dotNsIdentifier ?? "host-playground.dot";
+      const dotNsIdentifier = args?.dotNsIdentifier ?? SELF_DOTNS;
 
       const loginErr = await ensureLoggedIn(log, "Sign in to sign and submit a remark");
       if (loginErr) return loginErr;
@@ -784,7 +740,7 @@ export const signingTests: TestDefinition[] = [
       {
         name: "dotNsIdentifier",
         label: "DotNS ID",
-        defaultValue: "host-playground.dot",
+        defaultValue: SELF_DOTNS,
       },
       {
         name: "message",
@@ -795,7 +751,7 @@ export const signingTests: TestDefinition[] = [
     category: "signing",
     async run(chain: ChainConfig, logger?: TestLogger, args?) {
       const log = logger || (() => {});
-      const dotNsIdentifier = args?.dotNsIdentifier ?? "host-playground.dot";
+      const dotNsIdentifier = args?.dotNsIdentifier ?? SELF_DOTNS;
 
       const loginErr = await ensureLoggedIn(log, "Sign in to sign via direct WebSocket");
       if (loginErr) return loginErr;
@@ -878,7 +834,7 @@ export const signingTests: TestDefinition[] = [
       {
         name: "dotNsIdentifier",
         label: "DotNS ID",
-        defaultValue: "host-playground.dot",
+        defaultValue: SELF_DOTNS,
       },
       {
         name: "remark",
@@ -889,7 +845,7 @@ export const signingTests: TestDefinition[] = [
     category: "signing",
     async run(chain: ChainConfig, logger?: TestLogger, args?) {
       const log = logger || (() => {});
-      const dotNsIdentifier = args?.dotNsIdentifier ?? "host-playground.dot";
+      const dotNsIdentifier = args?.dotNsIdentifier ?? SELF_DOTNS;
 
       const loginErr = await ensureLoggedIn(log, "Sign in to sign and submit a batch");
       if (loginErr) return loginErr;
@@ -1202,12 +1158,12 @@ export const signingTests: TestDefinition[] = [
       {
         name: "dotNsIdentifier",
         label: "DotNS ID",
-        defaultValue: "host-playground.dot",
+        defaultValue: SELF_DOTNS,
       },
     ],
     category: "signing",
     async run(chain, _logger, args) {
-      const dotNsIdentifier = args?.dotNsIdentifier ?? "host-playground.dot";
+      const dotNsIdentifier = args?.dotNsIdentifier ?? SELF_DOTNS;
       const result = await hostApi.createTransaction({
         tag: "v1",
         value: {
@@ -1992,7 +1948,7 @@ export const chatTests: TestDefinition[] = [
       {
         name: "senderDotNsId",
         label: "Sender DotNS ID",
-        defaultValue: "host-playground.dot",
+        defaultValue: SELF_DOTNS,
       },
       {
         name: "recipientUsername",
@@ -2014,7 +1970,7 @@ export const chatTests: TestDefinition[] = [
     ],
     category: "chat",
     async run(_chain, _logger, args) {
-      const senderDotNsId = args?.senderDotNsId ?? "host-playground.dot";
+      const senderDotNsId = args?.senderDotNsId ?? SELF_DOTNS;
       const messageText = args?.message ?? "Hello from Host Playground!";
       let recipientUsername = args?.recipientUsername ?? "";
       if (!recipientUsername) {
@@ -2155,13 +2111,13 @@ export const statementTests: TestDefinition[] = [
       {
         name: "dotNsIdentifier",
         label: "DotNS ID",
-        defaultValue: "host-playground.dot",
+        defaultValue: SELF_DOTNS,
       },
     ],
     category: "statements",
     async run(_chain, logger, args) {
       const log = logger || (() => {});
-      const dotNsIdentifier = args?.dotNsIdentifier ?? "host-playground.dot";
+      const dotNsIdentifier = args?.dotNsIdentifier ?? SELF_DOTNS;
 
       const loginErr = await ensureLoggedIn(log, "Sign in to create a statement proof");
       if (loginErr) return loginErr;
@@ -2243,13 +2199,13 @@ export const statementTests: TestDefinition[] = [
       {
         name: "dotNsIdentifier",
         label: "DotNS ID",
-        defaultValue: "host-playground.dot",
+        defaultValue: SELF_DOTNS,
       },
     ],
     category: "statements",
     async run(_chain, logger, args) {
       const log = logger || (() => {});
-      const dotNsIdentifier = args?.dotNsIdentifier ?? "host-playground.dot";
+      const dotNsIdentifier = args?.dotNsIdentifier ?? SELF_DOTNS;
 
       const loginErr = await ensureLoggedIn(log, "Sign in to submit a statement");
       if (loginErr) return loginErr;
@@ -2383,13 +2339,13 @@ export const statementTests: TestDefinition[] = [
       {
         name: "dotNsIdentifier",
         label: "DotNS ID",
-        defaultValue: "host-playground.dot",
+        defaultValue: SELF_DOTNS,
       },
     ],
     category: "statements",
     async run(_chain, logger, args) {
       const log = logger || (() => {});
-      const dotNsIdentifier = args?.dotNsIdentifier ?? "host-playground.dot";
+      const dotNsIdentifier = args?.dotNsIdentifier ?? SELF_DOTNS;
 
       const loginErr = await ensureLoggedIn(log, "Sign in to create a legacy statement proof");
       if (loginErr) return loginErr;
@@ -3403,19 +3359,40 @@ export const chainTests: TestDefinition[] = [
   {
     id: "chain-query-balance",
     name: "Query Balance",
-    description: "Queries System.Account balance using createPapiProvider",
+    description:
+      "Queries System.Account balance. Defaults to this product's account; the field can be edited to query anyone.",
     api: "createPapiProvider(genesis) → client.getUnsafeApi().query.System.Account.getValue(address)",
     args: [
       {
         name: "address",
         label: "Address (SS58)",
-        defaultValue: READ_ORIGIN,
+        defaultValue: async () => {
+          // ss58 prefix 0 is used by all Paseo Hub chains we target; the
+          // run() call still re-encodes with the active chain's prefix if it
+          // differs. We pre-fill so the user can see and edit it.
+          const accountsProvider = createAccountsProvider();
+          const result = await accountsProvider.getProductAccount(SELF_DOTNS, 0);
+          return result.match(
+            (a) => AccountId(0).dec(a.publicKey),
+            () => "",
+          );
+        },
       },
     ],
     category: "chain",
-    async run(chain: ChainConfig, _logger, args) {
-      const address =
-        args?.address ?? READ_ORIGIN;
+    async run(chain: ChainConfig, logger, args) {
+      const log = logger || (() => {});
+      let address = args?.address?.trim();
+      if (!address) {
+        const accountsProvider = createAccountsProvider();
+        const accountResult = await accountsProvider.getProductAccount(SELF_DOTNS, 0);
+        const account = accountResult.match((a) => a, () => null);
+        if (!account) {
+          return error(`No product account for "${SELF_DOTNS}"`);
+        }
+        address = AccountId(chain.ss58Prefix).dec(account.publicKey);
+        log(`Resolved product account ${SELF_DOTNS}/0 → ${address}`);
+      }
       const client = getClient(chain.genesis);
       try {
         const api = client.getUnsafeApi();
@@ -3482,7 +3459,7 @@ export const contractTests: TestDefinition[] = [
 
       log("Fetching account...");
       const accountsProvider = createAccountsProvider();
-      const accountResult = await accountsProvider.getProductAccount("host-playground.dot", 0);
+      const accountResult = await accountsProvider.getProductAccount(SELF_DOTNS, 0);
       const account = accountResult.match((a) => a, () => null);
       if (!account) return error("No product account available");
 
@@ -3595,7 +3572,7 @@ export const contractTests: TestDefinition[] = [
 
       log("Fetching account...");
       const accountsProvider = createAccountsProvider();
-      const accountResult = await accountsProvider.getProductAccount("host-playground.dot", 0);
+      const accountResult = await accountsProvider.getProductAccount(SELF_DOTNS, 0);
       const account = accountResult.match((a) => a, () => null);
       if (!account) return error("No product account available");
 
@@ -3655,7 +3632,7 @@ export const contractTests: TestDefinition[] = [
 
       log("Fetching account...");
       const accountsProvider = createAccountsProvider();
-      const accountResult = await accountsProvider.getProductAccount("host-playground.dot", 0);
+      const accountResult = await accountsProvider.getProductAccount(SELF_DOTNS, 0);
       const account = accountResult.match((a) => a, () => null);
       if (!account) return error("No product account available");
 
@@ -3869,7 +3846,7 @@ export const paymentTests: TestDefinition[] = [
       {
         name: "dotNsIdentifier",
         label: "DotNS ID",
-        defaultValue: "host-playground.dot",
+        defaultValue: SELF_DOTNS,
       },
       {
         name: "amount",
@@ -3880,7 +3857,7 @@ export const paymentTests: TestDefinition[] = [
     category: "payments",
     async run(_chain, logger, args) {
       const log = logger || (() => {});
-      const dotNsIdentifier = args?.dotNsIdentifier ?? "host-playground.dot";
+      const dotNsIdentifier = args?.dotNsIdentifier ?? SELF_DOTNS;
       const amount = BigInt(args?.amount ?? "1000000000000");
 
       const loginErr = await ensureLoggedIn(log, "Sign in to top up your balance");
