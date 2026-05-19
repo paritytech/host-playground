@@ -1,7 +1,7 @@
 import {
   injectSpektrExtension,
   createAccountsProvider,
-} from "@novasamatech/product-sdk";
+} from "@novasamatech/host-api-wrapper";
 import { toHex } from "polkadot-api/utils";
 import { useCallback, useEffect, useState } from "react";
 

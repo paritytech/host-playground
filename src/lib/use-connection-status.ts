@@ -1,4 +1,4 @@
-import { metaProvider } from "@novasamatech/product-sdk";
+import { metaProvider } from "@novasamatech/host-api-wrapper";
 import { useEffect, useState } from "react";
 
 type ConnectionStatus = "connecting" | "connected" | "disconnected";
