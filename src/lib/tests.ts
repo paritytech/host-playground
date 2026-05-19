@@ -18,7 +18,7 @@ import {
   deriveEntropy,
   WellKnownChain,
   type RemotePermissionItem,
-} from "@novasamatech/product-sdk";
+} from "@novasamatech/host-api-wrapper";
 import {
   AccountId,
   Binary,
@@ -2669,7 +2669,7 @@ export const notificationTests: TestDefinition[] = [
 
       const result = await hostApi.pushNotification({
         tag: "v1",
-        value: { text, deeplink },
+        value: { text, deeplink, scheduledAt: undefined },
       });
 
       return result.match(

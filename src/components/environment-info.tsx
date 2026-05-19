@@ -7,7 +7,7 @@ import {
   Loader2,
   User,
 } from "lucide-react";
-import { SpektrExtensionName } from "@novasamatech/product-sdk";
+import { SpektrExtensionName } from "@novasamatech/host-api-wrapper";
 import { Badge } from "@/src/components/badge";
 import {
   Card,

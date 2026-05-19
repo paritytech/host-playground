@@ -1,4 +1,4 @@
-import { createProductChatManager } from "@novasamatech/product-sdk";
+import { createProductChatManager } from "@novasamatech/host-api-wrapper";
 
 console.log("[echo-bot worker] starting");
 
