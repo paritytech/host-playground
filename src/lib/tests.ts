@@ -1,24 +1,40 @@
+// Direct @novasamatech imports kept for two reasons:
+//   1. Feature-matrix probes: `injectSpektrExtension`, `metaProvider`,
+//      `createMetaProvider`, `sandboxTransport`, `createLegacyExtensionEnableFactory`
+//      are lower-level surfaces superseded by Parity's higher-level wrappers
+//      (`SignerManager`, `isInsideContainer`, etc.) for production use, but the
+//      playground tests them directly to exercise the underlying TruAPI layer.
+//   2. No Parity wrapper yet: `createPaymentManager` is tracked by issue #85.
 import {
   createLegacyExtensionEnableFactory,
   createMetaProvider,
-  createPapiProvider,
   sandboxTransport,
-  hostApi,
   injectSpektrExtension,
   metaProvider,
-  createAccountsProvider,
-  createProductChatManager,
-  createStatementStore,
-  createLocalStorage,
-  hostLocalStorage,
-  createPreimageManager,
-  preimageManager,
-  createThemeProvider,
   createPaymentManager,
-  deriveEntropy,
-  WellKnownChain,
-  type RemotePermissionItem,
 } from "@novasamatech/host-api-wrapper";
+import {
+  getTruApi,
+  getHostProvider,
+  getAccountsProvider,
+  getHostLocalStorage,
+  createHostLocalStorage,
+  getStatementStore,
+  getPreimageManager,
+  createHostPreimageManager,
+  getChatManager,
+  getThemeProvider,
+  deriveEntropy,
+  type TruApi,
+  type AccountsProvider,
+  type HostLocalStorage,
+  type HostStatementStore,
+  type PreimageManager,
+  type ChatManager,
+  type ThemeProvider,
+  type RemotePermissionItem,
+} from "@parity/product-sdk-host";
+import { WellKnownChain } from "@parity/product-sdk-chain-client";
 import {
   AccountId,
   Binary,
@@ -44,13 +60,83 @@ import {
 // Cache papi clients per genesis — avoids in-flight chainHead events from a
 // destroyed client corrupting a new client's block tree (undefined.children).
 const clientCache = new Map<string, PolkadotClient>();
-function getClient(genesis: `0x${string}`): PolkadotClient {
+async function getClient(genesis: `0x${string}`): Promise<PolkadotClient> {
   let client = clientCache.get(genesis);
   if (!client) {
-    client = createClient(createPapiProvider(genesis));
+    const provider = await getHostProvider(genesis);
+    if (!provider) {
+      throw new Error("getHostProvider returned null - not inside a host container");
+    }
+    client = createClient(provider);
     clientCache.set(genesis, client);
   }
   return client;
+}
+
+// Lazy non-null accessors for each Parity host wrapper. Each throws a
+// descriptive error when called outside a host container so call sites can
+// remain straight-line code instead of repeating the null check.
+let cachedTruApi: TruApi | null = null;
+async function truApi(): Promise<TruApi> {
+  if (cachedTruApi) return cachedTruApi;
+  const api = await getTruApi();
+  if (!api) throw new Error("getTruApi returned null - not inside a host container");
+  cachedTruApi = api;
+  return cachedTruApi;
+}
+
+let cachedAccounts: AccountsProvider | null = null;
+async function accounts(): Promise<AccountsProvider> {
+  if (cachedAccounts) return cachedAccounts;
+  const p = await getAccountsProvider();
+  if (!p) throw new Error("getAccountsProvider returned null - not inside a host container");
+  cachedAccounts = p;
+  return cachedAccounts;
+}
+
+let cachedHostStorage: HostLocalStorage | null = null;
+async function hostStorage(): Promise<HostLocalStorage> {
+  if (cachedHostStorage) return cachedHostStorage;
+  const s = await getHostLocalStorage();
+  if (!s) throw new Error("getHostLocalStorage returned null - not inside a host container");
+  cachedHostStorage = s;
+  return cachedHostStorage;
+}
+
+let cachedPreimage: PreimageManager | null = null;
+async function pm(): Promise<PreimageManager> {
+  if (cachedPreimage) return cachedPreimage;
+  const p = await getPreimageManager();
+  if (!p) throw new Error("getPreimageManager returned null - not inside a host container");
+  cachedPreimage = p;
+  return cachedPreimage;
+}
+
+let cachedStatementStore: HostStatementStore | null = null;
+async function statements(): Promise<HostStatementStore> {
+  if (cachedStatementStore) return cachedStatementStore;
+  const s = await getStatementStore();
+  if (!s) throw new Error("getStatementStore returned null - not inside a host container");
+  cachedStatementStore = s;
+  return cachedStatementStore;
+}
+
+let cachedChat: ChatManager | null = null;
+async function chat(): Promise<ChatManager> {
+  if (cachedChat) return cachedChat;
+  const c = await getChatManager();
+  if (!c) throw new Error("getChatManager returned null - not inside a host container");
+  cachedChat = c;
+  return cachedChat;
+}
+
+let cachedTheme: ThemeProvider | null = null;
+async function theme(): Promise<ThemeProvider> {
+  if (cachedTheme) return cachedTheme;
+  const t = await getThemeProvider();
+  if (!t) throw new Error("getThemeProvider returned null - not inside a host container");
+  cachedTheme = t;
+  return cachedTheme;
 }
 
 const HOSTAPI_DEMO_ADDRESS = deployment.hostApiDemo;
@@ -109,7 +195,7 @@ async function ensureRemotePermission(
   permission: RemotePermissionItem,
 ): Promise<TestResult | null> {
   log(`Requesting remote permission: ${permission.tag}...`);
-  const permissionResult = await hostApi.permission({
+  const permissionResult = await (await truApi()).permission({
     tag: "v1",
     value: permission,
   });
@@ -178,17 +264,18 @@ async function candidateCidsForBytes(
   ];
 }
 
-function lookupPreimageWithTimeout(
+async function lookupPreimageWithTimeout(
   hash: `0x${string}`,
   timeoutMs: number,
 ): Promise<Uint8Array | null> {
+  const preimage = await pm();
   return new Promise((resolve) => {
     let done = false;
-    const sub = preimageManager.lookup(hash, (preimage) => {
+    const sub = preimage.lookup(hash, (bytes) => {
       if (done) return;
       done = true;
       sub.unsubscribe();
-      resolve(preimage);
+      resolve(bytes);
     });
     setTimeout(() => {
       if (done) return;
@@ -215,7 +302,7 @@ async function ensureLoggedIn(
   log: (msg: string) => void,
   reason = "Sign in to use this feature",
 ): Promise<TestResult | null> {
-  const accountsProvider = createAccountsProvider();
+  const accountsProvider = await accounts();
   const result = await accountsProvider.requestLogin(reason);
   if (result.isErr()) {
     return error(`Login failed: ${result.error.name}`, result.error);
@@ -242,7 +329,7 @@ async function ensureDevicePermission(
     | "Biometrics",
 ): Promise<TestResult | null> {
   log(`Requesting device permission: ${permission}...`);
-  const result = await hostApi.devicePermission({
+  const result = await (await truApi()).devicePermission({
     tag: "v1",
     value: permission,
   });
@@ -264,7 +351,7 @@ export const accountTests: TestDefinition[] = [
     api: "accountsProvider.getLegacyAccounts()",
     category: "accounts",
     async run() {
-      const accountsProvider = createAccountsProvider();
+      const accountsProvider = await accounts();
       const result = await accountsProvider.getLegacyAccounts();
 
       return result.match(
@@ -287,7 +374,7 @@ export const accountTests: TestDefinition[] = [
     api: "hostApi.getLegacyAccounts({ tag, value })",
     category: "accounts",
     async run() {
-      const result = await hostApi.getLegacyAccounts({
+      const result = await (await truApi()).getLegacyAccounts({
         tag: "v1",
         value: undefined,
       });
@@ -320,7 +407,7 @@ export const accountTests: TestDefinition[] = [
     category: "accounts",
     async run(_chain, _logger, args) {
       const dotNsIdentifier = args?.dotNsIdentifier ?? SELF_DOTNS;
-      const accountsProvider = createAccountsProvider();
+      const accountsProvider = await accounts();
       const result = await accountsProvider.getProductAccount(dotNsIdentifier);
 
       return result.match(
@@ -347,7 +434,7 @@ export const accountTests: TestDefinition[] = [
     category: "accounts",
     async run(_chain, _logger, args) {
       const dotNsIdentifier = args?.dotNsIdentifier ?? SELF_DOTNS;
-      const accountsProvider = createAccountsProvider();
+      const accountsProvider = await accounts();
       const result =
         await accountsProvider.getProductAccountAlias(dotNsIdentifier);
 
@@ -376,7 +463,7 @@ export const accountTests: TestDefinition[] = [
     category: "accounts",
     async run(_chain, _logger, args) {
       const dotNsIdentifier = args?.dotNsIdentifier ?? SELF_DOTNS;
-      const accountsProvider = createAccountsProvider();
+      const accountsProvider = await accounts();
       const accountResult =
         await accountsProvider.getProductAccount(dotNsIdentifier);
 
@@ -395,13 +482,38 @@ export const accountTests: TestDefinition[] = [
     },
   },
   {
+    id: "accounts-provider-legacy-signer",
+    name: "Legacy Account Signer",
+    description: "Creates a PolkadotSigner for a legacy account",
+    api: "accountsProvider.getLegacyAccountSigner(account)",
+    category: "accounts",
+    async run() {
+      const accountsProvider = await accounts();
+      const accountsResult = await accountsProvider.getLegacyAccounts();
+
+      return accountsResult.match(
+        (accounts) => {
+          if (accounts.length === 0) {
+            return error("No legacy accounts available");
+          }
+          const account = accounts[0];
+          const signer = accountsProvider.getLegacyAccountSigner(account);
+          return success("Legacy account signer created", {
+            publicKey: toHex(signer.publicKey),
+          });
+        },
+        (err) => error(`${err.name}`, err),
+      );
+    },
+  },
+  {
     id: "accounts-provider-connection-status",
     name: "Account Connection Status",
     description: "Subscribes to account connection status changes (5s)",
     api: "accountsProvider.subscribeAccountConnectionStatus(callback)",
     category: "accounts",
     async run() {
-      const accountsProvider = createAccountsProvider();
+      const accountsProvider = await accounts();
 
       return new Promise((resolve) => {
         const statuses: string[] = [];
@@ -418,6 +530,66 @@ export const accountTests: TestDefinition[] = [
           );
         }, 5000);
       });
+    },
+  },
+  {
+    id: "accounts-ring-vrf-proof",
+    name: "Create Ring VRF Proof",
+    description: "Creates a Ring VRF proof for a product account",
+    api: "accountsProvider.createRingVRFProof(dotNsId, derivationIndex, location, message)",
+    args: [
+      {
+        name: "dotNsIdentifier",
+        label: "DotNS ID",
+        defaultValue: SELF_DOTNS,
+      },
+      {
+        name: "genesisHash",
+        label: "Ring Genesis Hash",
+        defaultValue:
+          "0xd6eec26135305a8ad257a20d003357284c8aa03d0bdb2b357ab0a22371e11ef2",
+      },
+      {
+        name: "ringRootHash",
+        label: "Ring Root Hash",
+        defaultValue: "0x",
+      },
+    ],
+    category: "accounts",
+    async run(_chain, logger, args) {
+      const log = logger || (() => {});
+      const dotNsIdentifier = args?.dotNsIdentifier ?? SELF_DOTNS;
+      const genesisHash =
+        (args?.genesisHash as `0x${string}`) ??
+        "0xd6eec26135305a8ad257a20d003357284c8aa03d0bdb2b357ab0a22371e11ef2";
+      const ringRootHash = (args?.ringRootHash as `0x${string}`) ?? "0x";
+
+      const loginErr = await ensureLoggedIn(log, "Sign in to create a Ring VRF proof");
+      if (loginErr) return loginErr;
+
+      const accountsProvider = await accounts();
+      const message = new TextEncoder().encode(`ring-vrf-test:${Date.now()}`);
+
+      log(`Creating Ring VRF proof for ${dotNsIdentifier}...`);
+      const result = await accountsProvider.createRingVRFProof(
+        dotNsIdentifier,
+        0,
+        {
+          genesisHash,
+          ringRootHash,
+          hints: undefined,
+        },
+        message,
+      );
+
+      return result.match(
+        (proof) =>
+          success(`Ring VRF proof created (${proof.length} bytes)`, {
+            proofHex: toHex(proof).slice(0, 40) + "...",
+            proofLength: proof.length,
+          }),
+        (err) => error(`${err.name}`, err),
+      );
     },
   },
 ];
@@ -450,7 +622,7 @@ export const signingTests: TestDefinition[] = [
       if (loginErr) return loginErr;
 
       log(`Fetching product account for ${dotNsIdentifier}...`);
-      const accountsProvider = createAccountsProvider();
+      const accountsProvider = await accounts();
       const accountResult =
         await accountsProvider.getProductAccount(dotNsIdentifier);
 
@@ -477,7 +649,7 @@ export const signingTests: TestDefinition[] = [
         `Hello from Host Playground! ${new Date().toLocaleString()}`;
       const messageBytes = new TextEncoder().encode(message);
 
-      const result = await hostApi.signRaw({
+      const result = await (await truApi()).signRaw({
         tag: "v1",
         value: {
           account: [dotNsIdentifier, 0],
@@ -518,7 +690,7 @@ export const signingTests: TestDefinition[] = [
       if (loginErr) return loginErr;
 
       log(`Fetching product account for ${dotNsIdentifier}...`);
-      const accountsProvider = createAccountsProvider();
+      const accountsProvider = await accounts();
       const accountResult =
         await accountsProvider.getProductAccount(dotNsIdentifier);
 
@@ -543,7 +715,7 @@ export const signingTests: TestDefinition[] = [
         "signPayload",
       );
 
-      const client = getClient(chain.genesis);
+      const client = await getClient(chain.genesis);
       const api = client.getUnsafeApi();
 
       const permissionError = await ensureChainSubmitForTxBroadcast(log);
@@ -578,6 +750,97 @@ export const signingTests: TestDefinition[] = [
     },
   },
   {
+    id: "sign-payload-legacy",
+    name: "Sign Payload (Legacy Account)",
+    description:
+      "Signs a transaction payload using a legacy account (injected extension)",
+    api: "signer.signPayload(payload)",
+    args: [
+      {
+        name: "message",
+        label: "Remark",
+        defaultValue: "Remark from Host Playground",
+      },
+    ],
+    category: "signing",
+    async run(chain: ChainConfig, logger?: TestLogger, args?) {
+      const log = logger || (() => {});
+
+      const loginErr = await ensureLoggedIn(log, "Sign in to use a legacy signer");
+      if (loginErr) return loginErr;
+
+      // Get legacy extension via enable factory
+      log("Creating legacy extension...");
+      const enableFactory =
+        await createLegacyExtensionEnableFactory(sandboxTransport);
+
+      if (!enableFactory) {
+        return error("Transport not ready - enable factory returned null");
+      }
+
+      const injected = await enableFactory();
+
+      if (!injected.accounts || !injected.signer) {
+        return error("No accounts or signer available from extension");
+      }
+
+      // Get accounts from the injected extension
+      const accounts = await injected.accounts.get();
+
+      if (accounts.length === 0) {
+        return error("No legacy accounts available for signing");
+      }
+
+      const account = accounts[0];
+      const address = account.address;
+
+      const client = await getClient(chain.genesis);
+      const api = client.getUnsafeApi();
+
+      log("Preparing transaction...");
+      const message = args?.message ?? "Remark from Host Playground";
+      const tx = api.tx.System.remark({
+        remark: Binary.fromText(message),
+      });
+
+      log("Signing with legacy account signer...");
+
+      const signer = injected.signer;
+
+      if (!signer.signPayload) {
+        return error("Signer does not support signPayload");
+      }
+
+      const callData = await tx.getEncodedData();
+      const callDataHex = toHex(callData);
+
+      const signResult = await signer.signPayload({
+        address,
+        blockHash:
+          "0x0000000000000000000000000000000000000000000000000000000000000000",
+        blockNumber: "0x00000000",
+        era: "0x00",
+        genesisHash: chain.genesis,
+        method: callDataHex,
+        nonce: "0x00000000",
+        signedExtensions: [],
+        specVersion: "0x00000000",
+        tip: "0x00000000000000000000000000000000",
+        transactionVersion: "0x00000000",
+        version: 4,
+      });
+
+      const txHash = signResult.signature;
+
+      log(`Transaction signed!\nSignature: ${txHash}`);
+
+      return success(`Transaction signed for ${chain.name}`, {
+        txHash,
+        address,
+      });
+    },
+  },
+  {
     id: "sign-payload-ws",
     name: "Sign Payload (wsProvider)",
     description:
@@ -605,7 +868,7 @@ export const signingTests: TestDefinition[] = [
       if (loginErr) return loginErr;
 
       log(`Fetching product account for ${dotNsIdentifier}...`);
-      const accountsProvider = createAccountsProvider();
+      const accountsProvider = await accounts();
       const accountResult =
         await accountsProvider.getProductAccount(dotNsIdentifier);
 
@@ -698,7 +961,7 @@ export const signingTests: TestDefinition[] = [
       if (loginErr) return loginErr;
 
       log(`Fetching product account for ${dotNsIdentifier}...`);
-      const accountsProvider = createAccountsProvider();
+      const accountsProvider = await accounts();
       const accountResult =
         await accountsProvider.getProductAccount(dotNsIdentifier);
 
@@ -725,7 +988,7 @@ export const signingTests: TestDefinition[] = [
       );
       log(`Product account signer ready: ${address.slice(0, 18)}...`);
 
-      const client = getClient(chain.genesis);
+      const client = await getClient(chain.genesis);
       try {
         const api = client.getUnsafeApi();
 
@@ -740,7 +1003,7 @@ export const signingTests: TestDefinition[] = [
         const contractAddr = HOSTAPI_DEMO_ADDRESS;
 
         log("Connecting to contract chain...");
-        const contractClient = getClient(CHAINS.PASEO_ASSET_HUB.genesis);
+        const contractClient = await getClient(CHAINS.PASEO_ASSET_HUB.genesis);
         const contractApi = contractClient.getUnsafeApi();
 
         const dest = Binary.fromHex(contractAddr);
@@ -867,6 +1130,135 @@ export const signingTests: TestDefinition[] = [
     },
   },
   {
+    id: "sign-raw-legacy",
+    name: "Sign Raw Message (Legacy Account)",
+    description: "Signs a raw message via hostApi.signRawWithLegacyAccount",
+    api: "hostApi.signRawWithLegacyAccount({ tag, value: { signer, payload } })",
+    args: [
+      {
+        name: "message",
+        label: "Message",
+        defaultValue: "Hello from Host Playground!",
+      },
+    ],
+    category: "signing",
+    async run(_chain, logger, args) {
+      const log = logger || (() => {});
+
+      const loginErr = await ensureLoggedIn(log, "Sign in to sign with a legacy account");
+      if (loginErr) return loginErr;
+
+      log("Creating account provider...");
+      const accountsProvider = await accounts();
+      const result = await accountsProvider.getLegacyAccounts();
+
+      return result.match(async (accounts) => {
+        if (accounts.length === 0) {
+          return error('No legacy accounts available')
+        }
+
+        const signerAddress = toHex(accounts[0].publicKey);
+
+        const message =
+          args?.message ??
+          `Hello from Host Playground! ${new Date().toLocaleString()}`;
+        const messageBytes = new TextEncoder().encode(message);
+
+        log(`Signing with legacy account ${signerAddress.slice(0, 10)}...`);
+        const result = await (await truApi()).signRawWithLegacyAccount({
+          tag: "v1",
+          value: {
+            signer: signerAddress,
+            payload: { tag: "Bytes", value: messageBytes },
+          },
+        });
+
+        return result.match(
+          (res) => success("Message signed", res.value),
+          (err) => error(err.value.name, err.value),
+        );
+      }, (err) => error(err.message))
+    },
+  },
+  {
+    id: "sign-payload-legacy-host-api",
+    name: "Sign Payload (Legacy Account via hostApi)",
+    description:
+      "Signs a remark payload via hostApi.signPayloadWithLegacyAccount",
+    api: "hostApi.signPayloadWithLegacyAccount({ tag, value: { signer, payload } })",
+    args: [
+      {
+        name: "message",
+        label: "Remark",
+        defaultValue: "Remark from Host Playground",
+      },
+    ],
+    category: "signing",
+    async run(chain: ChainConfig, logger?: TestLogger, args?) {
+      const log = logger || (() => {});
+
+      const loginErr = await ensureLoggedIn(log, "Sign in to sign with a legacy account");
+      if (loginErr) return loginErr;
+
+      log("Creating account provider...");
+      const accountsProvider = await accounts();
+      const result = await accountsProvider.getLegacyAccounts();
+
+      return result.match(async (accounts) => {
+        if (accounts.length === 0) {
+          return error('No legacy accounts available')
+        }
+
+        const signerAddress = toHex(accounts[0].publicKey);
+
+        const client = await getClient(chain.genesis);
+        const api = client.getUnsafeApi();
+
+        const message = args?.message ?? "Remark from Host Playground";
+        const tx = api.tx.System.remark({
+          remark: Binary.fromText(message),
+        });
+        const callData = await tx.getEncodedData();
+        const callDataHex = toHex(callData) as `0x${string}`;
+
+        log(`Signing payload with legacy account ${signerAddress.slice(0, 10)}...`);
+        const signResult = await (await truApi()).signPayloadWithLegacyAccount({
+          tag: "v1",
+          value: {
+            signer: signerAddress,
+            payload: {
+              blockHash:
+                "0x0000000000000000000000000000000000000000000000000000000000000000",
+              blockNumber: "0x00000000",
+              era: "0x00",
+              genesisHash: chain.genesis,
+              method: callDataHex,
+              nonce: "0x00000000",
+              specVersion: "0x00000000",
+              tip: "0x00000000000000000000000000000000",
+              transactionVersion: "0x00000000",
+              signedExtensions: [],
+              version: 4,
+              assetId: undefined,
+              metadataHash: undefined,
+              mode: undefined,
+              withSignedTransaction: undefined,
+            },
+          },
+        });
+
+        return signResult.match(
+          (res) =>
+            success(`Payload signed for ${chain.name}`, {
+              signature: res.value.signature,
+              signer: signerAddress,
+            }),
+          (err) => error(err.value.name, err.value),
+        );
+      }, (err) => error(err.message))
+    },
+  },
+  {
     id: "create-transaction",
     name: "Create Transaction",
     description:
@@ -888,21 +1280,44 @@ export const signingTests: TestDefinition[] = [
     async run(chain, logger, args) {
       const log = logger || (() => {});
       const dotNsIdentifier = args?.dotNsIdentifier ?? SELF_DOTNS;
+      const result = await (await truApi()).createTransaction({
+        tag: "v1",
+        value: {
+          signer: [dotNsIdentifier, 0],
+          genesisHash: fromHex(chain.genesis),
+          callData: new Uint8Array([0, 0]),
+          extensions: [],
+          txExtVersion: 0,
+        },
+      });
 
-      const loginErr = await ensureLoggedIn(log, "Sign in to create a transaction");
-      if (loginErr) return loginErr;
-
-      log(`Fetching product account for ${dotNsIdentifier}...`);
-      const accountsProvider = createAccountsProvider();
-      const accountResult = await accountsProvider.getProductAccount(
-        dotNsIdentifier,
-        0,
+      return result.match(
+        (res) =>
+          success(`Transaction created: ${toHex(res.value).slice(0, 40)}...`),
+        (err) => error(err.value.name, err.value),
       );
-      const account = accountResult.match(
-        (a) => a,
-        (err) => {
-          log(`getProductAccount failed: ${err.name}`);
-          return null;
+    },
+  },
+  {
+    id: "create-transaction-legacy",
+    name: "Create Transaction (Legacy Account)",
+    description: "Creates a transaction with a legacy account",
+    api: "hostApi.createTransactionWithLegacyAccount({ tag, value: payload })",
+    category: "signing",
+    async run(chain) {
+      const accountsProvider = await accounts();
+      const accountsResult = await accountsProvider.getLegacyAccounts();
+      const legacy = accountsResult.match((a) => a, () => null);
+      if (!legacy?.length) return error("No legacy accounts available");
+
+      const result = await (await truApi()).createTransactionWithLegacyAccount({
+        tag: "v1",
+        value: {
+          signer: legacy[0].publicKey,
+          genesisHash: fromHex(chain.genesis),
+          callData: new Uint8Array([0, 0]),
+          extensions: [],
+          txExtVersion: 0,
         },
       );
       if (!account) {
@@ -1009,15 +1424,17 @@ export const extensionTests: TestDefinition[] = [
   },
   {
     id: "papi-provider",
-    name: "PAPI Provider",
-    description: "Creates a PAPI provider for the selected chain",
-    api: "createPapiProvider(genesisHash)",
+    name: "Host Provider",
+    description: "Creates a PAPI provider for the selected chain via @parity/product-sdk-host",
+    api: "getHostProvider(genesisHash)",
     category: "extension",
     async run(chain: ChainConfig) {
-      const provider = createPapiProvider(chain.genesis);
-      return success(`PAPI provider created for ${chain.name}`, {
-        provider: typeof provider,
-      });
+      const provider = await getHostProvider(chain.genesis);
+      return provider
+        ? success(`Host provider created for ${chain.name}`, {
+            provider: typeof provider,
+          })
+        : error("getHostProvider returned null - not inside a host container");
     },
   },
   {
@@ -1053,9 +1470,10 @@ export const storageTests: TestDefinition[] = [
     async run(_chain, _logger, args) {
       const key = args?.key ?? "host_playground_string";
       const value = `test_value_${Date.now()}`;
+      const hls = await hostStorage();
 
-      await hostLocalStorage.writeString(key, value);
-      const readValue = await hostLocalStorage.readString(key);
+      await hls.writeString(key, value);
+      const readValue = await hls.readString(key);
 
       return readValue === value
         ? success(`Write: "${value}"\nRead: "${readValue}"`)
@@ -1074,9 +1492,10 @@ export const storageTests: TestDefinition[] = [
     async run(_chain, _logger, args) {
       const key = args?.key ?? "host_playground_bytes";
       const value = new TextEncoder().encode(`bytes_${Date.now()}`);
+      const hls = await hostStorage();
 
-      await hostLocalStorage.writeBytes(key, value);
-      const readValue = await hostLocalStorage.readBytes(key);
+      await hls.writeBytes(key, value);
+      const readValue = await hls.readBytes(key);
 
       if (!readValue) {
         return error("Read returned undefined after write");
@@ -1107,9 +1526,10 @@ export const storageTests: TestDefinition[] = [
         timestamp: Date.now(),
         nested: { foo: "bar", nums: [1, 2, 3] },
       };
+      const hls = await hostStorage();
 
-      await hostLocalStorage.writeJSON(key, value);
-      const readValue = await hostLocalStorage.readJSON(key);
+      await hls.writeJSON(key, value);
+      const readValue = await hls.readJSON(key);
 
       const match = JSON.stringify(value) === JSON.stringify(readValue);
       return match
@@ -1128,12 +1548,13 @@ export const storageTests: TestDefinition[] = [
     category: "storage",
     async run(_chain, _logger, args) {
       const key = args?.key ?? "host_playground_string";
+      const hls = await hostStorage();
 
       // Write a value first to ensure the key exists
-      await hostLocalStorage.writeString(key, "to_be_cleared");
-      await hostLocalStorage.clear(key);
+      await hls.writeString(key, "to_be_cleared");
+      await hls.clear(key);
 
-      const readValue = await hostLocalStorage.readString(key);
+      const readValue = await hls.readString(key);
       return !readValue || readValue === ""
         ? success("Storage key cleared successfully")
         : error(`Key still has value after clear: "${readValue}"`);
@@ -1151,7 +1572,10 @@ export const storageTests: TestDefinition[] = [
     category: "storage",
     async run(_chain, _logger, args) {
       const key = args?.key ?? "host_playground_factory";
-      const storage = createLocalStorage();
+      const storage = await createHostLocalStorage();
+      if (!storage) {
+        return error("createHostLocalStorage returned null - not inside a host container");
+      }
       const value = `factory_${Date.now()}`;
 
       await storage.writeString(key, value);
@@ -1178,7 +1602,7 @@ export const storageTests: TestDefinition[] = [
       const valueBytes = new TextEncoder().encode(value);
 
       // Write
-      const writeResult = await hostApi.localStorageWrite({
+      const writeResult = await (await truApi()).localStorageWrite({
         tag: "v1",
         value: [key, valueBytes],
       });
@@ -1196,7 +1620,7 @@ export const storageTests: TestDefinition[] = [
       }
 
       // Read
-      const readResult = await hostApi.localStorageRead({
+      const readResult = await (await truApi()).localStorageRead({
         tag: "v1",
         value: key,
       });
@@ -1226,7 +1650,7 @@ export const permissionTests: TestDefinition[] = [
     api: "hostApi.featureSupported({ tag, value: { tag: 'Chain', value } })",
     category: "permissions",
     async run(chain: ChainConfig) {
-      const result = await hostApi.featureSupported({
+      const result = await (await truApi()).featureSupported({
         tag: "v1",
         value: { tag: "Chain", value: chain.genesis },
       });
@@ -1244,7 +1668,7 @@ export const permissionTests: TestDefinition[] = [
     api: "hostApi.devicePermission({ tag: 'v1', value: 'Camera' })",
     category: "permissions",
     async run() {
-      const result = await hostApi.devicePermission({
+      const result = await (await truApi()).devicePermission({
         tag: "v1",
         value: "Camera",
       });
@@ -1262,7 +1686,7 @@ export const permissionTests: TestDefinition[] = [
     api: "hostApi.devicePermission({ tag: 'v1', value: 'Microphone' })",
     category: "permissions",
     async run() {
-      const result = await hostApi.devicePermission({
+      const result = await (await truApi()).devicePermission({
         tag: "v1",
         value: "Microphone",
       });
@@ -1280,7 +1704,7 @@ export const permissionTests: TestDefinition[] = [
     api: "hostApi.devicePermission({ tag: 'v1', value: 'Location' })",
     category: "permissions",
     async run() {
-      const result = await hostApi.devicePermission({
+      const result = await (await truApi()).devicePermission({
         tag: "v1",
         value: "Location",
       });
@@ -1298,7 +1722,7 @@ export const permissionTests: TestDefinition[] = [
     api: "hostApi.devicePermission({ tag: 'v1', value: 'Bluetooth' })",
     category: "permissions",
     async run() {
-      const result = await hostApi.devicePermission({
+      const result = await (await truApi()).devicePermission({
         tag: "v1",
         value: "Bluetooth",
       });
@@ -1316,7 +1740,7 @@ export const permissionTests: TestDefinition[] = [
     api: "hostApi.devicePermission({ tag: 'v1', value: 'Notifications' })",
     category: "permissions",
     async run() {
-      const result = await hostApi.devicePermission({
+      const result = await (await truApi()).devicePermission({
         tag: "v1",
         value: "Notifications",
       });
@@ -1334,7 +1758,7 @@ export const permissionTests: TestDefinition[] = [
     api: "hostApi.devicePermission({ tag: 'v1', value: 'NFC' })",
     category: "permissions",
     async run() {
-      const result = await hostApi.devicePermission({
+      const result = await (await truApi()).devicePermission({
         tag: "v1",
         value: "NFC",
       });
@@ -1352,7 +1776,7 @@ export const permissionTests: TestDefinition[] = [
     api: "hostApi.devicePermission({ tag: 'v1', value: 'Clipboard' })",
     category: "permissions",
     async run() {
-      const result = await hostApi.devicePermission({
+      const result = await (await truApi()).devicePermission({
         tag: "v1",
         value: "Clipboard",
       });
@@ -1370,7 +1794,7 @@ export const permissionTests: TestDefinition[] = [
     api: "hostApi.devicePermission({ tag: 'v1', value: 'OpenUrl' })",
     category: "permissions",
     async run() {
-      const result = await hostApi.devicePermission({
+      const result = await (await truApi()).devicePermission({
         tag: "v1",
         value: "OpenUrl",
       });
@@ -1388,7 +1812,7 @@ export const permissionTests: TestDefinition[] = [
     api: "hostApi.devicePermission({ tag: 'v1', value: 'Biometrics' })",
     category: "permissions",
     async run() {
-      const result = await hostApi.devicePermission({
+      const result = await (await truApi()).devicePermission({
         tag: "v1",
         value: "Biometrics",
       });
@@ -1414,7 +1838,7 @@ export const permissionTests: TestDefinition[] = [
     category: "permissions",
     async run(_chain, _logger, args) {
       const url = args?.url ?? "https://example.com";
-      const result = await hostApi.permission({
+      const result = await (await truApi()).permission({
         tag: "v1",
         value: { tag: "Remote", value: [url] },
       });
@@ -1432,7 +1856,7 @@ export const permissionTests: TestDefinition[] = [
     api: "hostApi.permission({ tag: 'v1', value: { tag: 'WebRTC', value: undefined } })",
     category: "permissions",
     async run() {
-      const result = await hostApi.permission({
+      const result = await (await truApi()).permission({
         tag: "v1",
         value: { tag: "WebRTC", value: undefined },
       });
@@ -1450,7 +1874,7 @@ export const permissionTests: TestDefinition[] = [
     api: "hostApi.permission({ tag: 'v1', value: { tag: 'ChainSubmit', value: undefined } })",
     category: "permissions",
     async run(chain) {
-      const result = await hostApi.permission({
+      const result = await (await truApi()).permission({
         tag: "v1",
         value: { tag: "ChainSubmit", value: undefined },
       });
@@ -1468,7 +1892,7 @@ export const permissionTests: TestDefinition[] = [
     api: "hostApi.permission({ tag: 'v1', value: { tag: 'PreimageSubmit', value: undefined } })",
     category: "permissions",
     async run(chain) {
-      const result = await hostApi.permission({
+      const result = await (await truApi()).permission({
         tag: "v1",
         value: { tag: "PreimageSubmit", value: undefined },
       });
@@ -1487,7 +1911,7 @@ export const permissionTests: TestDefinition[] = [
     api: "hostApi.permission({ tag: 'v1', value: { tag: 'StatementSubmit', value: undefined } })",
     category: "permissions",
     async run(chain) {
-      const result = await hostApi.permission({
+      const result = await (await truApi()).permission({
         tag: "v1",
         value: { tag: "StatementSubmit", value: undefined },
       });
@@ -1543,7 +1967,7 @@ export const chatTests: TestDefinition[] = [
     ],
     category: "chat",
     async run(_chain, _logger, args) {
-      const chatManager = createProductChatManager();
+      const chatManager = await chat();
       try {
         const result = await chatManager.registerRoom({
           roomId: args?.roomId ?? "host-playground-room",
@@ -1577,7 +2001,7 @@ export const chatTests: TestDefinition[] = [
     ],
     category: "chat",
     async run(_chain, _logger, args) {
-      const chatManager = createProductChatManager();
+      const chatManager = await chat();
       try {
         const result = await chatManager.registerBot({
           botId: args?.botId ?? "playground-bot",
@@ -1616,7 +2040,7 @@ export const chatTests: TestDefinition[] = [
     category: "chat",
     async run(_chain, _logger, args) {
       const roomId = args?.roomId ?? "host-playground-room";
-      const chatManager = createProductChatManager();
+      const chatManager = await chat();
       try {
         await chatManager.registerRoom({ roomId, name: roomId, icon: "" });
         const result = await chatManager.sendMessage(roomId, {
@@ -1645,7 +2069,7 @@ export const chatTests: TestDefinition[] = [
     category: "chat",
     async run(_chain, _logger, args) {
       const roomId = args?.roomId ?? "host-playground-room";
-      const chatManager = createProductChatManager();
+      const chatManager = await chat();
       const payload = new TextEncoder().encode(
         JSON.stringify({ action: "test", ts: Date.now() }),
       );
@@ -1676,7 +2100,7 @@ export const chatTests: TestDefinition[] = [
         name: "recipientUsername",
         label: "Recipient Username",
         async defaultValue() {
-          const accountsProvider = createAccountsProvider();
+          const accountsProvider = await accounts();
           const result = await accountsProvider.getLegacyAccounts();
           return result.match(
             (accounts) => accounts[0]?.name ?? "",
@@ -1696,14 +2120,14 @@ export const chatTests: TestDefinition[] = [
       const messageText = args?.message ?? "Hello from Host Playground!";
       let recipientUsername = args?.recipientUsername ?? "";
       if (!recipientUsername) {
-        const accountsProvider = createAccountsProvider();
+        const accountsProvider = await accounts();
         const accountsResult = await accountsProvider.getLegacyAccounts();
         recipientUsername = accountsResult.match(
           (accounts) => accounts[0]?.name ?? "",
           () => "",
         );
       }
-      const statementStore = createStatementStore();
+      const statementStore = await statements();
       if (!recipientUsername)
         return error("No recipient username — not signed in?");
       const log = _logger || (() => {});
@@ -1746,7 +2170,7 @@ export const chatTests: TestDefinition[] = [
     disabled: "Worker only — handled by the host",
     category: "chat",
     async run() {
-      const chatManager = createProductChatManager();
+      const chatManager = await chat();
       return new Promise((resolve) => {
         const rooms: unknown[] = [];
         const subscription = chatManager.subscribeChatList((chatRooms) => {
@@ -1769,7 +2193,7 @@ export const chatTests: TestDefinition[] = [
     disabled: "Worker only — handled by the host",
     category: "chat",
     async run() {
-      const chatManager = createProductChatManager();
+      const chatManager = await chat();
       return new Promise((resolve) => {
         const actions: unknown[] = [];
         const subscription = chatManager.subscribeAction((action) => {
@@ -1792,7 +2216,7 @@ export const chatTests: TestDefinition[] = [
     disabled: "Worker only — handled by the host",
     category: "chat",
     async run() {
-      const chatManager = createProductChatManager();
+      const chatManager = await chat();
       return new Promise((resolve) => {
         let requestCount = 0;
         const unsubscribe = chatManager.onCustomMessageRenderingRequest(
@@ -1844,7 +2268,7 @@ export const statementTests: TestDefinition[] = [
       const loginErr = await ensureLoggedIn(log, "Sign in to create a statement proof");
       if (loginErr) return loginErr;
 
-      const statementStore = createStatementStore();
+      const statementStore = await statements();
       const messageBytes = new TextEncoder().encode(`Statement: ${Date.now()}`);
 
       try {
@@ -1885,7 +2309,7 @@ export const statementTests: TestDefinition[] = [
       if (loginErr) return loginErr;
 
       const messageBytes = new TextEncoder().encode(`Statement: ${Date.now()}`);
-      const proof = await hostApi.statementStoreCreateProofAuthorized({
+      const proof = await (await truApi()).statementStoreCreateProofAuthorized({
         tag: 'v1',
         value: {
           proof: undefined,
@@ -1932,7 +2356,7 @@ export const statementTests: TestDefinition[] = [
       const loginErr = await ensureLoggedIn(log, "Sign in to submit a statement");
       if (loginErr) return loginErr;
 
-      const statementStore = createStatementStore();
+      const statementStore = await statements();
       const messageBytes = new TextEncoder().encode(`Statement: ${Date.now()}`);
 
       const statement = {
@@ -1982,7 +2406,7 @@ export const statementTests: TestDefinition[] = [
     api: "statementStore.subscribe(filter, callback)",
     category: "statements",
     async run() {
-      const statementStore = createStatementStore();
+      const statementStore = await statements();
 
       return new Promise((resolve) => {
         const received: unknown[] = [];
@@ -2022,7 +2446,7 @@ export const statementTests: TestDefinition[] = [
     ],
     category: "statements",
     async run(_chain, _logger, args) {
-      const statementStore = createStatementStore();
+      const statementStore = await statements();
       const encoder = new TextEncoder();
       const topicA = encoder.encode(
         args?.topicA ?? "host-playground:topic-a",
@@ -2075,7 +2499,7 @@ export const statementTests: TestDefinition[] = [
       const message = `Statement: ${Date.now()}`;
       const messageBytes = new TextEncoder().encode(message);
 
-      const result = await hostApi.statementStoreCreateProof({
+      const result = await (await truApi()).statementStoreCreateProof({
         tag: "v1",
         value: [
           [dotNsIdentifier, 0],
@@ -2125,7 +2549,7 @@ export const preimageTests: TestDefinition[] = [
       if (permErr) return permErr;
 
       const data = new TextEncoder().encode(`preimage_${Date.now()}`);
-      const hash = await preimageManager.submit(data);
+      const hash = await (await pm()).submit(data);
 
       return success(`Preimage submitted, hash: ${hash.slice(0, 20)}...`, {
         hash,
@@ -2152,10 +2576,11 @@ export const preimageTests: TestDefinition[] = [
 
       log(`Looking up hash: ${hash.slice(0, 20)}...`);
 
+      const preimageMgr = await pm();
       return new Promise((resolve) => {
         let found = false;
         log("Starting lookup subscription...");
-        const subscription = preimageManager.lookup(hash, (preimage) => {
+        const subscription = preimageMgr.lookup(hash, (preimage) => {
           found = true;
           subscription.unsubscribe();
           if (preimage) {
@@ -2198,7 +2623,10 @@ export const preimageTests: TestDefinition[] = [
       const permErr = await ensurePreimageSubmitPermission(log);
       if (permErr) return permErr;
 
-      const manager = createPreimageManager();
+      const manager = await createHostPreimageManager();
+      if (!manager) {
+        return error("createHostPreimageManager returned null - not inside a host container");
+      }
       const data = new TextEncoder().encode(`factory_${Date.now()}`);
       const hash = await manager.submit(data);
 
@@ -2225,7 +2653,7 @@ export const preimageTests: TestDefinition[] = [
 
       // Allowance + permission setup (mirrors e2e/allowance-flows.spec.ts)
       log("Requesting BulletInAllowance...");
-      const allocRes = await hostApi.requestResourceAllocation({
+      const allocRes = await (await truApi()).requestResourceAllocation({
         tag: "v1",
         value: [{ tag: "BulletInAllowance", value: undefined }],
       });
@@ -2248,7 +2676,7 @@ export const preimageTests: TestDefinition[] = [
 
       // 2. Submit via host
       log("Submitting via preimageManager.submit...");
-      const hash = await preimageManager.submit(payload);
+      const hash = await (await pm()).submit(payload);
       log(`Host returned hash: ${hash}`);
 
       // 3. Lookup via host — proves bytes round-trip through the host's bulletin path
@@ -2389,7 +2817,7 @@ export const notificationTests: TestDefinition[] = [
       const permErr = await ensureDevicePermission(log, "Notifications");
       if (permErr) return permErr;
 
-      const result = await hostApi.pushNotification({
+      const result = await (await truApi()).pushNotification({
         tag: "v1",
         value: { text, deeplink, scheduledAt: undefined },
       });
@@ -2432,7 +2860,7 @@ export const navigationTests: TestDefinition[] = [
       const url = args?.url ?? "https://search.dot";
       const permErr = await ensureDevicePermission(log, "OpenUrl");
       if (permErr) return permErr;
-      const result = await hostApi.navigateTo({ tag: "v1", value: url });
+      const result = await (await truApi()).navigateTo({ tag: "v1", value: url });
       return result.match(
         () => success(`Navigated to ${url}`),
         (err) => error(err.value.name, err.value),
@@ -2451,7 +2879,7 @@ export const navigationTests: TestDefinition[] = [
       const url = args?.url ?? "https://polkadot.com";
       const permErr = await ensureDevicePermission(log, "OpenUrl");
       if (permErr) return permErr;
-      const result = await hostApi.navigateTo({ tag: "v1", value: url });
+      const result = await (await truApi()).navigateTo({ tag: "v1", value: url });
       return result.match(
         () => success(`Navigated to ${url}`),
         (err) => error(err.value.name, err.value),
@@ -2470,7 +2898,7 @@ export const chainTests: TestDefinition[] = [
     api: "hostApi.chainSpecGenesisHash({ tag: 'v1', value: genesisHash })",
     category: "chain",
     async run(chain: ChainConfig) {
-      const result = await hostApi.chainSpecGenesisHash({
+      const result = await (await truApi()).chainSpecGenesisHash({
         tag: "v1",
         value: chain.genesis,
       });
@@ -2488,7 +2916,7 @@ export const chainTests: TestDefinition[] = [
     api: "hostApi.chainSpecChainName({ tag: 'v1', value: genesisHash })",
     category: "chain",
     async run(chain: ChainConfig) {
-      const result = await hostApi.chainSpecChainName({
+      const result = await (await truApi()).chainSpecChainName({
         tag: "v1",
         value: chain.genesis,
       });
@@ -2507,7 +2935,7 @@ export const chainTests: TestDefinition[] = [
     api: "hostApi.chainSpecProperties({ tag: 'v1', value: genesisHash })",
     category: "chain",
     async run(chain: ChainConfig) {
-      const result = await hostApi.chainSpecProperties({
+      const result = await (await truApi()).chainSpecProperties({
         tag: "v1",
         value: chain.genesis,
       });
@@ -2526,10 +2954,11 @@ export const chainTests: TestDefinition[] = [
     api: "hostApi.chainHeadFollowSubscribe({ tag: 'v1', value: { genesisHash, withRuntime } }, callback)",
     category: "chain",
     async run(chain: ChainConfig) {
+      const api = await truApi();
       return new Promise((resolve) => {
         const events: { tag: string; blockHash?: string }[] = [];
 
-        const subscription = hostApi.chainHeadFollowSubscribe(
+        const subscription = api.chainHeadFollowSubscribe(
           {
             tag: "v1",
             value: { genesisHash: chain.genesis, withRuntime: false },
@@ -2591,8 +3020,9 @@ export const chainTests: TestDefinition[] = [
       const log = logger || (() => {});
       log("Starting follow subscription...");
 
+      const api = await truApi();
       return new Promise((resolve) => {
-        const subscription = hostApi.chainHeadFollowSubscribe(
+        const subscription = api.chainHeadFollowSubscribe(
           { tag: "v1", value: { genesisHash: chain.genesis, withRuntime: false } },
           async (event) => {
             if (event.tag !== "v1") return;
@@ -2604,7 +3034,7 @@ export const chainTests: TestDefinition[] = [
             log(`Got finalized block, fetching header for ${blockHash.slice(0, 18)}...`);
 
             try {
-              const result = await hostApi.chainHeadHeader({
+              const result = await (await truApi()).chainHeadHeader({
                 tag: "v1",
                 value: {
                   genesisHash: chain.genesis,
@@ -2642,8 +3072,9 @@ export const chainTests: TestDefinition[] = [
       const log = logger || (() => {});
       log("Starting follow subscription...");
 
+      const api = await truApi();
       return new Promise((resolve) => {
-        const subscription = hostApi.chainHeadFollowSubscribe(
+        const subscription = api.chainHeadFollowSubscribe(
           { tag: "v1", value: { genesisHash: chain.genesis, withRuntime: false } },
           async (event) => {
             if (event.tag !== "v1") return;
@@ -2655,7 +3086,7 @@ export const chainTests: TestDefinition[] = [
             log(`Fetching body for ${blockHash.slice(0, 18)}...`);
 
             try {
-              const result = await hostApi.chainHeadBody({
+              const result = await (await truApi()).chainHeadBody({
                 tag: "v1",
                 value: {
                   genesisHash: chain.genesis,
@@ -2693,8 +3124,9 @@ export const chainTests: TestDefinition[] = [
       const log = logger || (() => {});
       log("Starting follow subscription...");
 
+      const api = await truApi();
       return new Promise((resolve) => {
-        const subscription = hostApi.chainHeadFollowSubscribe(
+        const subscription = api.chainHeadFollowSubscribe(
           { tag: "v1", value: { genesisHash: chain.genesis, withRuntime: false } },
           async (event) => {
             if (event.tag !== "v1") return;
@@ -2708,7 +3140,7 @@ export const chainTests: TestDefinition[] = [
             try {
               // Query System.Account storage prefix
               const storageKey = "0x26aa394eea5630e07c48ae0c9558cef7" as `0x${string}`;
-              const result = await hostApi.chainHeadStorage({
+              const result = await (await truApi()).chainHeadStorage({
                 tag: "v1",
                 value: {
                   genesisHash: chain.genesis,
@@ -2748,8 +3180,9 @@ export const chainTests: TestDefinition[] = [
       const log = logger || (() => {});
       log("Starting follow subscription...");
 
+      const api = await truApi();
       return new Promise((resolve) => {
-        const subscription = hostApi.chainHeadFollowSubscribe(
+        const subscription = api.chainHeadFollowSubscribe(
           { tag: "v1", value: { genesisHash: chain.genesis, withRuntime: false } },
           async (event) => {
             if (event.tag !== "v1") return;
@@ -2761,7 +3194,7 @@ export const chainTests: TestDefinition[] = [
             log(`Calling Core_version at ${blockHash.slice(0, 18)}...`);
 
             try {
-              const result = await hostApi.chainHeadCall({
+              const result = await (await truApi()).chainHeadCall({
                 tag: "v1",
                 value: {
                   genesisHash: chain.genesis,
@@ -2801,8 +3234,9 @@ export const chainTests: TestDefinition[] = [
       const log = logger || (() => {});
       log("Starting follow subscription...");
 
+      const api = await truApi();
       return new Promise((resolve) => {
-        const subscription = hostApi.chainHeadFollowSubscribe(
+        const subscription = api.chainHeadFollowSubscribe(
           { tag: "v1", value: { genesisHash: chain.genesis, withRuntime: false } },
           async (event) => {
             if (event.tag !== "v1") return;
@@ -2814,7 +3248,7 @@ export const chainTests: TestDefinition[] = [
             log(`Unpinning block ${blockHash.slice(0, 18)}...`);
 
             try {
-              const result = await hostApi.chainHeadUnpin({
+              const result = await (await truApi()).chainHeadUnpin({
                 tag: "v1",
                 value: {
                   genesisHash: chain.genesis,
@@ -2850,7 +3284,7 @@ export const chainTests: TestDefinition[] = [
     warning: "Will fail with invalid transaction",
     category: "chain",
     async run(chain: ChainConfig) {
-      const result = await hostApi.chainTransactionBroadcast({
+      const result = await (await truApi()).chainTransactionBroadcast({
         tag: "v1",
         value: {
           genesisHash: chain.genesis,
@@ -2877,7 +3311,7 @@ export const chainTests: TestDefinition[] = [
       const log = logger || (() => {});
       log("Broadcasting dummy transaction...");
 
-      const broadcastResult = await hostApi.chainTransactionBroadcast({
+      const broadcastResult = await (await truApi()).chainTransactionBroadcast({
         tag: "v1",
         value: {
           genesisHash: chain.genesis,
@@ -2891,7 +3325,7 @@ export const chainTests: TestDefinition[] = [
           if (!operationId) return success("Broadcast returned no operationId — nothing to stop");
 
           log(`Stopping broadcast ${operationId}...`);
-          const stopResult = await hostApi.chainTransactionStop({
+          const stopResult = await (await truApi()).chainTransactionStop({
             tag: "v1",
             value: { genesisHash: chain.genesis, operationId },
           });
@@ -2915,8 +3349,9 @@ export const chainTests: TestDefinition[] = [
       const log = logger || (() => {});
       log("Starting follow subscription...");
 
+      const api = await truApi();
       return new Promise((resolve) => {
-        const subscription = hostApi.chainHeadFollowSubscribe(
+        const subscription = api.chainHeadFollowSubscribe(
           { tag: "v1", value: { genesisHash: chain.genesis, withRuntime: false } },
           async (event) => {
             if (event.tag !== "v1") return;
@@ -2930,7 +3365,7 @@ export const chainTests: TestDefinition[] = [
             try {
               // Query with DescendantsValues to increase chance of pagination
               const storageKey = "0x26aa394eea5630e07c48ae0c9558cef7" as `0x${string}`;
-              const storageResult = await hostApi.chainHeadStorage({
+              const storageResult = await (await truApi()).chainHeadStorage({
                 tag: "v1",
                 value: {
                   genesisHash: chain.genesis,
@@ -2953,7 +3388,7 @@ export const chainTests: TestDefinition[] = [
               }
 
               log(`Calling continue on operation ${operationId}...`);
-              const continueResult = await hostApi.chainHeadContinue({
+              const continueResult = await (await truApi()).chainHeadContinue({
                 tag: "v1",
                 value: {
                   genesisHash: chain.genesis,
@@ -2991,8 +3426,9 @@ export const chainTests: TestDefinition[] = [
       const log = logger || (() => {});
       log("Starting follow subscription...");
 
+      const api = await truApi();
       return new Promise((resolve) => {
-        const subscription = hostApi.chainHeadFollowSubscribe(
+        const subscription = api.chainHeadFollowSubscribe(
           { tag: "v1", value: { genesisHash: chain.genesis, withRuntime: false } },
           async (event) => {
             if (event.tag !== "v1") return;
@@ -3005,7 +3441,7 @@ export const chainTests: TestDefinition[] = [
 
             try {
               const storageKey = "0x26aa394eea5630e07c48ae0c9558cef7" as `0x${string}`;
-              const storageResult = await hostApi.chainHeadStorage({
+              const storageResult = await (await truApi()).chainHeadStorage({
                 tag: "v1",
                 value: {
                   genesisHash: chain.genesis,
@@ -3028,7 +3464,7 @@ export const chainTests: TestDefinition[] = [
               }
 
               log(`Stopping operation ${operationId}...`);
-              const stopResult = await hostApi.chainHeadStopOperation({
+              const stopResult = await (await truApi()).chainHeadStopOperation({
                 tag: "v1",
                 value: {
                   genesisHash: chain.genesis,
@@ -3070,7 +3506,7 @@ export const chainTests: TestDefinition[] = [
           // ss58 prefix 0 is used by all Paseo Hub chains we target; the
           // run() call still re-encodes with the active chain's prefix if it
           // differs. We pre-fill so the user can see and edit it.
-          const accountsProvider = createAccountsProvider();
+          const accountsProvider = await accounts();
           const result = await accountsProvider.getProductAccount(SELF_DOTNS, 0);
           return result.match(
             (a) => AccountId(0).dec(a.publicKey),
@@ -3084,7 +3520,7 @@ export const chainTests: TestDefinition[] = [
       const log = logger || (() => {});
       let address = args?.address?.trim();
       if (!address) {
-        const accountsProvider = createAccountsProvider();
+        const accountsProvider = await accounts();
         const accountResult = await accountsProvider.getProductAccount(SELF_DOTNS, 0);
         const account = accountResult.match((a) => a, () => null);
         if (!account) {
@@ -3093,7 +3529,7 @@ export const chainTests: TestDefinition[] = [
         address = AccountId(chain.ss58Prefix).dec(account.publicKey);
         log(`Resolved product account ${SELF_DOTNS}/0 → ${address}`);
       }
-      const client = getClient(chain.genesis);
+      const client = await getClient(chain.genesis);
       try {
         const api = client.getUnsafeApi();
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -3122,7 +3558,7 @@ export const contractTests: TestDefinition[] = [
     async run(chain: ChainConfig) {
       const contractAddress = HOSTAPI_DEMO_ADDRESS;
       const origin = READ_ORIGIN;
-      const client = getClient(chain.genesis);
+      const client = await getClient(chain.genesis);
       try {
         const sdk = createInkSdk(client);
         const contract = sdk.getContract(contracts.hostApiDemo, contractAddress);
@@ -3158,7 +3594,7 @@ export const contractTests: TestDefinition[] = [
       if (loginErr) return loginErr;
 
       log("Fetching account...");
-      const accountsProvider = createAccountsProvider();
+      const accountsProvider = await accounts();
       const accountResult = await accountsProvider.getProductAccount(SELF_DOTNS, 0);
       const account = accountResult.match((a) => a, () => null);
       if (!account) return error("No product account available");
@@ -3169,7 +3605,7 @@ export const contractTests: TestDefinition[] = [
       const permissionError = await ensureChainSubmitForTxBroadcast(log);
       if (permissionError) return permissionError;
 
-      const client = getClient(chain.genesis);
+      const client = await getClient(chain.genesis);
       const sdk = createInkSdk(client);
       const contract = sdk.getContract(contracts.hostApiDemo, HOSTAPI_DEMO_ADDRESS);
 
@@ -3205,7 +3641,7 @@ export const contractTests: TestDefinition[] = [
     async run(chain: ChainConfig) {
       const contractAddress = HOSTAPI_DEMO_ADDRESS;
       const origin = READ_ORIGIN;
-      const client = getClient(chain.genesis);
+      const client = await getClient(chain.genesis);
       try {
         const sdk = createInkSdk(client);
         const contract = sdk.getContract(contracts.hostApiDemo, contractAddress);
@@ -3230,7 +3666,7 @@ export const contractTests: TestDefinition[] = [
     async run(chain: ChainConfig) {
       const contractAddress = HOSTAPI_DEMO_ADDRESS;
       const origin = READ_ORIGIN;
-      const client = getClient(chain.genesis);
+      const client = await getClient(chain.genesis);
       try {
         const sdk = createInkSdk(client);
         const contract = sdk.getContract(contracts.hostApiDemo, contractAddress);
@@ -3271,7 +3707,7 @@ export const contractTests: TestDefinition[] = [
       if (loginErr) return loginErr;
 
       log("Fetching account...");
-      const accountsProvider = createAccountsProvider();
+      const accountsProvider = await accounts();
       const accountResult = await accountsProvider.getProductAccount(SELF_DOTNS, 0);
       const account = accountResult.match((a) => a, () => null);
       if (!account) return error("No product account available");
@@ -3282,7 +3718,7 @@ export const contractTests: TestDefinition[] = [
       const permissionError = await ensureChainSubmitForTxBroadcast(log);
       if (permissionError) return permissionError;
 
-      const client = getClient(chain.genesis);
+      const client = await getClient(chain.genesis);
       const sdk = createInkSdk(client);
       const contract = sdk.getContract(contracts.hostApiDemo, HOSTAPI_DEMO_ADDRESS);
 
@@ -3331,7 +3767,7 @@ export const contractTests: TestDefinition[] = [
       if (loginErr) return loginErr;
 
       log("Fetching account...");
-      const accountsProvider = createAccountsProvider();
+      const accountsProvider = await accounts();
       const accountResult = await accountsProvider.getProductAccount(SELF_DOTNS, 0);
       const account = accountResult.match((a) => a, () => null);
       if (!account) return error("No product account available");
@@ -3342,7 +3778,7 @@ export const contractTests: TestDefinition[] = [
       const permissionError = await ensureChainSubmitForTxBroadcast(log);
       if (permissionError) return permissionError;
 
-      const client = getClient(chain.genesis);
+      const client = await getClient(chain.genesis);
       const sdk = createInkSdk(client);
       const contract = sdk.getContract(contracts.hostApiDemo, HOSTAPI_DEMO_ADDRESS);
 
@@ -3381,7 +3817,7 @@ export const contractTests: TestDefinition[] = [
     async run(chain: ChainConfig) {
       const contractAddress = HOSTAPI_DEMO_ADDRESS;
       const origin = READ_ORIGIN;
-      const client = getClient(chain.genesis);
+      const client = await getClient(chain.genesis);
       try {
         const sdk = createInkSdk(client);
         const contract = sdk.getContract(contracts.hostApiDemo, contractAddress);
@@ -3407,7 +3843,7 @@ export const themeTests: TestDefinition[] = [
     api: "themeProvider.subscribeTheme(callback)",
     category: "theme",
     async run() {
-      const themeProvider = createThemeProvider();
+      const themeProvider = await theme();
 
       return new Promise((resolve) => {
         const themes: string[] = [];
@@ -3444,15 +3880,18 @@ export const entropyTests: TestDefinition[] = [
     async run(_chain, _logger, args) {
       const keyText = args?.key ?? "my-secret-key";
       const key = new TextEncoder().encode(keyText);
-      const result = await deriveEntropy(key);
 
-      return result.match(
-        (entropy) =>
-          success(`Derived ${entropy.length} bytes of entropy`, {
-            entropyHex: toHex(entropy),
-          }),
-        (err) => error(`${err.name}`, err),
-      );
+      // The Parity `deriveEntropy` wrapper unwraps the ResultAsync internally
+      // and throws on error - signature is `(key) => Promise<Uint8Array>`.
+      try {
+        const entropy = await deriveEntropy(key);
+        return success(`Derived ${entropy.length} bytes of entropy`, {
+          entropyHex: toHex(entropy),
+        });
+      } catch (err) {
+        const e = err instanceof Error ? err : new Error(String(err));
+        return error(e.message, e);
+      }
     },
   },
 ];
@@ -3474,7 +3913,7 @@ export const authTests: TestDefinition[] = [
     category: "auth",
     async run(_chain, _logger, args) {
       const reason = args?.reason ?? "Please sign in to use this feature";
-      const accountsProvider = createAccountsProvider();
+      const accountsProvider = await accounts();
       const result = await accountsProvider.requestLogin(reason);
 
       return result.match(
@@ -3490,7 +3929,7 @@ export const authTests: TestDefinition[] = [
     api: "accountsProvider.getUserId()",
     category: "auth",
     async run() {
-      const accountsProvider = createAccountsProvider();
+      const accountsProvider = await accounts();
       const result = await accountsProvider.getUserId();
 
       return result.match(
@@ -3616,7 +4055,7 @@ type AllocatableResource =
   | { tag: "AutoSigning"; value: undefined };
 
 async function runResourceAllocation(resources: AllocatableResource[]) {
-  const result = await hostApi.requestResourceAllocation({
+  const result = await (await truApi()).requestResourceAllocation({
     tag: "v1",
     value: resources,
   });

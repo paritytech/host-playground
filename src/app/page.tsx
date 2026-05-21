@@ -1,8 +1,9 @@
 "use client";
 
-import { useCallback, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { AlertTriangle } from "lucide-react";
+import { isInsideContainer, isInsideContainerSync } from "@parity/product-sdk-host";
 import { Card, CardContent } from "@/src/components/card";
 import { LogViewer } from "@/src/components/log-viewer";
 import { TestCategoryCard } from "@/src/components/test-category";
@@ -18,10 +19,9 @@ import {
 } from "@/src/lib/types";
 import { useLogs } from "@/src/lib/use-logs";
 import { useAccounts } from "@/src/lib/use-accounts";
-import { useConnectionStatus } from "@/src/lib/use-connection-status";
 import { stringify } from "@/src/lib/utils";
 
-const SDK_VERSION = "0.7.9";
+const SDK_VERSION_LABEL = "@parity/product-sdk-host 0.3.0";
 
 const categoryIcons: Record<TestCategory, string> = {
   extension: "🔌",
@@ -154,15 +154,22 @@ export default function SdkTestPage() {
 
   const currentChain: ChainConfig = CHAINS[selectedChain];
 
-  // Use hooks for connection and accounts (like coin-flip)
-  // connectionStatus starts as null until subscribeConnectionStatus responds
-  const connectionStatus = useConnectionStatus();
-  const { isReady } = useAccounts();
+  useAccounts();
 
-  // App is only usable once the connection status subscription has responded
-  // AND the extension readiness check has completed
-  const isTransportReady = connectionStatus !== null;
-  const isInWebview = isTransportReady ? isReady : null;
+  // Synchronous heuristic first, then confirm asynchronously through
+  // @parity/product-sdk-host so we converge on the SDK-backed answer.
+  const [isInWebview, setIsInWebview] = useState<boolean | null>(() =>
+    typeof window === "undefined" ? null : isInsideContainerSync(),
+  );
+  useEffect(() => {
+    let cancelled = false;
+    void isInsideContainer().then((inside) => {
+      if (!cancelled) setIsInWebview(inside);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   const runTest = useCallback(
     async (test: TestDefinition, args?: Record<string, string>) => {
@@ -217,7 +224,7 @@ export default function SdkTestPage() {
                 Host Playground
               </h1>
               <span className="text-sm text-muted-foreground">
-                @novasamatech/host-api-wrapper {SDK_VERSION}
+                {SDK_VERSION_LABEL}
               </span>
             </div>
             <ChainSelector
