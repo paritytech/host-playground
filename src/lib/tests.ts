@@ -785,13 +785,13 @@ export const signingTests: TestDefinition[] = [
       }
 
       // Get accounts from the injected extension
-      const accounts = await injected.accounts.get();
+      const legacyAccounts = await injected.accounts.get();
 
-      if (accounts.length === 0) {
+      if (legacyAccounts.length === 0) {
         return error("No legacy accounts available for signing");
       }
 
-      const account = accounts[0];
+      const account = legacyAccounts[0];
       const address = account.address;
 
       const client = await getClient(chain.genesis);
@@ -3956,11 +3956,11 @@ export const paymentTests: TestDefinition[] = [
       const loginErr = await ensureLoggedIn(log, "Sign in to view your balance");
       if (loginErr) return loginErr;
 
-      const pm = createPaymentManager();
+      const paymentManager = createPaymentManager();
 
       return new Promise((resolve) => {
         const balances: unknown[] = [];
-        const sub = pm.subscribeBalance((balance) => {
+        const sub = paymentManager.subscribeBalance((balance) => {
           balances.push(balance);
         });
 
@@ -4002,10 +4002,10 @@ export const paymentTests: TestDefinition[] = [
       const loginErr = await ensureLoggedIn(log, "Sign in to top up your balance");
       if (loginErr) return loginErr;
 
-      const pm = createPaymentManager();
+      const paymentManager = createPaymentManager();
 
       try {
-        await pm.topUp(amount, {
+        await paymentManager.topUp(amount, {
           type: "productAccount",
           derivationIndex: 0,
         });
@@ -4035,11 +4035,11 @@ export const paymentTests: TestDefinition[] = [
       const loginErr = await ensureLoggedIn(log, "Sign in to request a payment");
       if (loginErr) return loginErr;
 
-      const pm = createPaymentManager();
+      const paymentManager = createPaymentManager();
       const destination = new Uint8Array(32); // zero address for test
 
       try {
-        const receipt = await pm.requestPayment(amount, destination);
+        const receipt = await paymentManager.requestPayment(amount, destination);
         return success(`Payment requested: ${receipt.id}`, receipt);
       } catch (e) {
         return error(`Payment request failed: ${e}`);

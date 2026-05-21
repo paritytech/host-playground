@@ -744,15 +744,7 @@
   dependencies:
     polkadot-api "^2.1.2"
 
-"@parity/product-sdk-host@0.3.0":
-  version "0.3.0"
-  resolved "https://registry.yarnpkg.com/@parity/product-sdk-host/-/product-sdk-host-0.3.0.tgz#29f05b89e8d3d5462f7eb2a661ba5572c8806d5b"
-  integrity sha512-c4nmD1VQqMlbzqF4vHBRB0YQWLWvmdIS2QgchcDCvlGQbxiL/iz9iLMW9Mz34K8BzHea0bc0mtpYH9HDeYYUZA==
-  dependencies:
-    "@parity/product-sdk-logger" "0.1.1"
-    polkadot-api "^2.1.2"
-
-"@parity/product-sdk-host@0.4.0", "@parity/product-sdk-host@^0.4.0":
+"@parity/product-sdk-host@0.3.0", "@parity/product-sdk-host@0.4.0", "@parity/product-sdk-host@^0.4.0":
   version "0.4.0"
   resolved "https://registry.yarnpkg.com/@parity/product-sdk-host/-/product-sdk-host-0.4.0.tgz#139c622e5265a7fc721b2ec65c4a7739241e5fac"
   integrity sha512-Kw/ZRMHBHPrR/ST00QZqZa+qXGrrLYVXgrmCJ9YCys+yaPleJl0Q1+HI6zTD0bjaHsooESk+yYLajCRtZAdVVg==
