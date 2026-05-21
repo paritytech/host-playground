@@ -21,7 +21,9 @@ import { useLogs } from "@/src/lib/use-logs";
 import { useAccounts } from "@/src/lib/use-accounts";
 import { stringify } from "@/src/lib/utils";
 
-const SDK_VERSION_LABEL = "@parity/product-sdk-host 0.3.0";
+// Hardcoded because @parity/product-sdk-host's `exports` map doesn't surface
+// package.json. Bump alongside the dep range in package.json.
+const SDK_VERSION_LABEL = "@parity/product-sdk-host ^0.4.0";
 
 const categoryIcons: Record<TestCategory, string> = {
   extension: "🔌",
