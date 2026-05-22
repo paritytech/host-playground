@@ -370,31 +370,6 @@ export const accountTests: TestDefinition[] = [
     },
   },
   {
-    id: "accounts-provider-legacy-signer",
-    name: "Legacy Account Signer",
-    description: "Creates a PolkadotSigner for a legacy account",
-    api: "accountsProvider.getLegacyAccountSigner(account)",
-    category: "accounts",
-    async run() {
-      const accountsProvider = createAccountsProvider();
-      const accountsResult = await accountsProvider.getLegacyAccounts();
-
-      return accountsResult.match(
-        (accounts) => {
-          if (accounts.length === 0) {
-            return error("No legacy accounts available");
-          }
-          const account = accounts[0];
-          const signer = accountsProvider.getLegacyAccountSigner(account);
-          return success("Legacy account signer created", {
-            publicKey: toHex(signer.publicKey),
-          });
-        },
-        (err) => error(`${err.name}`, err),
-      );
-    },
-  },
-  {
     id: "accounts-provider-connection-status",
     name: "Account Connection Status",
     description: "Subscribes to account connection status changes (5s)",
@@ -418,66 +393,6 @@ export const accountTests: TestDefinition[] = [
           );
         }, 5000);
       });
-    },
-  },
-  {
-    id: "accounts-ring-vrf-proof",
-    name: "Create Ring VRF Proof",
-    description: "Creates a Ring VRF proof for a product account",
-    api: "accountsProvider.createRingVRFProof(dotNsId, derivationIndex, location, message)",
-    args: [
-      {
-        name: "dotNsIdentifier",
-        label: "DotNS ID",
-        defaultValue: SELF_DOTNS,
-      },
-      {
-        name: "genesisHash",
-        label: "Ring Genesis Hash",
-        defaultValue:
-          "0xd6eec26135305a8ad257a20d003357284c8aa03d0bdb2b357ab0a22371e11ef2",
-      },
-      {
-        name: "ringRootHash",
-        label: "Ring Root Hash",
-        defaultValue: "0x",
-      },
-    ],
-    category: "accounts",
-    async run(_chain, logger, args) {
-      const log = logger || (() => {});
-      const dotNsIdentifier = args?.dotNsIdentifier ?? SELF_DOTNS;
-      const genesisHash =
-        (args?.genesisHash as `0x${string}`) ??
-        "0xd6eec26135305a8ad257a20d003357284c8aa03d0bdb2b357ab0a22371e11ef2";
-      const ringRootHash = (args?.ringRootHash as `0x${string}`) ?? "0x";
-
-      const loginErr = await ensureLoggedIn(log, "Sign in to create a Ring VRF proof");
-      if (loginErr) return loginErr;
-
-      const accountsProvider = createAccountsProvider();
-      const message = new TextEncoder().encode(`ring-vrf-test:${Date.now()}`);
-
-      log(`Creating Ring VRF proof for ${dotNsIdentifier}...`);
-      const result = await accountsProvider.createRingVRFProof(
-        dotNsIdentifier,
-        0,
-        {
-          genesisHash,
-          ringRootHash,
-          hints: undefined,
-        },
-        message,
-      );
-
-      return result.match(
-        (proof) =>
-          success(`Ring VRF proof created (${proof.length} bytes)`, {
-            proofHex: toHex(proof).slice(0, 40) + "...",
-            proofLength: proof.length,
-          }),
-        (err) => error(`${err.name}`, err),
-      );
     },
   },
 ];
@@ -635,97 +550,6 @@ export const signingTests: TestDefinition[] = [
           },
           error: (e) => reject(e),
         });
-      });
-    },
-  },
-  {
-    id: "sign-payload-legacy",
-    name: "Sign Payload (Legacy Account)",
-    description:
-      "Signs a transaction payload using a legacy account (injected extension)",
-    api: "signer.signPayload(payload)",
-    args: [
-      {
-        name: "message",
-        label: "Remark",
-        defaultValue: "Remark from Host Playground",
-      },
-    ],
-    category: "signing",
-    async run(chain: ChainConfig, logger?: TestLogger, args?) {
-      const log = logger || (() => {});
-
-      const loginErr = await ensureLoggedIn(log, "Sign in to use a legacy signer");
-      if (loginErr) return loginErr;
-
-      // Get legacy extension via enable factory
-      log("Creating legacy extension...");
-      const enableFactory =
-        await createLegacyExtensionEnableFactory(sandboxTransport);
-
-      if (!enableFactory) {
-        return error("Transport not ready - enable factory returned null");
-      }
-
-      const injected = await enableFactory();
-
-      if (!injected.accounts || !injected.signer) {
-        return error("No accounts or signer available from extension");
-      }
-
-      // Get accounts from the injected extension
-      const accounts = await injected.accounts.get();
-
-      if (accounts.length === 0) {
-        return error("No legacy accounts available for signing");
-      }
-
-      const account = accounts[0];
-      const address = account.address;
-
-      const client = getClient(chain.genesis);
-      const api = client.getUnsafeApi();
-
-      log("Preparing transaction...");
-      const message = args?.message ?? "Remark from Host Playground";
-      const tx = api.tx.System.remark({
-        remark: Binary.fromText(message),
-      });
-
-      log("Signing with legacy account signer...");
-
-      const signer = injected.signer;
-
-      if (!signer.signPayload) {
-        return error("Signer does not support signPayload");
-      }
-
-      const callData = await tx.getEncodedData();
-      const callDataHex = toHex(callData);
-
-      const signResult = await signer.signPayload({
-        address,
-        blockHash:
-          "0x0000000000000000000000000000000000000000000000000000000000000000",
-        blockNumber: "0x00000000",
-        era: "0x00",
-        genesisHash: chain.genesis,
-        method: callDataHex,
-        nonce: "0x00000000",
-        signedExtensions: [],
-        specVersion: "0x00000000",
-        tip: "0x00000000000000000000000000000000",
-        transactionVersion: "0x00000000",
-        version: 4,
-      });
-
-      const txHash = signResult.signature;
-
-      log(`Transaction signed!\nSignature: ${txHash}`);
-
-      return success(`Transaction signed for ${chain.name}`, {
-        txHash,
-        address,
       });
     },
   },
@@ -1021,135 +845,6 @@ export const signingTests: TestDefinition[] = [
     },
   },
   {
-    id: "sign-raw-legacy",
-    name: "Sign Raw Message (Legacy Account)",
-    description: "Signs a raw message via hostApi.signRawWithLegacyAccount",
-    api: "hostApi.signRawWithLegacyAccount({ tag, value: { signer, payload } })",
-    args: [
-      {
-        name: "message",
-        label: "Message",
-        defaultValue: "Hello from Host Playground!",
-      },
-    ],
-    category: "signing",
-    async run(_chain, logger, args) {
-      const log = logger || (() => {});
-
-      const loginErr = await ensureLoggedIn(log, "Sign in to sign with a legacy account");
-      if (loginErr) return loginErr;
-
-      log("Creating account provider...");
-      const accountsProvider = createAccountsProvider();
-      const result = await accountsProvider.getLegacyAccounts();
-
-      return result.match(async (accounts) => {
-        if (accounts.length === 0) {
-          return error('No legacy accounts available')
-        }
-
-        const signerAddress = toHex(accounts[0].publicKey);
-
-        const message =
-          args?.message ??
-          `Hello from Host Playground! ${new Date().toLocaleString()}`;
-        const messageBytes = new TextEncoder().encode(message);
-
-        log(`Signing with legacy account ${signerAddress.slice(0, 10)}...`);
-        const result = await hostApi.signRawWithLegacyAccount({
-          tag: "v1",
-          value: {
-            signer: signerAddress,
-            payload: { tag: "Bytes", value: messageBytes },
-          },
-        });
-
-        return result.match(
-          (res) => success("Message signed", res.value),
-          (err) => error(err.value.name, err.value),
-        );
-      }, (err) => error(err.message))
-    },
-  },
-  {
-    id: "sign-payload-legacy-host-api",
-    name: "Sign Payload (Legacy Account via hostApi)",
-    description:
-      "Signs a remark payload via hostApi.signPayloadWithLegacyAccount",
-    api: "hostApi.signPayloadWithLegacyAccount({ tag, value: { signer, payload } })",
-    args: [
-      {
-        name: "message",
-        label: "Remark",
-        defaultValue: "Remark from Host Playground",
-      },
-    ],
-    category: "signing",
-    async run(chain: ChainConfig, logger?: TestLogger, args?) {
-      const log = logger || (() => {});
-
-      const loginErr = await ensureLoggedIn(log, "Sign in to sign with a legacy account");
-      if (loginErr) return loginErr;
-
-      log("Creating account provider...");
-      const accountsProvider = createAccountsProvider();
-      const result = await accountsProvider.getLegacyAccounts();
-
-      return result.match(async (accounts) => {
-        if (accounts.length === 0) {
-          return error('No legacy accounts available')
-        }
-
-        const signerAddress = toHex(accounts[0].publicKey);
-
-        const client = getClient(chain.genesis);
-        const api = client.getUnsafeApi();
-
-        const message = args?.message ?? "Remark from Host Playground";
-        const tx = api.tx.System.remark({
-          remark: Binary.fromText(message),
-        });
-        const callData = await tx.getEncodedData();
-        const callDataHex = toHex(callData) as `0x${string}`;
-
-        log(`Signing payload with legacy account ${signerAddress.slice(0, 10)}...`);
-        const signResult = await hostApi.signPayloadWithLegacyAccount({
-          tag: "v1",
-          value: {
-            signer: signerAddress,
-            payload: {
-              blockHash:
-                "0x0000000000000000000000000000000000000000000000000000000000000000",
-              blockNumber: "0x00000000",
-              era: "0x00",
-              genesisHash: chain.genesis,
-              method: callDataHex,
-              nonce: "0x00000000",
-              specVersion: "0x00000000",
-              tip: "0x00000000000000000000000000000000",
-              transactionVersion: "0x00000000",
-              signedExtensions: [],
-              version: 4,
-              assetId: undefined,
-              metadataHash: undefined,
-              mode: undefined,
-              withSignedTransaction: undefined,
-            },
-          },
-        });
-
-        return signResult.match(
-          (res) =>
-            success(`Payload signed for ${chain.name}`, {
-              signature: res.value.signature,
-              signer: signerAddress,
-            }),
-          (err) => error(err.value.name, err.value),
-        );
-      }, (err) => error(err.message))
-    },
-  },
-  {
     id: "create-transaction",
     name: "Create Transaction",
     description: "Creates a transaction (requires product account)",
@@ -1168,36 +863,6 @@ export const signingTests: TestDefinition[] = [
         tag: "v1",
         value: {
           signer: [dotNsIdentifier, 0],
-          genesisHash: fromHex(chain.genesis),
-          callData: new Uint8Array([0, 0]),
-          extensions: [],
-          txExtVersion: 0,
-        },
-      });
-
-      return result.match(
-        (res) =>
-          success(`Transaction created: ${toHex(res.value).slice(0, 40)}...`),
-        (err) => error(err.value.name, err.value),
-      );
-    },
-  },
-  {
-    id: "create-transaction-legacy",
-    name: "Create Transaction (Legacy Account)",
-    description: "Creates a transaction with a legacy account",
-    api: "hostApi.createTransactionWithLegacyAccount({ tag, value: payload })",
-    category: "signing",
-    async run(chain) {
-      const accountsProvider = createAccountsProvider();
-      const accountsResult = await accountsProvider.getLegacyAccounts();
-      const accounts = accountsResult.match((a) => a, () => null);
-      if (!accounts?.length) return error("No legacy accounts available");
-
-      const result = await hostApi.createTransactionWithLegacyAccount({
-        tag: "v1",
-        value: {
-          signer: accounts[0].publicKey,
           genesisHash: fromHex(chain.genesis),
           callData: new Uint8Array([0, 0]),
           extensions: [],
@@ -3332,28 +2997,6 @@ export const chainTests: TestDefinition[] = [
           resolve(error("Timed out waiting for Initialized event"));
         }, 15000);
       });
-    },
-  },
-  {
-    id: "jsonrpc-message-send",
-    name: "JSON-RPC: Send",
-    description: "Sends a legacy JSON-RPC message to a chain",
-    api: "hostApi.jsonrpcMessageSend({ tag: 'v1', value: [genesisHash, message] })",
-    disabled: "Removed in host-api 0.7.2 — use typed chain interaction instead",
-    category: "chain",
-    async run() {
-      return error("Removed in host-api 0.7.2");
-    },
-  },
-  {
-    id: "jsonrpc-message-subscribe",
-    name: "JSON-RPC: Subscribe",
-    description: "Subscribes to JSON-RPC responses from a chain for 5s",
-    api: "hostApi.jsonrpcMessageSubscribe({ tag: 'v1', value: genesisHash }, callback)",
-    disabled: "Removed in host-api 0.7.2 — use typed chain interaction instead",
-    category: "chain",
-    async run() {
-      return error("Removed in host-api 0.7.2");
     },
   },
   {
