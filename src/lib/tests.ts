@@ -56,9 +56,15 @@ function getClient(genesis: `0x${string}`): PolkadotClient {
 const HOSTAPI_DEMO_ADDRESS = deployment.hostApiDemo;
 const READ_ORIGIN = "5GrwvaEF5zXb26Fz9rcQpDWS57CtERHpNehXCPcNoHGKutQY";
 
-// Default DotNS identifier for product-account flows. Dotli embeds apps under
-// sandbox origins such as <cid>.app.localhost / <cid>.app.dot, so those must
-// not become the product DotNS id.
+// The DotNS identifier the host bound this product under. The desktop's
+// handleCreateTransaction gate rejects with PermissionDenied when the signer's
+// dotNsIdentifier doesn't match the binding identifier — and that identifier
+// comes from the URL. We mirror the dotli shell's BASE_DOMAIN rule
+// (packages/config/src/config.ts) inverted: the shell takes the last two
+// segments of the hostname as the registrable root (dot.li, paseo.li,
+// paseoli.dev, ephemeral previews, ...) so the *label* is everything before
+// it. Appending ".dot" gives the canonical DotNS identifier that's stable
+// across shell deployments.
 //
 // Cases:
 //   - <name>.dot                       → use as-is
