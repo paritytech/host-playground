@@ -56,18 +56,13 @@ function getClient(genesis: `0x${string}`): PolkadotClient {
 const HOSTAPI_DEMO_ADDRESS = deployment.hostApiDemo;
 const READ_ORIGIN = "5GrwvaEF5zXb26Fz9rcQpDWS57CtERHpNehXCPcNoHGKutQY";
 
-// The DotNS identifier the host bound this product under. The desktop's
-// handleCreateTransaction gate rejects with PermissionDenied when the signer's
-// dotNsIdentifier doesn't match the binding identifier — and that identifier
-// comes from the URL. We mirror the dotli shell's BASE_DOMAIN rule
-// (packages/config/src/config.ts) inverted: the shell takes the last two
-// segments of the hostname as the registrable root (dot.li, paseo.li,
-// paseoli.dev, ephemeral previews, ...) so the *label* is everything before
-// it. Appending ".dot" gives the canonical DotNS identifier that's stable
-// across shell deployments.
+// Default DotNS identifier for product-account flows. Dotli embeds apps under
+// sandbox origins such as <cid>.app.localhost / <cid>.app.dot, so those must
+// not become the product DotNS id.
 //
 // Cases:
 //   - <name>.dot                       → use as-is
+//   - <cid>.app.localhost / <cid>.app.dot → host-playground.dot
 //   - <name>.<root>.<tld>              → <name>.dot (handles .dot.li,
 //     <name>.<sub>.<root>.<tld>          .paseo.li, .paseoli.dev, etc.)
 //   - localhost / 127.0.0.1 / *.localhost → window.location.host
@@ -78,6 +73,9 @@ const SELF_DOTNS = (() => {
   const fallback = "host-playground" + ".dot";
   if (typeof window === "undefined") return fallback;
   const hostname = window.location.hostname.toLowerCase();
+  if (hostname.endsWith(".app.localhost") || hostname.endsWith(".app.dot")) {
+    return fallback;
+  }
   if (
     hostname === "localhost" ||
     hostname.endsWith(".localhost") ||
