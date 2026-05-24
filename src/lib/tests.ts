@@ -356,11 +356,10 @@ export const accountTests: TestDefinition[] = [
 
       return accountResult.match(
         (account) => {
-          const signer = accountsProvider.getProductAccountSigner({
-            dotNsIdentifier,
-            derivationIndex: 0,
-            publicKey: account.publicKey,
-          });
+          const signer = accountsProvider.getProductAccountSigner(
+            account,
+            "createTransaction",
+          );
           return success("Product account signer created", {
             publicKey: toHex(signer.publicKey),
           });
@@ -513,11 +512,10 @@ export const signingTests: TestDefinition[] = [
         );
       }
 
-      const signer = accountsProvider.getProductAccountSigner({
-        dotNsIdentifier,
-        derivationIndex: 0,
-        publicKey: account.publicKey,
-      });
+      const signer = accountsProvider.getProductAccountSigner(
+        account,
+        "signPayload",
+      );
 
       const client = getClient(chain.genesis);
       const api = client.getUnsafeApi();
@@ -599,11 +597,10 @@ export const signingTests: TestDefinition[] = [
         );
       }
 
-      const signer = accountsProvider.getProductAccountSigner({
-        dotNsIdentifier,
-        derivationIndex: 0,
-        publicKey: account.publicKey,
-      });
+      const signer = accountsProvider.getProductAccountSigner(
+        account,
+        "signPayload",
+      );
 
       log(`Connecting directly via WebSocket to ${chain.wsUrl}...`);
       const { getWsProvider } = await import("@polkadot-api/ws-provider");
@@ -696,11 +693,10 @@ export const signingTests: TestDefinition[] = [
       }
 
       const address = toHex(account.publicKey);
-      const signer = accountsProvider.getProductAccountSigner({
-        dotNsIdentifier,
-        derivationIndex: 0,
-        publicKey: account.publicKey,
-      });
+      const signer = accountsProvider.getProductAccountSigner(
+        account,
+        "signPayload",
+      );
       log(`Product account signer ready: ${address.slice(0, 18)}...`);
 
       const client = getClient(chain.genesis);
