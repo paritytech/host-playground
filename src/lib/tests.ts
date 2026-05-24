@@ -136,6 +136,28 @@ function bytesEqual(a: Uint8Array, b: Uint8Array): boolean {
   return true;
 }
 
+/**
+ * Statement-Store expiry as the chain expects it:
+ *   high 32 bits: unix timestamp (seconds) at which the statement expires
+ *   low  32 bits: sequence number (per-sender, breaks ties at the same ts)
+ *
+ * The chain rejects statements with a missing/zero expiry as
+ * `Submit failed, statement already expired` — the runtime treats the
+ * field as a hard cutoff and `undefined` is encoded as zero (epoch).
+ * Matches `@novasamatech/sdk-statement`'s `createExpiry` /
+ * `createExpiryFromDuration`; we inline it instead of pulling the SDK
+ * in just for two lines of arithmetic.
+ */
+function createExpiryFromDuration(durationSecs: number, sequenceNumber = 0): bigint {
+  // BigInt literal syntax (`32n`) needs ES2020+; tsconfig targets ES2017
+  // so we use the BigInt() constructor instead.
+  const timestamp = Math.floor(Date.now() / 1000) + durationSecs;
+  return (BigInt(timestamp) << BigInt(32)) | BigInt(sequenceNumber);
+}
+
+/** Default statement TTL — long enough for a slow proof-then-submit round-trip. */
+const STATEMENT_TTL_SECS = 300;
+
 // IPFS multicodec / multihash constants
 const IPFS_CODEC_RAW = 0x55;
 const IPFS_HASH_BLAKE2B_256 = 0xb220;
@@ -1695,7 +1717,7 @@ export const chatTests: TestDefinition[] = [
         data,
         channel: undefined,
         decryptionKey: undefined,
-        expiry: undefined,
+        expiry: createExpiryFromDuration(STATEMENT_TTL_SECS),
       };
       try {
         const proof = await statementStore.createProof(
@@ -1825,7 +1847,7 @@ export const statementTests: TestDefinition[] = [
         const proof = await statementStore.createProof([dotNsIdentifier, 0], {
           proof: undefined,
           decryptionKey: undefined,
-          expiry: undefined,
+          expiry: createExpiryFromDuration(STATEMENT_TTL_SECS),
           channel: undefined,
           topics: [],
           data: messageBytes,
@@ -1864,7 +1886,7 @@ export const statementTests: TestDefinition[] = [
         value: {
           proof: undefined,
           decryptionKey: undefined,
-          expiry: undefined,
+          expiry: createExpiryFromDuration(STATEMENT_TTL_SECS),
           channel: undefined,
           topics: [],
           data: messageBytes,
@@ -1912,7 +1934,7 @@ export const statementTests: TestDefinition[] = [
       const statement = {
         proof: undefined,
         decryptionKey: undefined,
-        expiry: undefined,
+        expiry: createExpiryFromDuration(STATEMENT_TTL_SECS),
         channel: undefined,
         topics: [],
         data: messageBytes,
@@ -1929,7 +1951,7 @@ export const statementTests: TestDefinition[] = [
         const signedStatement = {
           proof,
           decryptionKey: undefined,
-          expiry: undefined,
+          expiry: createExpiryFromDuration(STATEMENT_TTL_SECS),
           channel: undefined,
           topics: [],
           data: messageBytes,
@@ -2056,7 +2078,7 @@ export const statementTests: TestDefinition[] = [
           {
             proof: undefined,
             decryptionKey: undefined,
-            expiry: undefined,
+            expiry: createExpiryFromDuration(STATEMENT_TTL_SECS),
             channel: undefined,
             topics: [],
             data: messageBytes,
