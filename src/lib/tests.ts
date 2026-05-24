@@ -847,33 +847,68 @@ export const signingTests: TestDefinition[] = [
   {
     id: "create-transaction",
     name: "Create Transaction",
-    description: "Creates a transaction (requires product account)",
-    api: "hostApi.createTransaction({ tag, value: [accountId, payload] })",
+    description:
+      "Signs a transaction offline via the product account signer (mode = createTransaction). Returns the signed bytes without broadcasting.",
+    api: 'tx.sign(accountsProvider.getProductAccountSigner(account, "createTransaction"))',
     args: [
       {
         name: "dotNsIdentifier",
         label: "DotNS ID",
         defaultValue: SELF_DOTNS,
       },
+      {
+        name: "message",
+        label: "Remark",
+        defaultValue: "Create Transaction from Host Playground",
+      },
     ],
     category: "signing",
-    async run(chain, _logger, args) {
+    async run(chain, logger, args) {
+      const log = logger || (() => {});
       const dotNsIdentifier = args?.dotNsIdentifier ?? SELF_DOTNS;
-      const result = await hostApi.createTransaction({
-        tag: "v1",
-        value: {
-          signer: [dotNsIdentifier, 0],
-          genesisHash: fromHex(chain.genesis),
-          callData: new Uint8Array([0, 0]),
-          extensions: [],
-          txExtVersion: 0,
-        },
-      });
 
-      return result.match(
-        (res) =>
-          success(`Transaction created: ${toHex(res.value).slice(0, 40)}...`),
-        (err) => error(err.value.name, err.value),
+      const loginErr = await ensureLoggedIn(log, "Sign in to create a transaction");
+      if (loginErr) return loginErr;
+
+      log(`Fetching product account for ${dotNsIdentifier}...`);
+      const accountsProvider = createAccountsProvider();
+      const accountResult = await accountsProvider.getProductAccount(
+        dotNsIdentifier,
+        0,
+      );
+      const account = accountResult.match(
+        (a) => a,
+        (err) => {
+          log(`getProductAccount failed: ${err.name}`);
+          return null;
+        },
+      );
+      if (!account) {
+        return error(
+          `No product account for "${dotNsIdentifier}" — check that the user is signed in and the DotNS ID is valid`,
+        );
+      }
+
+      // mode="createTransaction" routes signing through the host's
+      // createTransaction path on the paired mobile app, instead of the
+      // default signPayload path used by signSubmitAndWatch.
+      const signer = accountsProvider.getProductAccountSigner(
+        account,
+        "createTransaction",
+      );
+
+      const client = getClient(chain.genesis);
+      const api = client.getUnsafeApi();
+
+      const message = args?.message ?? "Create Transaction from Host Playground";
+      const tx = api.tx.System.remark({ remark: Binary.fromText(message) });
+
+      log("Signing (createTransaction mode)...");
+      const signedBytes = await tx.sign(signer);
+      const signedHex = toHex(signedBytes);
+      return success(
+        `Transaction signed (${signedBytes.length} bytes)`,
+        { preview: `${signedHex.slice(0, 80)}...`, length: signedBytes.length },
       );
     },
   },
