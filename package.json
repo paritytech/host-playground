@@ -14,7 +14,7 @@
     "test:e2e:ui": "playwright test --ui"
   },
   "dependencies": {
-    "@novasamatech/host-api-wrapper": "^0.7.9",
+    "@novasamatech/host-api-wrapper": "^0.8.0-1",
     "@polkadot-api/descriptors": "file:.papi/descriptors",
     "@polkadot-api/ink-contracts": "^0.5.0",
     "@polkadot-api/sdk-ink": "0.7.0",
