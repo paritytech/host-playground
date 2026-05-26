@@ -569,10 +569,7 @@ export const signingTests: TestDefinition[] = [
         );
       }
 
-      const signer = accountsProvider.getProductAccountSigner(
-        account,
-        "signPayload",
-      );
+      const signer = accountsProvider.getProductAccountSigner(account);
 
       log(`Connecting directly via WebSocket to ${chain.wsUrl}...`);
       const { getWsProvider } = await import("@polkadot-api/ws-provider");
@@ -683,6 +680,86 @@ export const signingTests: TestDefinition[] = [
         `Transaction signed (${signedBytes.length} bytes)`,
         { preview: `${signedHex.slice(0, 80)}...`, length: signedBytes.length },
       );
+    },
+  },
+  {
+    id: "sign-batch-payload",
+    name: "Sign & Submit Batch (remark + 2 contract writes)",
+    description:
+      "Batches a remark + two storeValue calls on the HostApiDemo contract using Utility.batch_all, signs via the createTransaction product signer, and submits atomically",
+    api: "api.tx.Utility.batch_all([remark, storeValue, storeValue]).signSubmitAndWatch(signer)",
+    args: [
+      {
+        name: "remark",
+        label: "Remark",
+        defaultValue: "Batch test remark",
+      },
+    ],
+    category: "signing",
+    async run(chain: ChainConfig, logger?: TestLogger, args?) {
+      const log = logger || (() => {});
+
+      const loginErr = await ensureLoggedIn(log, "Sign in to sign and submit a batch");
+      if (loginErr) return loginErr;
+
+      log("Fetching product account...");
+      const accountsProvider = createAccountsProvider();
+      const accountResult = await accountsProvider.getProductAccount(SELF_DOTNS, 0);
+      const account = accountResult.match((a) => a, () => null);
+      if (!account) return error("No product account available");
+
+      const signer = accountsProvider.getProductAccountSigner(account);
+      const origin = AccountId().dec(account.publicKey);
+
+      const allowanceError = await ensureSmartContractAllowance(log, 0);
+      if (allowanceError) return allowanceError;
+
+      const permissionError = await ensureChainSubmitForTxBroadcast(log);
+      if (permissionError) return permissionError;
+
+      const client = getClient(chain.genesis);
+      const api = client.getUnsafeApi();
+      const sdk = createInkSdk(client);
+      const contract = sdk.getContract(contracts.hostApiDemo, HOSTAPI_DEMO_ADDRESS);
+
+      log("Building remark + 2 contract calls...");
+      const remarkMsg = args?.remark ?? "Batch test remark";
+      const remarkCall = api.tx.System.remark({
+        remark: Binary.fromText(remarkMsg),
+      }).decodedCall;
+
+      // Dry-run each contract call through sdk-ink to get weight+storage.
+      // The Promise<decodedCall> on the wrapped tx lets us extract the inner
+      // pallet-revive call without broadcasting.
+      const dryRun1 = await contract.query("storeValue", { origin, data: { _value: BigInt(42) } });
+      if (!dryRun1.success) return error("Dry-run #1 failed", dryRun1.value);
+      const dryRun2 = await contract.query("storeValue", { origin, data: { _value: BigInt(43) } });
+      if (!dryRun2.success) return error("Dry-run #2 failed", dryRun2.value);
+      const storeCall1 = await dryRun1.value.send().decodedCall;
+      const storeCall2 = await dryRun2.value.send().decodedCall;
+
+      log("Submitting Utility.batch_all of 3 calls...");
+      const batchTx = api.tx.Utility.batch_all({
+        calls: [remarkCall, storeCall1, storeCall2],
+      });
+
+      return new Promise<TestResult>((resolve, reject) => {
+        batchTx.signSubmitAndWatch(signer).subscribe({
+          next: (event) => {
+            log(`Event: ${event.type}`);
+            if (event.type === "finalized") {
+              resolve(
+                success(`Batch finalized on ${chain.name}`, {
+                  txHash: event.txHash,
+                  contract: HOSTAPI_DEMO_ADDRESS,
+                  calls: ["System.remark", "Revive.call (storeValue=42)", "Revive.call (storeValue=43)"],
+                }),
+              );
+            }
+          },
+          error: reject,
+        });
+      });
     },
   },
 ];
