@@ -641,19 +641,12 @@ export const signingTests: TestDefinition[] = [
   },
   {
     id: "sign-batch-payload",
-    name: "Sign & Submit Batch (remark + 2 contract writes)",
+    name: "Sign & Submit Batch (2 contract writes)",
     description:
-      "Batches a remark + two storeValue calls on the HostApiDemo contract using Utility.batch_all, signs via the createTransaction product signer, and submits atomically",
-    api: "api.tx.Utility.batch_all([remark, storeValue, storeValue]).signSubmitAndWatch(signer)",
-    args: [
-      {
-        name: "remark",
-        label: "Remark",
-        defaultValue: "Batch test remark",
-      },
-    ],
+      "Batches two storeValue calls on the HostApiDemo contract using Utility.batch_all, signs via the createTransaction product signer, and submits atomically. All calls must be pallet-revive — mixing a System.remark in here makes the batch fail because the AsPgas fee route only applies to revive calls.",
+    api: "api.tx.Utility.batch_all([storeValue, storeValue]).signSubmitAndWatch(signer)",
     category: "signing",
-    async run(chain: ChainConfig, logger?: TestLogger, args?) {
+    async run(chain: ChainConfig, logger?: TestLogger) {
       const log = logger || (() => {});
 
       const loginErr = await ensureLoggedIn(log, "Sign in to sign and submit a batch");
@@ -679,11 +672,7 @@ export const signingTests: TestDefinition[] = [
       const sdk = createInkSdk(client);
       const contract = sdk.getContract(contracts.hostApiDemo, HOSTAPI_DEMO_ADDRESS);
 
-      log("Building remark + 2 contract calls...");
-      const remarkMsg = args?.remark ?? "Batch test remark";
-      const remarkCall = api.tx.System.remark({
-        remark: Binary.fromText(remarkMsg),
-      }).decodedCall;
+      log("Building 2 contract calls...");
 
       // Dry-run each contract call through sdk-ink to get weight+storage.
       // The Promise<decodedCall> on the wrapped tx lets us extract the inner
@@ -695,9 +684,9 @@ export const signingTests: TestDefinition[] = [
       const storeCall1 = await dryRun1.value.send().decodedCall;
       const storeCall2 = await dryRun2.value.send().decodedCall;
 
-      log("Submitting Utility.batch_all of 3 calls...");
+      log("Submitting Utility.batch_all of 2 calls...");
       const batchTx = api.tx.Utility.batch_all({
-        calls: [remarkCall, storeCall1, storeCall2],
+        calls: [storeCall1, storeCall2],
       });
 
       return new Promise<TestResult>((resolve, reject) => {
@@ -709,7 +698,7 @@ export const signingTests: TestDefinition[] = [
                 success(`Batch finalized on ${chain.name}`, {
                   txHash: event.txHash,
                   contract: HOSTAPI_DEMO_ADDRESS,
-                  calls: ["System.remark", "Revive.call (storeValue=42)", "Revive.call (storeValue=43)"],
+                  calls: ["Revive.call (storeValue=42)", "Revive.call (storeValue=43)"],
                 }),
               );
             }
