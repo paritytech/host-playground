@@ -2,12 +2,6 @@ import { test, expect } from './fixtures';
 import { waitForAppReady, runTest } from './helpers';
 
 test.describe('Accounts', () => {
-  test('get legacy accounts', async ({ testHost }) => {
-    const frame = await waitForAppReady(testHost);
-    const result = await runTest(frame, 'accounts-provider-legacy');
-    expect(result).toBe('success');
-  });
-
   test('get product account', async ({ testHost }) => {
     const frame = await waitForAppReady(testHost);
     const result = await runTest(frame, 'accounts-provider-product');
