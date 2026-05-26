@@ -134,6 +134,38 @@ function ensureStatementSubmitPermission(log: (msg: string) => void) {
   return ensureRemotePermission(log, { tag: "StatementSubmit", value: undefined });
 }
 
+/**
+ * Before a smart-contract write: request a SmartContractAllowance slot
+ * (RFC-0010) for the given derivation index. The host bookkeeps PGAS quota
+ * per (product, derivationIndex); the paired mobile app prompts the user the
+ * first time and silently re-confirms on subsequent calls. Returns a
+ * TestResult on rejection/unavailable, null on success.
+ */
+async function ensureSmartContractAllowance(
+  log: (msg: string) => void,
+  derivationIndex = 0,
+): Promise<TestResult | null> {
+  log(`Requesting SmartContractAllowance(${derivationIndex})...`);
+  const result = await hostApi.requestResourceAllocation({
+    tag: "v1",
+    value: [{ tag: "SmartContractAllowance", value: derivationIndex }],
+  });
+  return result.match(
+    (res) => {
+      const outcome = res.value[0]?.tag;
+      if (outcome === "Allocated") {
+        log(`SmartContractAllowance(${derivationIndex}) allocated`);
+        return null;
+      }
+      if (outcome === "Rejected") {
+        return error("User rejected SmartContractAllowance");
+      }
+      return error(`SmartContractAllowance unavailable: ${outcome}`);
+    },
+    (err) => error(err.value.name, err.value),
+  );
+}
+
 function bytesEqual(a: Uint8Array, b: Uint8Array): boolean {
   if (a.length !== b.length) return false;
   for (let i = 0; i < a.length; i++) if (a[i] !== b[i]) return false;
@@ -3197,6 +3229,9 @@ export const contractTests: TestDefinition[] = [
       const signer = accountsProvider.getProductAccountSigner(account, "createTransaction");
       const origin = AccountId().dec(account.publicKey);
 
+      const allowanceError = await ensureSmartContractAllowance(log, 0);
+      if (allowanceError) return allowanceError;
+
       const permissionError = await ensureChainSubmitForTxBroadcast(log);
       if (permissionError) return permissionError;
 
@@ -3310,6 +3345,9 @@ export const contractTests: TestDefinition[] = [
       const signer = accountsProvider.getProductAccountSigner(account, "createTransaction");
       const origin = AccountId().dec(account.publicKey);
 
+      const allowanceError = await ensureSmartContractAllowance(log, 0);
+      if (allowanceError) return allowanceError;
+
       const permissionError = await ensureChainSubmitForTxBroadcast(log);
       if (permissionError) return permissionError;
 
@@ -3369,6 +3407,9 @@ export const contractTests: TestDefinition[] = [
 
       const signer = accountsProvider.getProductAccountSigner(account, "createTransaction");
       const origin = AccountId().dec(account.publicKey);
+
+      const allowanceError = await ensureSmartContractAllowance(log, 0);
+      if (allowanceError) return allowanceError;
 
       const permissionError = await ensureChainSubmitForTxBroadcast(log);
       if (permissionError) return permissionError;
