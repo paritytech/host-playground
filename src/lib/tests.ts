@@ -1,8 +1,6 @@
 import {
-  createLegacyExtensionEnableFactory,
   createMetaProvider,
   createPapiProvider,
-  sandboxTransport,
   hostApi,
   injectSpektrExtension,
   metaProvider,
@@ -289,54 +287,6 @@ async function ensureDevicePermission(
 
 // Account Tests
 export const accountTests: TestDefinition[] = [
-  {
-    id: "accounts-provider-legacy",
-    name: "Legacy Accounts",
-    description: "Gets legacy accounts via createAccountsProvider",
-    api: "accountsProvider.getLegacyAccounts()",
-    category: "accounts",
-    async run() {
-      const accountsProvider = createAccountsProvider();
-      const result = await accountsProvider.getLegacyAccounts();
-
-      return result.match(
-        (accounts) =>
-          success(
-            `Found ${accounts.length} legacy accounts`,
-            accounts.map((a) => ({
-              ...a,
-              publicKey: toHex(a.publicKey),
-            })),
-          ),
-        (err) => error(`${err.name}`, err),
-      );
-    },
-  },
-  {
-    id: "legacy-accounts",
-    name: "Legacy Accounts (Legacy)",
-    description: "Gets all legacy accounts via legacy hostApi",
-    api: "hostApi.getLegacyAccounts({ tag, value })",
-    category: "accounts",
-    async run() {
-      const result = await hostApi.getLegacyAccounts({
-        tag: "v1",
-        value: undefined,
-      });
-
-      return result.match(
-        (res) =>
-          success(
-            `Found ${res.value.length} accounts`,
-            res.value.map((a) => ({
-              ...a,
-              publicKey: toHex(a.publicKey),
-            })),
-          ),
-        (err) => error(err.value.name, err.value),
-      );
-    },
-  },
   {
     id: "accounts-provider-product",
     name: "Get Product Account",
@@ -777,24 +727,6 @@ export const extensionTests: TestDefinition[] = [
       return result
         ? success("Extension injected successfully")
         : success("Extension already injected or unavailable");
-    },
-  },
-  {
-    id: "enable-factory",
-    name: "Extension Enable Factory",
-    description: "Creates and enables the extension factory",
-    api: "createLegacyExtensionEnableFactory(transport)",
-    category: "extension",
-    async run() {
-      const enableFactory =
-        await createLegacyExtensionEnableFactory(sandboxTransport);
-      if (!enableFactory) {
-        return error("Transport not ready - enable factory returned null");
-      }
-      const injected = await enableFactory();
-      return success(
-        `Factory enabled - accounts: ${!!injected.accounts}, signer: ${!!injected.signer}`,
-      );
     },
   },
   {
@@ -1878,61 +1810,6 @@ export const statementTests: TestDefinition[] = [
           );
         }, 5000);
       });
-    },
-  },
-  {
-    id: "statement-store-legacy",
-    name: "Create Proof (Legacy)",
-    description: "Creates a statement store proof via legacy hostApi",
-    api: "hostApi.statementStoreCreateProof({ tag, value: [accountId, statement] })",
-    args: [
-      {
-        name: "dotNsIdentifier",
-        label: "DotNS ID",
-        defaultValue: SELF_DOTNS,
-      },
-    ],
-    category: "statements",
-    async run(_chain, logger, args) {
-      const log = logger || (() => {});
-      const dotNsIdentifier = args?.dotNsIdentifier ?? SELF_DOTNS;
-
-      const loginErr = await ensureLoggedIn(log, "Sign in to create a legacy statement proof");
-      if (loginErr) return loginErr;
-
-      const message = `Statement: ${Date.now()}`;
-      const messageBytes = new TextEncoder().encode(message);
-
-      const result = await hostApi.statementStoreCreateProof({
-        tag: "v1",
-        value: [
-          [dotNsIdentifier, 0],
-          {
-            proof: undefined,
-            decryptionKey: undefined,
-            expiry: createExpiryFromDuration(STATEMENT_TTL_SECS),
-            channel: undefined,
-            topics: [],
-            data: messageBytes,
-          },
-        ],
-      });
-
-      return result.match(
-        (res) => {
-          const proofValue = res.value.value as { signature?: Uint8Array };
-          const sig = proofValue.signature
-            ? toHex(proofValue.signature).slice(0, 20)
-            : "onchain";
-          return success(`Proof type: ${res.value.tag}, sig: ${sig}...`);
-        },
-        (err) => {
-          const payload = err.value.payload as { reason?: string } | undefined;
-          return error(
-            err.value.name + (payload?.reason ? ` - ${payload.reason}` : ""),
-          );
-        },
-      );
     },
   },
 ];
