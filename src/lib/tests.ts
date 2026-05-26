@@ -2310,24 +2310,55 @@ export const preimageTests: TestDefinition[] = [
       let matched: { algo: string; cid: string; bytes: Uint8Array } | null =
         null;
 
+      // IPFS propagation from the chain's bulletin pinner to the gateway
+      // isn't instant — observed up to ~45 s between on-chain inclusion
+      // and the gateway resolving the CID. A single best-effort fetch
+      // per candidate produced "inconclusive" results that read like a
+      // verification failure to operators; the file IS on IPFS, the
+      // gateway just hasn't seen it yet. Poll each candidate until we
+      // either get a byte-equal response or a hard 4xx (other than 504
+      // which the gateway emits while propagation is in flight).
+      //
+      // Budget: 60 s total per candidate, 5 s between polls. We stop
+      // probing remaining candidates as soon as one matches.
+      const totalBudgetMs = 60_000;
+      const pollIntervalMs = 5_000;
+
       for (const cand of candidates) {
         const url = `${gateway}/${cand.cid}`;
-        log(`Fetching ${url} ...`);
+        log(`Probing ${url} (up to ${totalBudgetMs / 1000}s)...`);
         const probe: Probe = { algo: cand.algo, cid: cand.cid, url, status: "" };
-        try {
-          const r = await fetch(url, { signal: AbortSignal.timeout(15_000) });
-          probe.status = r.status;
-          if (r.ok) {
-            const bytes = new Uint8Array(await r.arrayBuffer());
-            probe.bytes = bytes.length;
-            probe.equal = bytesEqual(payload, bytes);
-            if (probe.equal) {
-              matched = { algo: cand.algo, cid: cand.cid, bytes };
+        const deadline = Date.now() + totalBudgetMs;
+        let lastStatus: number | string = "";
+        while (Date.now() < deadline) {
+          try {
+            const r = await fetch(url, {
+              signal: AbortSignal.timeout(10_000),
+            });
+            lastStatus = r.status;
+            if (r.ok) {
+              const bytes = new Uint8Array(await r.arrayBuffer());
+              probe.status = r.status;
+              probe.bytes = bytes.length;
+              probe.equal = bytesEqual(payload, bytes);
+              if (probe.equal) {
+                matched = { algo: cand.algo, cid: cand.cid, bytes };
+              }
+              break;
             }
+            // 504 (gateway timeout) and 502 (bad gateway) on these
+            // hosts mean "IPFS still propagating" — keep polling. 404
+            // also can be transient on first request to a gateway that
+            // hasn't seen the CID yet; treat it the same. Hard-fail
+            // only on auth/permission errors.
+            if ([401, 403, 451].includes(r.status)) break;
+          } catch (e) {
+            lastStatus = `error: ${e instanceof Error ? e.message : String(e)}`;
           }
-        } catch (e) {
-          probe.status = `error: ${e instanceof Error ? e.message : String(e)}`;
+          if (Date.now() + pollIntervalMs >= deadline) break;
+          await new Promise((r) => setTimeout(r, pollIntervalMs));
         }
+        if (probe.status === "") probe.status = lastStatus;
         probes.push(probe);
         if (matched) break;
       }
