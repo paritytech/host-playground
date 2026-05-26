@@ -528,6 +528,13 @@ export const signingTests: TestDefinition[] = [
       try {
         const api = client.getUnsafeApi();
 
+        // On asset-hub-next the AsPgas signed extension routes the tx fee
+        // through pallet-revive's H160 mapping, so the product account must
+        // be PGAS-allocated before *any* tx broadcast — even a plain remark
+        // — or the chain rejects with InvalidTransaction::Payment.
+        const allowanceError = await ensureSmartContractAllowance(log, 0);
+        if (allowanceError) return allowanceError;
+
         const permErr = await ensureDirectWsSignSubmitPermissions(log, chain.wsUrl);
         if (permErr) return permErr;
 
