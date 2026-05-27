@@ -55,15 +55,17 @@ jobs:
         with:
           node-version: 22
 
+      - uses: actions/checkout@v4
+
       - name: Download build artifact
         uses: actions/download-artifact@v4
         with:
           name: web-dist
-          path: build
+          path: out
 
       - name: Compute build hash
         id: hash
-        run: echo "hash=$(find build -type f -exec sha256sum {} \; | sort | sha256sum | cut -d' ' -f1)" >> "$GITHUB_OUTPUT"
+        run: echo "hash=$(find out -type f -exec sha256sum {} \; | sort | sha256sum | cut -d' ' -f1)" >> "$GITHUB_OUTPUT"
 
       - name: Check deployment cache
         id: cache
@@ -118,7 +120,8 @@ jobs:
             export MNEMONIC='${{ secrets.MNEMONIC }}'
             export IPFS_CID='${{ steps.cached-deploy.outputs.cid }}'
             export NODE_OPTIONS='--max-old-space-size=8192'
-            bulletin-deploy --env paseo-next-v2 'build' '${{ steps.domain-input.outputs.dotns }}'
+            export MANIFEST_DOMAIN='${{ steps.domain-input.outputs.dotns }}'
+            bulletin-deploy --env paseo-next-v2 'out' '${{ steps.domain-input.outputs.dotns }}'
 
       - name: Validate deployment outputs
         if: steps.cache.outputs.cache-hit != 'true'
