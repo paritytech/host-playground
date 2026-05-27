@@ -574,7 +574,7 @@
   dependencies:
     "@noble/hashes" "1.8.0"
 
-"@noble/curves@^2.2.0":
+"@noble/curves@^2.2.0", "@noble/curves@~2.2.0":
   version "2.2.0"
   resolved "https://registry.yarnpkg.com/@noble/curves/-/curves-2.2.0.tgz#981be3aadc3bbfbcdb245e78cc97aa6f759246c2"
   integrity sha512-T/BoHgFXirb0ENSPBquzX0rcjXeM6Lo892a2jlYJkqk83LqZx0l1Of7DzlKJ6jkpvMrkHSnAcgb5JegL8SeIkQ==
@@ -610,7 +610,7 @@
   resolved "https://registry.yarnpkg.com/@noble/hashes/-/hashes-2.0.1.tgz#fc1a928061d1232b0a52bb754393c37a5216c89e"
   integrity sha512-XlOlEbQcE9fmuXxrVTXCTlG2nlRXa9Rj3rr5Ue/+tX+nmkgbX720YHh0VR3hBF9xDvwnb8D2shVGOwNx+ulArw==
 
-"@noble/hashes@2.2.0", "@noble/hashes@^2.2.0":
+"@noble/hashes@2.2.0", "@noble/hashes@^2.2.0", "@noble/hashes@~2.2.0":
   version "2.2.0"
   resolved "https://registry.yarnpkg.com/@noble/hashes/-/hashes-2.2.0.tgz#22da1d16a469954fce877055d559900a6c73b63b"
   integrity sha512-IYqDGiTXab6FniAgnSdZwgWbomxpy9FtYvLKs7wCUs2a8RkITG+DFGO1DM9cr+E3/RgADRpFjrKVaJ1z6sjtEg==
@@ -653,18 +653,7 @@
     neverthrow "^8.2.0"
     polkadot-api ">=2"
 
-"@novasamatech/host-api@0.7.8":
-  version "0.7.8"
-  resolved "https://registry.yarnpkg.com/@novasamatech/host-api/-/host-api-0.7.8.tgz#dfc8a87e8e5874e4c8c48663bc9013488b495554"
-  integrity sha512-CR5Im0cn8t04R74FAvbNjyJzVOsbAPl9GRT4RsEaqu5n3DVbwrc70vWVZ0hwVVpyxzVrGgFCwEwSWBRdQGQzBQ==
-  dependencies:
-    "@novasamatech/scale" "0.7.8"
-    nanoevents "9.1.0"
-    nanoid "5.1.9"
-    neverthrow "^8.2.0"
-    scale-ts "1.6.1"
-
-"@novasamatech/host-api@0.7.9", "@novasamatech/host-api@^0.7.8", "@novasamatech/host-api@^0.7.9":
+"@novasamatech/host-api@0.7.9", "@novasamatech/host-api@^0.7.9":
   version "0.7.9"
   resolved "https://registry.yarnpkg.com/@novasamatech/host-api/-/host-api-0.7.9.tgz#fa876726cf41cc9919a958cfc8802c7eaa508254"
   integrity sha512-3/dOennEXjLvDCj8S4F+siwhUAHPK4PwY29+W1L8BhzNZ/CRcoAMZ959C39X3bhGIy1Wn93L6SrJz6zo2sH7FA==
@@ -673,25 +662,6 @@
     nanoevents "9.1.0"
     nanoid "5.1.9"
     neverthrow "^8.2.0"
-    scale-ts "1.6.1"
-
-"@novasamatech/product-sdk@^0.7.8":
-  version "0.7.8"
-  resolved "https://registry.yarnpkg.com/@novasamatech/product-sdk/-/product-sdk-0.7.8.tgz#a337768f6d056ca185d41349a3fd5394ac752e3c"
-  integrity sha512-oTuCJs4v9iig6nLxhfNewzJfcD9/iUjAQm0rSQF8p4G0ryMVQgDlezlW9AQd3AIn80mwwJKLdfa2nToSuqo1+Q==
-  dependencies:
-    "@novasamatech/host-api" "0.7.8"
-    "@polkadot-api/json-rpc-provider-proxy" "^0.4.0"
-    "@polkadot/extension-inject" "^0.63.1"
-    neverthrow "^8.2.0"
-    polkadot-api ">=2"
-
-"@novasamatech/scale@0.7.8":
-  version "0.7.8"
-  resolved "https://registry.yarnpkg.com/@novasamatech/scale/-/scale-0.7.8.tgz#0897bd579f402404b954e99a57574bce6b28dad9"
-  integrity sha512-FidGBX/j3KZ1pLlosjkwnXc+Rw1FeXAIfwqt95qYz9WwEnR4T4ZZJQfjXBm7dXTxFrzywee/YzflTwQghh+oxA==
-  dependencies:
-    "@polkadot-api/utils" "^0.4.0"
     scale-ts "1.6.1"
 
 "@novasamatech/scale@0.7.9":
@@ -717,13 +687,13 @@
     "@noble/hashes" "^1.7.1"
     "@polkadot-api/substrate-bindings" "^0.12.0"
 
-"@parity/product-sdk-chain-client@^0.4.2":
-  version "0.4.2"
-  resolved "https://registry.yarnpkg.com/@parity/product-sdk-chain-client/-/product-sdk-chain-client-0.4.2.tgz#357156791cc2bfe845bb0e2ee3a2ca01ddc0765c"
-  integrity sha512-RuPECyfE+BI0s+HiTeGa17zV3UPnbhtcbkFNoRcg6PDVM9anLD/W/hPDC3dBYuCG4AhksHBgogbbo154iP9VVA==
+"@parity/product-sdk-chain-client@^0.5.0":
+  version "0.5.0"
+  resolved "https://registry.yarnpkg.com/@parity/product-sdk-chain-client/-/product-sdk-chain-client-0.5.0.tgz#2e08880577b7ce3cbeeaebf2d91fa195bae79d11"
+  integrity sha512-o8k+EifoWGdjk6r+NcEhTMR9nfk31HgOGzsQd3+pZm4dcJDs6R9Dz1GaykgWPzonYHHo2LWnFqJZUTy/ZEPcSQ==
   dependencies:
-    "@parity/product-sdk-descriptors" "0.4.1"
-    "@parity/product-sdk-host" "0.4.0"
+    "@parity/product-sdk-descriptors" "0.5.0"
+    "@parity/product-sdk-host" "0.5.0"
     "@parity/product-sdk-logger" "0.1.1"
     polkadot-api "^2.1.2"
 
@@ -737,59 +707,61 @@
     "@noble/hashes" "^1.7.1"
     tweetnacl "^1.0.3"
 
-"@parity/product-sdk-descriptors@0.4.1":
-  version "0.4.1"
-  resolved "https://registry.yarnpkg.com/@parity/product-sdk-descriptors/-/product-sdk-descriptors-0.4.1.tgz#eb9219d6b2cf35816841c3a1a780edca989ee374"
-  integrity sha512-7OKTRy+116aUTkTZyGFmD0C4slKoiayx03MBUDFPLRjQvDDt4rJ6Id10MigxK0Dyj57ptImYnAfOnwv7pvZn5A==
+"@parity/product-sdk-descriptors@0.5.0":
+  version "0.5.0"
+  resolved "https://registry.yarnpkg.com/@parity/product-sdk-descriptors/-/product-sdk-descriptors-0.5.0.tgz#bb37d3b4c10e86145ccccbb6eba4557ec31226cc"
+  integrity sha512-QdOYhaPdWMDocjV5U1mv+buF63huXc03mlrHNINgcBHbzCuePa62woGwVoTAxJorVT5ZoXotMCOFEOMbmdMraQ==
   dependencies:
     polkadot-api "^2.1.2"
 
-"@parity/product-sdk-host@0.3.0", "@parity/product-sdk-host@0.4.0", "@parity/product-sdk-host@^0.4.0":
-  version "0.4.0"
-  resolved "https://registry.yarnpkg.com/@parity/product-sdk-host/-/product-sdk-host-0.4.0.tgz#139c622e5265a7fc721b2ec65c4a7739241e5fac"
-  integrity sha512-Kw/ZRMHBHPrR/ST00QZqZa+qXGrrLYVXgrmCJ9YCys+yaPleJl0Q1+HI6zTD0bjaHsooESk+yYLajCRtZAdVVg==
+"@parity/product-sdk-host@0.5.0", "@parity/product-sdk-host@^0.5.0":
+  version "0.5.0"
+  resolved "https://registry.yarnpkg.com/@parity/product-sdk-host/-/product-sdk-host-0.5.0.tgz#bf0ef7f2892e8e7f25b2f74ffa3f2f5d5bfc1ba1"
+  integrity sha512-kJE0SM+4xifcBTm3OyZNpQ95QOfGsssIQyGdtX5a4zK0puLdlETtGEQWL2sMIK0Z3iAw21GUMD4+dBibYTQhRQ==
   dependencies:
     "@parity/product-sdk-logger" "0.1.1"
     polkadot-api "^2.1.2"
 
-"@parity/product-sdk-keys@0.2.3":
-  version "0.2.3"
-  resolved "https://registry.yarnpkg.com/@parity/product-sdk-keys/-/product-sdk-keys-0.2.3.tgz#062413e577f4409214b77bc57b3fa41cd8bd562c"
-  integrity sha512-TdfUEIb+kWtnVOJQZe4AYYAtudfHTpPNP/3rWhHW5SUNvpH7ZEh5WD4MtB8PfyPqlt6DikLkHtiaZFJKTQ8kVw==
+"@parity/product-sdk-keys@0.3.1":
+  version "0.3.1"
+  resolved "https://registry.yarnpkg.com/@parity/product-sdk-keys/-/product-sdk-keys-0.3.1.tgz#2629173ab57a9e4397394f3cae45c69654d1704c"
+  integrity sha512-g0w993V5VaDI1oJz5J9kSiIbADrYGpKqs8D02L6q01vcGIldWzzfp2pu8VewnSJdayh2IoLFYEb6WmzaBJ/pcg==
   dependencies:
     "@parity/product-sdk-address" "0.1.1"
     "@parity/product-sdk-crypto" "0.1.1"
-    "@parity/product-sdk-storage" "0.1.4"
+    "@parity/product-sdk-local-storage" "0.2.0"
     "@polkadot-labs/hdkd" "^0.0.28"
     "@polkadot-labs/hdkd-helpers" "^0.0.10"
+    "@scure/sr25519" "^2.2.0"
     polkadot-api "^2.1.2"
+    scale-ts "^1.6.1"
+
+"@parity/product-sdk-local-storage@0.2.0":
+  version "0.2.0"
+  resolved "https://registry.yarnpkg.com/@parity/product-sdk-local-storage/-/product-sdk-local-storage-0.2.0.tgz#df5a70cea0596ad8d1e198e6fc3efa911842b743"
+  integrity sha512-u/8ATUwkkf0thwZJnMMjR6KN6mQJ/LYpDKUxbEy2Vsrm8As1NW+Ag8SjD6ganktgUQCx1OP/VcnOkNTVgoM/OA==
+  dependencies:
+    "@parity/product-sdk-host" "0.5.0"
+    "@parity/product-sdk-logger" "0.1.1"
 
 "@parity/product-sdk-logger@0.1.1":
   version "0.1.1"
   resolved "https://registry.yarnpkg.com/@parity/product-sdk-logger/-/product-sdk-logger-0.1.1.tgz#29901555a1ccb067b47d191f3f2f418078c041db"
   integrity sha512-AiSV3TTNlMZJftLQsO78BZsEymGFuJtGMSpGrJ+vUtqaZavWaW/Hc6MICBLnEYgeCrdNpv7QBso3dRsTfnAZXQ==
 
-"@parity/product-sdk-signer@^0.2.4":
-  version "0.2.4"
-  resolved "https://registry.yarnpkg.com/@parity/product-sdk-signer/-/product-sdk-signer-0.2.4.tgz#9d0b584f1102a69076ed8a72f29c216cffc1a416"
-  integrity sha512-3e3R3P/toG97UbCB+I0L8mQ1CT7QeYteNRO3bvEod+S7ST5CG7meGwllyGiaBR97eMHIYN9pQIkzVmQBFokPpg==
+"@parity/product-sdk-signer@^0.4.0":
+  version "0.4.0"
+  resolved "https://registry.yarnpkg.com/@parity/product-sdk-signer/-/product-sdk-signer-0.4.0.tgz#2386123bd1c3a77f3a031d5edfc1d46501717848"
+  integrity sha512-NPws1fnp5vUF4kCnzy5N00CcsY2yUTOhjNaJwAIVV9yZodM8aWy6bLakEPe/2v416flyVzDin3IV7Xn2tJiHUA==
   dependencies:
     "@parity/product-sdk-address" "0.1.1"
-    "@parity/product-sdk-host" "0.3.0"
-    "@parity/product-sdk-keys" "0.2.3"
+    "@parity/product-sdk-host" "0.5.0"
+    "@parity/product-sdk-keys" "0.3.1"
     "@parity/product-sdk-logger" "0.1.1"
     polkadot-api "^2.1.2"
   optionalDependencies:
-    "@novasamatech/host-api" "^0.7.8"
-    "@novasamatech/product-sdk" "^0.7.8"
-
-"@parity/product-sdk-storage@0.1.4":
-  version "0.1.4"
-  resolved "https://registry.yarnpkg.com/@parity/product-sdk-storage/-/product-sdk-storage-0.1.4.tgz#77815540b7a6196392f4d5331fbac5bfda8dc007"
-  integrity sha512-tNUwidl265/z3rkX2GEPuZTV6q8Uk3Cm3uo1K0cxIN37NHjFaQwSwyF/SAXRhvubYSNzO3gfGVlE4Ar9j/V8WQ==
-  dependencies:
-    "@parity/product-sdk-host" "0.3.0"
-    "@parity/product-sdk-logger" "0.1.1"
+    "@novasamatech/host-api" "^0.7.9"
+    "@novasamatech/host-api-wrapper" "^0.7.9"
 
 "@playwright/test@^1.59.1":
   version "1.59.1"
@@ -2326,6 +2298,14 @@
   dependencies:
     "@noble/curves" "~2.0.0"
     "@noble/hashes" "~2.0.0"
+
+"@scure/sr25519@^2.2.0":
+  version "2.2.0"
+  resolved "https://registry.yarnpkg.com/@scure/sr25519/-/sr25519-2.2.0.tgz#92361077ca70c569ed563502b7a603e71ba9ed17"
+  integrity sha512-UTOZb6Hzw44REQdl2SWNBhBFIoqOIhMLNIz3zYyVQLbqdshhuyuuxYoibKHlDg9oqdwdCHQe5LkTsevugPpUbw==
+  dependencies:
+    "@noble/curves" "~2.2.0"
+    "@noble/hashes" "~2.2.0"
 
 "@sec-ant/readable-stream@^0.4.1":
   version "0.4.1"

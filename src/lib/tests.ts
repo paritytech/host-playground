@@ -1,17 +1,15 @@
-// Direct @novasamatech imports kept for two reasons:
-//   1. Feature-matrix probes: `injectSpektrExtension`, `metaProvider`,
-//      `createMetaProvider`, `sandboxTransport`, `createLegacyExtensionEnableFactory`
-//      are lower-level surfaces superseded by Parity's higher-level wrappers
-//      (`SignerManager`, `isInsideContainer`, etc.) for production use, but the
-//      playground tests them directly to exercise the underlying TruAPI layer.
-//   2. No Parity wrapper yet: `createPaymentManager` is tracked by issue #85.
+// Direct @novasamatech imports kept for feature-matrix probes:
+// `injectSpektrExtension`, `metaProvider`, `createMetaProvider`,
+// `sandboxTransport`, `createLegacyExtensionEnableFactory` are lower-level
+// surfaces superseded by Parity's higher-level wrappers (`SignerManager`,
+// `isInsideContainer`, etc.) for production use, but the playground tests
+// them directly to exercise the underlying TruAPI layer.
 import {
   createLegacyExtensionEnableFactory,
   createMetaProvider,
   sandboxTransport,
   injectSpektrExtension,
   metaProvider,
-  createPaymentManager,
 } from "@novasamatech/host-api-wrapper";
 import {
   getTruApi,
@@ -24,6 +22,7 @@ import {
   createHostPreimageManager,
   getChatManager,
   getThemeProvider,
+  getPaymentManager,
   deriveEntropy,
   type TruApi,
   type AccountsProvider,
@@ -3956,7 +3955,10 @@ export const paymentTests: TestDefinition[] = [
       const loginErr = await ensureLoggedIn(log, "Sign in to view your balance");
       if (loginErr) return loginErr;
 
-      const paymentManager = createPaymentManager();
+      const paymentManager = await getPaymentManager();
+      if (!paymentManager) {
+        return error("Payment manager unavailable (host not detected)");
+      }
 
       return new Promise((resolve) => {
         const balances: unknown[] = [];
@@ -4002,7 +4004,10 @@ export const paymentTests: TestDefinition[] = [
       const loginErr = await ensureLoggedIn(log, "Sign in to top up your balance");
       if (loginErr) return loginErr;
 
-      const paymentManager = createPaymentManager();
+      const paymentManager = await getPaymentManager();
+      if (!paymentManager) {
+        return error("Payment manager unavailable (host not detected)");
+      }
 
       try {
         await paymentManager.topUp(amount, {
@@ -4035,7 +4040,10 @@ export const paymentTests: TestDefinition[] = [
       const loginErr = await ensureLoggedIn(log, "Sign in to request a payment");
       if (loginErr) return loginErr;
 
-      const paymentManager = createPaymentManager();
+      const paymentManager = await getPaymentManager();
+      if (!paymentManager) {
+        return error("Payment manager unavailable (host not detected)");
+      }
       const destination = new Uint8Array(32); // zero address for test
 
       try {
