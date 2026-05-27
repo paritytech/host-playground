@@ -29,7 +29,6 @@ const categoryIcons: Record<TestCategory, string> = {
   signing: "✍️",
   storage: "💾",
   permissions: "🔐",
-  chat: "💬",
   statements: "📜",
   preimage: "🔎",
   notifications: "🔔",
@@ -66,10 +65,6 @@ const categoryInfo: Record<
   permissions: {
     title: "Permissions",
     description: "Request permissions and check features",
-  },
-  chat: {
-    title: "Chat",
-    description: "Register rooms, bots, and send messages",
   },
   statements: {
     title: "Statement Store",

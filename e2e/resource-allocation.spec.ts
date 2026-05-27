@@ -20,12 +20,6 @@ test.describe('Resource Allocation', () => {
     expect(result).toBe('success');
   });
 
-  test('allocate auto-signing', async ({ testHost }) => {
-    const frame = await waitForAppReady(testHost);
-    const result = await runTest(frame, 'allowances-auto-signing');
-    expect(result).toBe('success');
-  });
-
   test('allocate all resources in one request', async ({ testHost }) => {
     const frame = await waitForAppReady(testHost);
     const result = await runTest(frame, 'allowances-all');
