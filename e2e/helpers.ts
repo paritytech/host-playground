@@ -28,3 +28,22 @@ export async function runTest(
   const status = await lastEntry.getAttribute('data-status');
   return status === 'success' ? 'success' : 'error';
 }
+
+/**
+ * Fill a test's argument inputs, then run it. Mirrors `runTest` but sets
+ * the named arg fields first (each rendered with a `arg-<testId>-<name>`
+ * test ID by TestButton).
+ */
+export async function runTestWithArgs(
+  frame: FrameLocator,
+  testId: string,
+  args: Record<string, string>,
+  timeout = 90_000,
+): Promise<'success' | 'error'> {
+  for (const [name, value] of Object.entries(args)) {
+    const input = frame.locator(`[data-testid="arg-${testId}-${name}"]`);
+    await expect(input).toBeVisible({ timeout: 10_000 });
+    await input.fill(value);
+  }
+  return runTest(frame, testId, timeout);
+}

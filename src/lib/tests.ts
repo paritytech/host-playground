@@ -197,6 +197,34 @@ function error(message: string, details?: unknown): TestResult {
   return { success: false, message, details };
 }
 
+/** Request a device permission with a friendly error if denied. */
+async function ensureDevicePermission(
+  log: (msg: string) => void,
+  permission:
+    | "Notifications"
+    | "Camera"
+    | "Microphone"
+    | "Bluetooth"
+    | "NFC"
+    | "Location"
+    | "Clipboard"
+    | "OpenUrl"
+    | "Biometrics",
+): Promise<TestResult | null> {
+  log(`Requesting device permission: ${permission}...`);
+  const result = await (await truApi()).devicePermission({
+    tag: "v1",
+    value: permission,
+  });
+  return result.match(
+    (res) =>
+      res.value
+        ? null
+        : error(`Device permission not granted: ${permission}`, res),
+    (err) => error(`Device permission denied (${permission})`, err.value),
+  );
+}
+
 /**
  * Before a smart-contract write: ensure the product account has a
  * SmartContractAllowance slot (RFC-0010). The host bookkeeps PGAS quota
@@ -1647,11 +1675,17 @@ export const notificationTests: TestDefinition[] = [
   {
     id: "push-notification",
     name: "Push Notification",
-    description: "Send a push notification to the host",
-    api: "truApi().pushNotification({ tag: 'v1', value: { text, deeplink } })",
+    description:
+      "Send a push notification to the host. Leave 'Schedule in' empty to fire immediately, or set seconds in the future to schedule it.",
+    api: "truApi().pushNotification({ tag: 'v1', value: { text, deeplink, scheduledAt } })",
     args: [
       { name: "text", label: "Text", defaultValue: "Hello from demo product!" },
       { name: "deeplink", label: "Deeplink (optional)", defaultValue: "" },
+      {
+        name: "scheduleInSeconds",
+        label: "Schedule in (seconds, optional)",
+        defaultValue: "",
+      },
     ],
     category: "notifications",
     async run(_chain, logger, args) {
@@ -1659,17 +1693,73 @@ export const notificationTests: TestDefinition[] = [
       const text = args?.text ?? "Hello from demo product!";
       const deeplink = args?.deeplink?.trim() || undefined;
 
+      // Relative seconds → absolute epoch-ms bigint. Empty / non-positive
+      // means immediate (scheduledAt undefined), matching the host contract
+      // where a null or past timestamp fires now.
+      const rawSeconds = args?.scheduleInSeconds?.trim() ?? "";
+      let scheduledAt: bigint | undefined;
+      if (rawSeconds !== "") {
+        const seconds = Number(rawSeconds);
+        if (!Number.isFinite(seconds) || seconds <= 0) {
+          return error(
+            "Invalid schedule",
+            `"Schedule in" must be a positive number of seconds, got "${rawSeconds}"`,
+          );
+        }
+        scheduledAt = BigInt(Date.now() + Math.round(seconds * 1000));
+      }
+
+      const permErr = await ensureDevicePermission(log, "Notifications");
+      if (permErr) return permErr;
 
       const result = await (await truApi()).pushNotification({
         tag: "v1",
-        value: { text, deeplink, scheduledAt: undefined },
+        value: { text, deeplink, scheduledAt },
+      });
+
+      const when =
+        scheduledAt === undefined
+          ? "now"
+          : `at ${new Date(Number(scheduledAt)).toLocaleTimeString()}`;
+
+      return result.match(
+        (res) =>
+          success(
+            `Notification (#${String(res.value)}) scheduled ${when}: "${text}"${deeplink ? ` → ${deeplink}` : ""}`,
+          ),
+        (err) => error(err.value.name, err.value),
+      );
+    },
+  },
+  {
+    id: "cancel-notification",
+    name: "Cancel Notification",
+    description:
+      "Cancel a previously scheduled notification by its id (the number returned by Push Notification). Cancelling is idempotent: an unknown or already-fired id is a no-op.",
+    api: "truApi().pushNotificationCancel({ tag: 'v1', value: id })",
+    args: [{ name: "id", label: "Notification id", defaultValue: "" }],
+    category: "notifications",
+    async run(_chain, logger, args) {
+      const log = logger || (() => {});
+      const rawId = args?.id?.trim() ?? "";
+      const id = Number(rawId);
+      if (rawId === "" || !Number.isInteger(id) || id <= 0) {
+        return error(
+          "Invalid id",
+          `"Notification id" must be a positive integer, got "${rawId}"`,
+        );
+      }
+
+      const permErr = await ensureDevicePermission(log, "Notifications");
+      if (permErr) return permErr;
+
+      const result = await (await truApi()).pushNotificationCancel({
+        tag: "v1",
+        value: id,
       });
 
       return result.match(
-        () =>
-          success(
-            `Notification sent: "${text}"${deeplink ? ` → ${deeplink}` : ""}`,
-          ),
+        () => success(`Cancel requested for notification #${String(id)}`),
         (err) => error(err.value.name, err.value),
       );
     },
