@@ -1318,33 +1318,12 @@ export const signingTests: TestDefinition[] = [
           extensions: [],
           txExtVersion: 0,
         },
-      );
-      if (!account) {
-        return error(
-          `No product account for "${dotNsIdentifier}" — check that the user is signed in and the DotNS ID is valid`,
-        );
-      }
+      });
 
-      // mode="createTransaction" routes signing through the host's
-      // createTransaction path on the paired mobile app, instead of the
-      // default signPayload path used by signSubmitAndWatch.
-      const signer = accountsProvider.getProductAccountSigner(
-        account,
-        "createTransaction",
-      );
-
-      const client = getClient(chain.genesis);
-      const api = client.getUnsafeApi();
-
-      const message = args?.message ?? "Create Transaction from Host Playground";
-      const tx = api.tx.System.remark({ remark: Binary.fromText(message) });
-
-      log("Signing (createTransaction mode)...");
-      const signedBytes = await tx.sign(signer);
-      const signedHex = toHex(signedBytes);
-      return success(
-        `Transaction signed (${signedBytes.length} bytes)`,
-        { preview: `${signedHex.slice(0, 80)}...`, length: signedBytes.length },
+      return result.match(
+        (res) =>
+          success(`Transaction created: ${toHex(res.value).slice(0, 40)}...`),
+        (err) => error(err.value.name, err.value),
       );
     },
   },
