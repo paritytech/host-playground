@@ -112,7 +112,10 @@ async function ensureRemotePermission(
     value: permission,
   });
   if (permissionResult.isErr()) {
-    return error(`Remote permission denied (${permission.tag})`, permissionResult.error);
+    return error(
+      `Remote permission denied (${permission.tag})`,
+      permissionResult.error,
+    );
   }
   return null;
 }
@@ -124,25 +127,58 @@ function ensureChainSubmitForTxBroadcast(log: (msg: string) => void) {
 
 /** Before `preimageManager.submit` / preimage RPC submit (host gates on PreimageSubmit). */
 function ensurePreimageSubmitPermission(log: (msg: string) => void) {
-  return ensureRemotePermission(log, { tag: "PreimageSubmit", value: undefined });
+  return ensureRemotePermission(log, {
+    tag: "PreimageSubmit",
+    value: undefined,
+  });
 }
 
 /** Before `statementStore.submit` (host gates on StatementSubmit). */
 function ensureStatementSubmitPermission(log: (msg: string) => void) {
-  return ensureRemotePermission(log, { tag: "StatementSubmit", value: undefined });
+  return ensureRemotePermission(log, {
+    tag: "StatementSubmit",
+    value: undefined,
+  });
 }
 
 /**
- * Before a smart-contract write: request a SmartContractAllowance slot
- * (RFC-0010) for the given derivation index. The host bookkeeps PGAS quota
- * per (product, derivationIndex); the paired mobile app prompts the user the
- * first time and silently re-confirms on subsequent calls. Returns a
- * TestResult on rejection/unavailable, null on success.
+ * Before a smart-contract write: ensure the product account has a
+ * SmartContractAllowance slot (RFC-0010). The host bookkeeps PGAS quota
+ * per (product, derivationIndex) and funds the substrate AccountId with the
+ * PGAS asset on first allocation, so a non-zero
+ * `Assets.Account(Pgas::PgasAssetId, addr).balance` is a reliable
+ * "already provisioned" signal. We skip the host round-trip in that case
+ * — avoids the mobile re-prompt and wallet-flow queue contention. The
+ * asset id is read from the chain's `Pgas.PgasAssetId` constant rather
+ * than hardcoded, so a runtime renumber stays transparent.
+ * Otherwise we request the allocation and propagate the host's outcome.
  */
 async function ensureSmartContractAllowance(
   log: (msg: string) => void,
-  derivationIndex = 0,
+  chain: ChainConfig,
+  productAccount: { publicKey: Uint8Array; derivationIndex: number },
 ): Promise<TestResult | null> {
+  const { publicKey, derivationIndex } = productAccount;
+  try {
+    const address = AccountId(chain.ss58Prefix).dec(publicKey);
+    const api = getClient(chain.genesis).getUnsafeApi();
+    const pgasAssetId = (await api.constants.Pgas.PgasAssetId()) as number;
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const acct: any = await api.query.Assets.Account.getValue(
+      pgasAssetId,
+      address,
+    );
+    const bal = BigInt(acct?.balance ?? 0);
+    if (bal > BigInt(0)) {
+      log(
+        `SmartContractAllowance(${derivationIndex}) already provisioned (PGAS asset=${pgasAssetId}, balance=${bal})`,
+      );
+      return null;
+    }
+  } catch (e) {
+    log(`PGAS balance probe failed (${e}); falling through to request`);
+  }
+
   log(`Requesting SmartContractAllowance(${derivationIndex})...`);
   const result = await hostApi.requestResourceAllocation({
     tag: "v1",
@@ -182,7 +218,10 @@ function bytesEqual(a: Uint8Array, b: Uint8Array): boolean {
  * `createExpiryFromDuration`; we inline it instead of pulling the SDK
  * in just for two lines of arithmetic.
  */
-function createExpiryFromDuration(durationSecs: number, sequenceNumber = 0): bigint {
+function createExpiryFromDuration(
+  durationSecs: number,
+  sequenceNumber = 0,
+): bigint {
   // BigInt literal syntax (`32n`) needs ES2020+; tsconfig targets ES2017
   // so we use the BigInt() constructor instead.
   const timestamp = Math.floor(Date.now() / 1000) + durationSecs;
@@ -204,7 +243,10 @@ async function candidateCidsForBytes(
   const blakeMh = createMultihashDigest(IPFS_HASH_BLAKE2B_256, blake);
   return [
     { algo: "sha2-256", cid: CID.createV1(IPFS_CODEC_RAW, sha).toString() },
-    { algo: "blake2b-256", cid: CID.createV1(IPFS_CODEC_RAW, blakeMh).toString() },
+    {
+      algo: "blake2b-256",
+      cid: CID.createV1(IPFS_CODEC_RAW, blakeMh).toString(),
+    },
   ];
 }
 
@@ -300,7 +342,7 @@ export const accountTests: TestDefinition[] = [
 
       return result.match(
         (account) =>
-          success('Product account:', {
+          success("Product account:", {
             publicKey: toHex(account.publicKey),
           }),
         (err) => error(`${err.name}`, err),
@@ -489,7 +531,10 @@ export const signingTests: TestDefinition[] = [
       const log = logger || (() => {});
       const dotNsIdentifier = args?.dotNsIdentifier ?? SELF_DOTNS;
 
-      const loginErr = await ensureLoggedIn(log, "Sign in to create a transaction");
+      const loginErr = await ensureLoggedIn(
+        log,
+        "Sign in to create a transaction",
+      );
       if (loginErr) return loginErr;
 
       log(`Fetching product account for ${dotNsIdentifier}...`);
@@ -522,16 +567,17 @@ export const signingTests: TestDefinition[] = [
       const client = getClient(chain.genesis);
       const api = client.getUnsafeApi();
 
-      const message = args?.message ?? "Create Transaction from Host Playground";
+      const message =
+        args?.message ?? "Create Transaction from Host Playground";
       const tx = api.tx.System.remark({ remark: Binary.fromText(message) });
 
       log("Signing (createTransaction mode)...");
       const signedBytes = await tx.sign(signer);
       const signedHex = toHex(signedBytes);
-      return success(
-        `Transaction signed (${signedBytes.length} bytes)`,
-        { preview: `${signedHex.slice(0, 80)}...`, length: signedBytes.length },
-      );
+      return success(`Transaction signed (${signedBytes.length} bytes)`, {
+        preview: `${signedHex.slice(0, 80)}...`,
+        length: signedBytes.length,
+      });
     },
   },
   {
@@ -544,19 +590,32 @@ export const signingTests: TestDefinition[] = [
     async run(chain: ChainConfig, logger?: TestLogger) {
       const log = logger || (() => {});
 
-      const loginErr = await ensureLoggedIn(log, "Sign in to sign and submit a batch");
+      const loginErr = await ensureLoggedIn(
+        log,
+        "Sign in to sign and submit a batch",
+      );
       if (loginErr) return loginErr;
 
       log("Fetching product account...");
       const accountsProvider = createAccountsProvider();
-      const accountResult = await accountsProvider.getProductAccount(SELF_DOTNS, 0);
-      const account = accountResult.match((a) => a, () => null);
+      const accountResult = await accountsProvider.getProductAccount(
+        SELF_DOTNS,
+        0,
+      );
+      const account = accountResult.match(
+        (a) => a,
+        () => null,
+      );
       if (!account) return error("No product account available");
 
       const signer = accountsProvider.getProductAccountSigner(account);
       const origin = AccountId().dec(account.publicKey);
 
-      const allowanceError = await ensureSmartContractAllowance(log, 0);
+      const allowanceError = await ensureSmartContractAllowance(
+        log,
+        chain,
+        account,
+      );
       if (allowanceError) return allowanceError;
 
       const permissionError = await ensureChainSubmitForTxBroadcast(log);
@@ -565,16 +624,25 @@ export const signingTests: TestDefinition[] = [
       const client = getClient(chain.genesis);
       const api = client.getUnsafeApi();
       const sdk = createInkSdk(client);
-      const contract = sdk.getContract(contracts.hostApiDemo, HOSTAPI_DEMO_ADDRESS);
+      const contract = sdk.getContract(
+        contracts.hostApiDemo,
+        HOSTAPI_DEMO_ADDRESS,
+      );
 
       log("Building 2 contract calls...");
 
       // Dry-run each contract call through sdk-ink to get weight+storage.
       // The Promise<decodedCall> on the wrapped tx lets us extract the inner
       // pallet-revive call without broadcasting.
-      const dryRun1 = await contract.query("storeValue", { origin, data: { _value: BigInt(42) } });
+      const dryRun1 = await contract.query("storeValue", {
+        origin,
+        data: { _value: BigInt(42) },
+      });
       if (!dryRun1.success) return error("Dry-run #1 failed", dryRun1.value);
-      const dryRun2 = await contract.query("storeValue", { origin, data: { _value: BigInt(43) } });
+      const dryRun2 = await contract.query("storeValue", {
+        origin,
+        data: { _value: BigInt(43) },
+      });
       if (!dryRun2.success) return error("Dry-run #2 failed", dryRun2.value);
       const storeCall1 = await dryRun1.value.send().decodedCall;
       const storeCall2 = await dryRun2.value.send().decodedCall;
@@ -593,7 +661,10 @@ export const signingTests: TestDefinition[] = [
                 success(`Batch finalized on ${chain.name}`, {
                   txHash: event.txHash,
                   contract: HOSTAPI_DEMO_ADDRESS,
-                  calls: ["Revive.call (storeValue=42)", "Revive.call (storeValue=43)"],
+                  calls: [
+                    "Revive.call (storeValue=42)",
+                    "Revive.call (storeValue=43)",
+                  ],
                 }),
               );
             }
@@ -901,7 +972,8 @@ export const permissionTests: TestDefinition[] = [
       });
 
       return result.match(
-        (res) => success(`Camera permission: ${res.value ? "granted" : "denied"}`),
+        (res) =>
+          success(`Camera permission: ${res.value ? "granted" : "denied"}`),
         (err) => error(err.value.name, err.value),
       );
     },
@@ -919,7 +991,8 @@ export const permissionTests: TestDefinition[] = [
       });
 
       return result.match(
-        (res) => success(`Microphone permission: ${res.value ? "granted" : "denied"}`),
+        (res) =>
+          success(`Microphone permission: ${res.value ? "granted" : "denied"}`),
         (err) => error(err.value.name, err.value),
       );
     },
@@ -937,7 +1010,8 @@ export const permissionTests: TestDefinition[] = [
       });
 
       return result.match(
-        (res) => success(`Location permission: ${res.value ? "granted" : "denied"}`),
+        (res) =>
+          success(`Location permission: ${res.value ? "granted" : "denied"}`),
         (err) => error(err.value.name, err.value),
       );
     },
@@ -955,7 +1029,8 @@ export const permissionTests: TestDefinition[] = [
       });
 
       return result.match(
-        (res) => success(`Bluetooth permission: ${res.value ? "granted" : "denied"}`),
+        (res) =>
+          success(`Bluetooth permission: ${res.value ? "granted" : "denied"}`),
         (err) => error(err.value.name, err.value),
       );
     },
@@ -973,7 +1048,10 @@ export const permissionTests: TestDefinition[] = [
       });
 
       return result.match(
-        (res) => success(`Notifications permission: ${res.value ? "granted" : "denied"}`),
+        (res) =>
+          success(
+            `Notifications permission: ${res.value ? "granted" : "denied"}`,
+          ),
         (err) => error(err.value.name, err.value),
       );
     },
@@ -1009,7 +1087,8 @@ export const permissionTests: TestDefinition[] = [
       });
 
       return result.match(
-        (res) => success(`Clipboard permission: ${res.value ? "granted" : "denied"}`),
+        (res) =>
+          success(`Clipboard permission: ${res.value ? "granted" : "denied"}`),
         (err) => error(err.value.name, err.value),
       );
     },
@@ -1027,7 +1106,8 @@ export const permissionTests: TestDefinition[] = [
       });
 
       return result.match(
-        (res) => success(`OpenUrl permission: ${res.value ? "granted" : "denied"}`),
+        (res) =>
+          success(`OpenUrl permission: ${res.value ? "granted" : "denied"}`),
         (err) => error(err.value.name, err.value),
       );
     },
@@ -1045,7 +1125,8 @@ export const permissionTests: TestDefinition[] = [
       });
 
       return result.match(
-        (res) => success(`Biometrics permission: ${res.value ? "granted" : "denied"}`),
+        (res) =>
+          success(`Biometrics permission: ${res.value ? "granted" : "denied"}`),
         (err) => error(err.value.name, err.value),
       );
     },
@@ -1071,7 +1152,8 @@ export const permissionTests: TestDefinition[] = [
       });
 
       return result.match(
-        (res) => success(`Remote permission: ${res.value ? "granted" : "denied"}`),
+        (res) =>
+          success(`Remote permission: ${res.value ? "granted" : "denied"}`),
         (err) => error(err.value.name, err.value),
       );
     },
@@ -1089,7 +1171,8 @@ export const permissionTests: TestDefinition[] = [
       });
 
       return result.match(
-        (res) => success(`WebRTC permission: ${res.value ? "granted" : "denied"}`),
+        (res) =>
+          success(`WebRTC permission: ${res.value ? "granted" : "denied"}`),
         (err) => error(err.value.name, err.value),
       );
     },
@@ -1107,7 +1190,10 @@ export const permissionTests: TestDefinition[] = [
       });
 
       return result.match(
-        (res) => success(`Chain submit permission for ${chain.name}: ${res.value ? "granted" : "denied"}`),
+        (res) =>
+          success(
+            `Chain submit permission for ${chain.name}: ${res.value ? "granted" : "denied"}`,
+          ),
         (err) => error(err.value.name, err.value),
       );
     },
@@ -1126,7 +1212,9 @@ export const permissionTests: TestDefinition[] = [
 
       return result.match(
         (res) =>
-          success(`Preimage submit permission for ${chain.name}: ${res.value ? "granted" : "denied"}`),
+          success(
+            `Preimage submit permission for ${chain.name}: ${res.value ? "granted" : "denied"}`,
+          ),
         (err) => error(err.value.name, err.value),
       );
     },
@@ -1145,7 +1233,9 @@ export const permissionTests: TestDefinition[] = [
 
       return result.match(
         (res) =>
-          success(`Statement submit permission for ${chain.name}: ${res.value ? "granted" : "denied"}`),
+          success(
+            `Statement submit permission for ${chain.name}: ${res.value ? "granted" : "denied"}`,
+          ),
         (err) => error(err.value.name, err.value),
       );
     },
@@ -1249,7 +1339,8 @@ export const chatTests: TestDefinition[] = [
   {
     id: "chat-manager-send-message",
     name: "Send Text Message to Room",
-    description: "Sends a message to an existing room via createProductChatManager",
+    description:
+      "Sends a message to an existing room via createProductChatManager",
     api: "chatManager.sendMessage(roomId, { tag: 'Text', value })",
     disabled: "Worker only — handled by the host",
     args: [
@@ -1314,7 +1405,8 @@ export const chatTests: TestDefinition[] = [
   {
     id: "chat-manager-send-message-to-user",
     name: "Send Message to User",
-    description: "Sends a statement to a user-specific topic via createStatementStore",
+    description:
+      "Sends a statement to a user-specific topic via createStatementStore",
     api: "statementStore.createProof(accountId, statement) + statementStore.submit(signedStatement)",
     disabled: "Worker only — handled by the host",
     args: [
@@ -1358,7 +1450,10 @@ export const chatTests: TestDefinition[] = [
       if (!recipientUsername)
         return error("No recipient username — not signed in?");
       const log = _logger || (() => {});
-      const loginErr = await ensureLoggedIn(log, "Sign in to message another user");
+      const loginErr = await ensureLoggedIn(
+        log,
+        "Sign in to message another user",
+      );
       if (loginErr) return loginErr;
       const permErr = await ensureStatementSubmitPermission(log);
       if (permErr) return permErr;
@@ -1382,7 +1477,10 @@ export const chatTests: TestDefinition[] = [
         await statementStore.submit({ ...statement, proof });
         return success(
           `Statement submitted to topic "host-playground:${recipientUsername}"`,
-          { topic: `host-playground:${recipientUsername}`, message: messageText },
+          {
+            topic: `host-playground:${recipientUsername}`,
+            message: messageText,
+          },
         );
       } catch (e) {
         return error(`Failed to send: ${e}`);
@@ -1406,7 +1504,10 @@ export const chatTests: TestDefinition[] = [
         setTimeout(() => {
           subscription.unsubscribe();
           resolve(
-            success(`Received ${rooms.length} room updates in 5s`, rooms.slice(-5)),
+            success(
+              `Received ${rooms.length} room updates in 5s`,
+              rooms.slice(-5),
+            ),
           );
         }, 5000);
       });
@@ -1429,7 +1530,10 @@ export const chatTests: TestDefinition[] = [
         setTimeout(() => {
           subscription.unsubscribe();
           resolve(
-            success(`Received ${actions.length} actions in 5s`, actions.slice(-5)),
+            success(
+              `Received ${actions.length} actions in 5s`,
+              actions.slice(-5),
+            ),
           );
         }, 5000);
       });
@@ -1492,7 +1596,10 @@ export const statementTests: TestDefinition[] = [
       const log = logger || (() => {});
       const dotNsIdentifier = args?.dotNsIdentifier ?? SELF_DOTNS;
 
-      const loginErr = await ensureLoggedIn(log, "Sign in to create a statement proof");
+      const loginErr = await ensureLoggedIn(
+        log,
+        "Sign in to create a statement proof",
+      );
       if (loginErr) return loginErr;
 
       const statementStore = createStatementStore();
@@ -1509,9 +1616,10 @@ export const statementTests: TestDefinition[] = [
         });
 
         const proofValue = proof.value;
-        const sig = 'signature' in proofValue
-          ? toHex(proofValue.signature).slice(0, 20)
-          : "onchain";
+        const sig =
+          "signature" in proofValue
+            ? toHex(proofValue.signature).slice(0, 20)
+            : "onchain";
         return success(`Proof type: ${proof.tag}, sig: ${sig}...`);
       } catch (e) {
         const err = e as { name?: string; payload?: { reason?: string } };
@@ -1532,12 +1640,15 @@ export const statementTests: TestDefinition[] = [
     async run(_chain, logger) {
       const log = logger || (() => {});
 
-      const loginErr = await ensureLoggedIn(log, "Sign in to create a statement proof");
+      const loginErr = await ensureLoggedIn(
+        log,
+        "Sign in to create a statement proof",
+      );
       if (loginErr) return loginErr;
 
       const messageBytes = new TextEncoder().encode(`Statement: ${Date.now()}`);
       const proof = await hostApi.statementStoreCreateProofAuthorized({
-        tag: 'v1',
+        tag: "v1",
         value: {
           proof: undefined,
           decryptionKey: undefined,
@@ -1545,22 +1656,23 @@ export const statementTests: TestDefinition[] = [
           channel: undefined,
           topics: [],
           data: messageBytes,
-        }
+        },
       });
 
       return proof.match(
-        proof => {
+        (proof) => {
           const proofValue = proof.value.value;
-          const signature = 'signature' in proofValue
-            ? toHex(proofValue.signature).slice(0, 20)
-            : "onchain";
+          const signature =
+            "signature" in proofValue
+              ? toHex(proofValue.signature).slice(0, 20)
+              : "onchain";
 
           return success(`Proof type: ${proof.tag}, sig: ${signature}...`);
         },
-        err => {
-          return error(err.value.toString())
-        }
-      )
+        (err) => {
+          return error(err.value.toString(), err.value.payload);
+        },
+      );
     },
   },
   {
@@ -1580,7 +1692,10 @@ export const statementTests: TestDefinition[] = [
       const log = logger || (() => {});
       const dotNsIdentifier = args?.dotNsIdentifier ?? SELF_DOTNS;
 
-      const loginErr = await ensureLoggedIn(log, "Sign in to submit a statement");
+      const loginErr = await ensureLoggedIn(
+        log,
+        "Sign in to submit a statement",
+      );
       if (loginErr) return loginErr;
 
       const statementStore = createStatementStore();
@@ -1637,9 +1752,12 @@ export const statementTests: TestDefinition[] = [
 
       return new Promise((resolve) => {
         const received: unknown[] = [];
-        const subscription = statementStore.subscribe({ matchAll: [] }, (page) => {
-          received.push(...page.statements);
-        });
+        const subscription = statementStore.subscribe(
+          { matchAll: [] },
+          (page) => {
+            received.push(...page.statements);
+          },
+        );
 
         setTimeout(() => {
           subscription.unsubscribe();
@@ -1675,12 +1793,8 @@ export const statementTests: TestDefinition[] = [
     async run(_chain, _logger, args) {
       const statementStore = createStatementStore();
       const encoder = new TextEncoder();
-      const topicA = encoder.encode(
-        args?.topicA ?? "host-playground:topic-a",
-      );
-      const topicB = encoder.encode(
-        args?.topicB ?? "host-playground:topic-b",
-      );
+      const topicA = encoder.encode(args?.topicA ?? "host-playground:topic-a");
+      const topicB = encoder.encode(args?.topicB ?? "host-playground:topic-b");
 
       return new Promise((resolve) => {
         const received: unknown[] = [];
@@ -1715,7 +1829,10 @@ export const preimageTests: TestDefinition[] = [
     category: "preimage",
     async run(_chain, logger) {
       const log = logger || (() => {});
-      const loginErr = await ensureLoggedIn(log, "Sign in to submit a preimage");
+      const loginErr = await ensureLoggedIn(
+        log,
+        "Sign in to submit a preimage",
+      );
       if (loginErr) return loginErr;
       const permErr = await ensurePreimageSubmitPermission(log);
       if (permErr) return permErr;
@@ -1738,13 +1855,15 @@ export const preimageTests: TestDefinition[] = [
       {
         name: "hash",
         label: "Hash (0x…)",
-        defaultValue: "0x5e933dd685deedfbf58063678bfa2abead4dc25e6da4ffea190503cfaa940d51",
+        defaultValue:
+          "0x5e933dd685deedfbf58063678bfa2abead4dc25e6da4ffea190503cfaa940d51",
       },
     ],
     category: "preimage",
     async run(_chain, logger, args) {
       const log = logger || (() => {});
-      const hash = (args?.hash ?? "0x5e933dd685deedfbf58063678bfa2abead4dc25e6da4ffea190503cfaa940d51") as `0x${string}`;
+      const hash = (args?.hash ??
+        "0x5e933dd685deedfbf58063678bfa2abead4dc25e6da4ffea190503cfaa940d51") as `0x${string}`;
 
       log(`Looking up hash: ${hash.slice(0, 20)}...`);
 
@@ -1789,7 +1908,10 @@ export const preimageTests: TestDefinition[] = [
     category: "preimage",
     async run(_chain, logger) {
       const log = logger || (() => {});
-      const loginErr = await ensureLoggedIn(log, "Sign in to submit a preimage");
+      const loginErr = await ensureLoggedIn(
+        log,
+        "Sign in to submit a preimage",
+      );
       if (loginErr) return loginErr;
       const permErr = await ensurePreimageSubmitPermission(log);
       if (permErr) return permErr;
@@ -1816,7 +1938,10 @@ export const preimageTests: TestDefinition[] = [
     async run(chain, logger) {
       const log = logger || (() => {});
 
-      const loginErr = await ensureLoggedIn(log, "Sign in to upload a file to Bulletin");
+      const loginErr = await ensureLoggedIn(
+        log,
+        "Sign in to upload a file to Bulletin",
+      );
       if (loginErr) return loginErr;
 
       // Allowance + permission setup (mirrors e2e/allowance-flows.spec.ts)
@@ -1857,7 +1982,9 @@ export const preimageTests: TestDefinition[] = [
         });
       }
       const payloadEqualsLookup = bytesEqual(payload, lookupBytes);
-      log(`Host lookup: ${lookupBytes.length} bytes, equal=${payloadEqualsLookup}`);
+      log(
+        `Host lookup: ${lookupBytes.length} bytes, equal=${payloadEqualsLookup}`,
+      );
       if (!payloadEqualsLookup) {
         return error("Host lookup bytes ≠ submitted payload", {
           hash,
@@ -1923,7 +2050,12 @@ export const preimageTests: TestDefinition[] = [
       for (const cand of candidates) {
         const url = `${gateway}/${cand.cid}`;
         log(`Probing ${url} (up to ${totalBudgetMs / 1000}s)...`);
-        const probe: Probe = { algo: cand.algo, cid: cand.cid, url, status: "" };
+        const probe: Probe = {
+          algo: cand.algo,
+          cid: cand.cid,
+          url,
+          status: "",
+        };
         const deadline = Date.now() + totalBudgetMs;
         let lastStatus: number | string = "";
         while (Date.now() < deadline) {
@@ -2220,15 +2352,21 @@ export const chainTests: TestDefinition[] = [
 
       return new Promise((resolve) => {
         const subscription = hostApi.chainHeadFollowSubscribe(
-          { tag: "v1", value: { genesisHash: chain.genesis, withRuntime: false } },
+          {
+            tag: "v1",
+            value: { genesisHash: chain.genesis, withRuntime: false },
+          },
           async (event) => {
             if (event.tag !== "v1") return;
             const e = event.value;
             if (e.tag !== "Initialized") return;
 
             const blockHash = e.value.finalizedBlockHashes[0]!;
-            const subscriptionId = (subscription as unknown as { id: string }).id;
-            log(`Got finalized block, fetching header for ${blockHash.slice(0, 18)}...`);
+            const subscriptionId = (subscription as unknown as { id: string })
+              .id;
+            log(
+              `Got finalized block, fetching header for ${blockHash.slice(0, 18)}...`,
+            );
 
             try {
               const result = await hostApi.chainHeadHeader({
@@ -2242,7 +2380,13 @@ export const chainTests: TestDefinition[] = [
 
               subscription.unsubscribe();
               result.match(
-                (res) => resolve(success(`Header: ${res.value?.slice(0, 40)}...`, { blockHash, header: res.value })),
+                (res) =>
+                  resolve(
+                    success(`Header: ${res.value?.slice(0, 40)}...`, {
+                      blockHash,
+                      header: res.value,
+                    }),
+                  ),
                 (err) => resolve(error(err.value.name, err.value)),
               );
             } catch (e) {
@@ -2271,14 +2415,18 @@ export const chainTests: TestDefinition[] = [
 
       return new Promise((resolve) => {
         const subscription = hostApi.chainHeadFollowSubscribe(
-          { tag: "v1", value: { genesisHash: chain.genesis, withRuntime: false } },
+          {
+            tag: "v1",
+            value: { genesisHash: chain.genesis, withRuntime: false },
+          },
           async (event) => {
             if (event.tag !== "v1") return;
             const e = event.value;
             if (e.tag !== "Initialized") return;
 
             const blockHash = e.value.finalizedBlockHashes[0]!;
-            const subscriptionId = (subscription as unknown as { id: string }).id;
+            const subscriptionId = (subscription as unknown as { id: string })
+              .id;
             log(`Fetching body for ${blockHash.slice(0, 18)}...`);
 
             try {
@@ -2293,7 +2441,10 @@ export const chainTests: TestDefinition[] = [
 
               subscription.unsubscribe();
               result.match(
-                (res) => resolve(success(`Body operation: ${res.value.tag}`, res.value)),
+                (res) =>
+                  resolve(
+                    success(`Body operation: ${res.value.tag}`, res.value),
+                  ),
                 (err) => resolve(error(err.value.name, err.value)),
               );
             } catch (e) {
@@ -2322,19 +2473,24 @@ export const chainTests: TestDefinition[] = [
 
       return new Promise((resolve) => {
         const subscription = hostApi.chainHeadFollowSubscribe(
-          { tag: "v1", value: { genesisHash: chain.genesis, withRuntime: false } },
+          {
+            tag: "v1",
+            value: { genesisHash: chain.genesis, withRuntime: false },
+          },
           async (event) => {
             if (event.tag !== "v1") return;
             const e = event.value;
             if (e.tag !== "Initialized") return;
 
             const blockHash = e.value.finalizedBlockHashes[0]!;
-            const subscriptionId = (subscription as unknown as { id: string }).id;
+            const subscriptionId = (subscription as unknown as { id: string })
+              .id;
             log(`Querying storage at ${blockHash.slice(0, 18)}...`);
 
             try {
               // Query System.Account storage prefix
-              const storageKey = "0x26aa394eea5630e07c48ae0c9558cef7" as `0x${string}`;
+              const storageKey =
+                "0x26aa394eea5630e07c48ae0c9558cef7" as `0x${string}`;
               const result = await hostApi.chainHeadStorage({
                 tag: "v1",
                 value: {
@@ -2348,7 +2504,10 @@ export const chainTests: TestDefinition[] = [
 
               subscription.unsubscribe();
               result.match(
-                (res) => resolve(success(`Storage operation: ${res.value.tag}`, res.value)),
+                (res) =>
+                  resolve(
+                    success(`Storage operation: ${res.value.tag}`, res.value),
+                  ),
                 (err) => resolve(error(err.value.name, err.value)),
               );
             } catch (e) {
@@ -2377,14 +2536,18 @@ export const chainTests: TestDefinition[] = [
 
       return new Promise((resolve) => {
         const subscription = hostApi.chainHeadFollowSubscribe(
-          { tag: "v1", value: { genesisHash: chain.genesis, withRuntime: false } },
+          {
+            tag: "v1",
+            value: { genesisHash: chain.genesis, withRuntime: false },
+          },
           async (event) => {
             if (event.tag !== "v1") return;
             const e = event.value;
             if (e.tag !== "Initialized") return;
 
             const blockHash = e.value.finalizedBlockHashes[0]!;
-            const subscriptionId = (subscription as unknown as { id: string }).id;
+            const subscriptionId = (subscription as unknown as { id: string })
+              .id;
             log(`Calling Core_version at ${blockHash.slice(0, 18)}...`);
 
             try {
@@ -2401,7 +2564,10 @@ export const chainTests: TestDefinition[] = [
 
               subscription.unsubscribe();
               result.match(
-                (res) => resolve(success(`Call operation: ${res.value.tag}`, res.value)),
+                (res) =>
+                  resolve(
+                    success(`Call operation: ${res.value.tag}`, res.value),
+                  ),
                 (err) => resolve(error(err.value.name, err.value)),
               );
             } catch (e) {
@@ -2430,14 +2596,18 @@ export const chainTests: TestDefinition[] = [
 
       return new Promise((resolve) => {
         const subscription = hostApi.chainHeadFollowSubscribe(
-          { tag: "v1", value: { genesisHash: chain.genesis, withRuntime: false } },
+          {
+            tag: "v1",
+            value: { genesisHash: chain.genesis, withRuntime: false },
+          },
           async (event) => {
             if (event.tag !== "v1") return;
             const e = event.value;
             if (e.tag !== "Initialized") return;
 
             const blockHash = e.value.finalizedBlockHashes[0]!;
-            const subscriptionId = (subscription as unknown as { id: string }).id;
+            const subscriptionId = (subscription as unknown as { id: string })
+              .id;
             log(`Unpinning block ${blockHash.slice(0, 18)}...`);
 
             try {
@@ -2452,7 +2622,10 @@ export const chainTests: TestDefinition[] = [
 
               subscription.unsubscribe();
               result.match(
-                () => resolve(success(`Unpinned block ${blockHash.slice(0, 18)}...`)),
+                () =>
+                  resolve(
+                    success(`Unpinned block ${blockHash.slice(0, 18)}...`),
+                  ),
                 (err) => resolve(error(err.value.name, err.value)),
               );
             } catch (e) {
@@ -2515,7 +2688,10 @@ export const chainTests: TestDefinition[] = [
       return broadcastResult.match(
         async (res) => {
           const operationId = res.value;
-          if (!operationId) return success("Broadcast returned no operationId — nothing to stop");
+          if (!operationId)
+            return success(
+              "Broadcast returned no operationId — nothing to stop",
+            );
 
           log(`Stopping broadcast ${operationId}...`);
           const stopResult = await hostApi.chainTransactionStop({
@@ -2544,38 +2720,54 @@ export const chainTests: TestDefinition[] = [
 
       return new Promise((resolve) => {
         const subscription = hostApi.chainHeadFollowSubscribe(
-          { tag: "v1", value: { genesisHash: chain.genesis, withRuntime: false } },
+          {
+            tag: "v1",
+            value: { genesisHash: chain.genesis, withRuntime: false },
+          },
           async (event) => {
             if (event.tag !== "v1") return;
             const e = event.value;
             if (e.tag !== "Initialized") return;
 
             const blockHash = e.value.finalizedBlockHashes[0]!;
-            const subscriptionId = (subscription as unknown as { id: string }).id;
-            log("Starting storage query to trigger OperationWaitingForContinue...");
+            const subscriptionId = (subscription as unknown as { id: string })
+              .id;
+            log(
+              "Starting storage query to trigger OperationWaitingForContinue...",
+            );
 
             try {
               // Query with DescendantsValues to increase chance of pagination
-              const storageKey = "0x26aa394eea5630e07c48ae0c9558cef7" as `0x${string}`;
+              const storageKey =
+                "0x26aa394eea5630e07c48ae0c9558cef7" as `0x${string}`;
               const storageResult = await hostApi.chainHeadStorage({
                 tag: "v1",
                 value: {
                   genesisHash: chain.genesis,
                   followSubscriptionId: subscriptionId,
                   hash: blockHash,
-                  items: [{ key: storageKey, type: "DescendantsValues" as const }],
+                  items: [
+                    { key: storageKey, type: "DescendantsValues" as const },
+                  ],
                   childTrie: null,
                 },
               });
 
               const operationId = storageResult.match(
-                (res) => (res.value.tag === "Started" ? res.value.value.operationId : null),
+                (res) =>
+                  res.value.tag === "Started"
+                    ? res.value.value.operationId
+                    : null,
                 () => null,
               );
 
               if (!operationId) {
                 subscription.unsubscribe();
-                resolve(success("Storage query returned LimitReached — no operation to continue"));
+                resolve(
+                  success(
+                    "Storage query returned LimitReached — no operation to continue",
+                  ),
+                );
                 return;
               }
 
@@ -2620,37 +2812,51 @@ export const chainTests: TestDefinition[] = [
 
       return new Promise((resolve) => {
         const subscription = hostApi.chainHeadFollowSubscribe(
-          { tag: "v1", value: { genesisHash: chain.genesis, withRuntime: false } },
+          {
+            tag: "v1",
+            value: { genesisHash: chain.genesis, withRuntime: false },
+          },
           async (event) => {
             if (event.tag !== "v1") return;
             const e = event.value;
             if (e.tag !== "Initialized") return;
 
             const blockHash = e.value.finalizedBlockHashes[0]!;
-            const subscriptionId = (subscription as unknown as { id: string }).id;
+            const subscriptionId = (subscription as unknown as { id: string })
+              .id;
             log("Starting storage query...");
 
             try {
-              const storageKey = "0x26aa394eea5630e07c48ae0c9558cef7" as `0x${string}`;
+              const storageKey =
+                "0x26aa394eea5630e07c48ae0c9558cef7" as `0x${string}`;
               const storageResult = await hostApi.chainHeadStorage({
                 tag: "v1",
                 value: {
                   genesisHash: chain.genesis,
                   followSubscriptionId: subscriptionId,
                   hash: blockHash,
-                  items: [{ key: storageKey, type: "DescendantsValues" as const }],
+                  items: [
+                    { key: storageKey, type: "DescendantsValues" as const },
+                  ],
                   childTrie: null,
                 },
               });
 
               const operationId = storageResult.match(
-                (res) => (res.value.tag === "Started" ? res.value.value.operationId : null),
+                (res) =>
+                  res.value.tag === "Started"
+                    ? res.value.value.operationId
+                    : null,
                 () => null,
               );
 
               if (!operationId) {
                 subscription.unsubscribe();
-                resolve(success("Storage query returned LimitReached — no operation to stop"));
+                resolve(
+                  success(
+                    "Storage query returned LimitReached — no operation to stop",
+                  ),
+                );
                 return;
               }
 
@@ -2698,7 +2904,10 @@ export const chainTests: TestDefinition[] = [
           // run() call still re-encodes with the active chain's prefix if it
           // differs. We pre-fill so the user can see and edit it.
           const accountsProvider = createAccountsProvider();
-          const result = await accountsProvider.getProductAccount(SELF_DOTNS, 0);
+          const result = await accountsProvider.getProductAccount(
+            SELF_DOTNS,
+            0,
+          );
           return result.match(
             (a) => AccountId(0).dec(a.publicKey),
             () => "",
@@ -2712,8 +2921,14 @@ export const chainTests: TestDefinition[] = [
       let address = args?.address?.trim();
       if (!address) {
         const accountsProvider = createAccountsProvider();
-        const accountResult = await accountsProvider.getProductAccount(SELF_DOTNS, 0);
-        const account = accountResult.match((a) => a, () => null);
+        const accountResult = await accountsProvider.getProductAccount(
+          SELF_DOTNS,
+          0,
+        );
+        const account = accountResult.match(
+          (a) => a,
+          () => null,
+        );
         if (!account) {
           return error(`No product account for "${SELF_DOTNS}"`);
         }
@@ -2742,8 +2957,7 @@ export const contractTests: TestDefinition[] = [
   {
     id: "contract-query-stored-value",
     name: "Contract: Query Stored Value",
-    description:
-      "Reads getStoredValue() from the HostApiDemo contract",
+    description: "Reads getStoredValue() from the HostApiDemo contract",
     api: "contract.query('getStoredValue', { origin })",
     category: "contract",
     async run(chain: ChainConfig) {
@@ -2752,7 +2966,10 @@ export const contractTests: TestDefinition[] = [
       const client = getClient(chain.genesis);
       try {
         const sdk = createInkSdk(client);
-        const contract = sdk.getContract(contracts.hostApiDemo, contractAddress);
+        const contract = sdk.getContract(
+          contracts.hostApiDemo,
+          contractAddress,
+        );
         const result = await contract.query("getStoredValue", { origin });
         if (!result.success) return error("Query failed", result.value);
         return success(`Stored value: ${result.value.response}`, {
@@ -2786,14 +3003,27 @@ export const contractTests: TestDefinition[] = [
 
       log("Fetching account...");
       const accountsProvider = createAccountsProvider();
-      const accountResult = await accountsProvider.getProductAccount(SELF_DOTNS, 0);
-      const account = accountResult.match((a) => a, () => null);
+      const accountResult = await accountsProvider.getProductAccount(
+        SELF_DOTNS,
+        0,
+      );
+      const account = accountResult.match(
+        (a) => a,
+        () => null,
+      );
       if (!account) return error("No product account available");
 
-      const signer = accountsProvider.getProductAccountSigner(account, "createTransaction");
+      const signer = accountsProvider.getProductAccountSigner(
+        account,
+        "createTransaction",
+      );
       const origin = AccountId().dec(account.publicKey);
 
-      const allowanceError = await ensureSmartContractAllowance(log, 0);
+      const allowanceError = await ensureSmartContractAllowance(
+        log,
+        chain,
+        account,
+      );
       if (allowanceError) return allowanceError;
 
       const permissionError = await ensureChainSubmitForTxBroadcast(log);
@@ -2801,35 +3031,47 @@ export const contractTests: TestDefinition[] = [
 
       const client = getClient(chain.genesis);
       const sdk = createInkSdk(client);
-      const contract = sdk.getContract(contracts.hostApiDemo, HOSTAPI_DEMO_ADDRESS);
+      const contract = sdk.getContract(
+        contracts.hostApiDemo,
+        HOSTAPI_DEMO_ADDRESS,
+      );
 
       const value = BigInt(args?.value ?? "42");
       log(`Storing value ${value}...`);
 
-      const dryRun = await contract.query("storeValue", { origin, data: { _value: value } });
+      const dryRun = await contract.query("storeValue", {
+        origin,
+        data: { _value: value },
+      });
       if (!dryRun.success) return error("Dry-run failed", dryRun.value);
 
       log("Signing and submitting...");
       await new Promise<void>((resolve, reject) => {
-        dryRun.value.send().signSubmitAndWatch(signer).subscribe({
-          // eslint-disable-next-line @typescript-eslint/no-explicit-any
-          next: (ev: any) => {
-            log(`Event: ${ev.type}`);
-            if (ev.type === "txBestBlocksState" && ev.found) resolve();
-            if (ev.type === "finalized" && !ev.ok) reject(new Error("Tx failed"));
-          },
-          error: reject,
-        });
+        dryRun.value
+          .send()
+          .signSubmitAndWatch(signer)
+          .subscribe({
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            next: (ev: any) => {
+              log(`Event: ${ev.type}`);
+              if (ev.type === "txBestBlocksState" && ev.found) resolve();
+              if (ev.type === "finalized" && !ev.ok)
+                reject(new Error("Tx failed"));
+            },
+            error: reject,
+          });
       });
 
-      return success(`Stored value: ${value}`, { value: String(value), contract: HOSTAPI_DEMO_ADDRESS });
+      return success(`Stored value: ${value}`, {
+        value: String(value),
+        contract: HOSTAPI_DEMO_ADDRESS,
+      });
     },
   },
   {
     id: "contract-query-data-length",
     name: "Contract: Query Data Length",
-    description:
-      "Reads getStoredDataLength() from the HostApiDemo contract",
+    description: "Reads getStoredDataLength() from the HostApiDemo contract",
     api: "contract.query('getStoredDataLength', { origin })",
     category: "contract",
     async run(chain: ChainConfig) {
@@ -2838,7 +3080,10 @@ export const contractTests: TestDefinition[] = [
       const client = getClient(chain.genesis);
       try {
         const sdk = createInkSdk(client);
-        const contract = sdk.getContract(contracts.hostApiDemo, contractAddress);
+        const contract = sdk.getContract(
+          contracts.hostApiDemo,
+          contractAddress,
+        );
         const result = await contract.query("getStoredDataLength", { origin });
         if (!result.success) return error("Query failed", result.value);
         return success(`Data length: ${result.value.response} bytes`, {
@@ -2863,13 +3108,18 @@ export const contractTests: TestDefinition[] = [
       const client = getClient(chain.genesis);
       try {
         const sdk = createInkSdk(client);
-        const contract = sdk.getContract(contracts.hostApiDemo, contractAddress);
+        const contract = sdk.getContract(
+          contracts.hostApiDemo,
+          contractAddress,
+        );
         const result = await contract.query("getBalance", { origin });
         if (!result.success) return error("Query failed", result.value);
         const wei = result.value.response as bigint;
         const divisor = BigInt("1000000000000000000");
         const whole = wei / divisor;
-        const frac = (wei % divisor).toString().padStart(18, "0").replace(/0+$/, "") || "0";
+        const frac =
+          (wei % divisor).toString().padStart(18, "0").replace(/0+$/, "") ||
+          "0";
         const formatted = `${whole}.${frac}`;
         return success(`Contract balance: ${formatted} PAS`, {
           balanceWei: String(wei),
@@ -2902,14 +3152,27 @@ export const contractTests: TestDefinition[] = [
 
       log("Fetching account...");
       const accountsProvider = createAccountsProvider();
-      const accountResult = await accountsProvider.getProductAccount(SELF_DOTNS, 0);
-      const account = accountResult.match((a) => a, () => null);
+      const accountResult = await accountsProvider.getProductAccount(
+        SELF_DOTNS,
+        0,
+      );
+      const account = accountResult.match(
+        (a) => a,
+        () => null,
+      );
       if (!account) return error("No product account available");
 
-      const signer = accountsProvider.getProductAccountSigner(account, "createTransaction");
+      const signer = accountsProvider.getProductAccountSigner(
+        account,
+        "createTransaction",
+      );
       const origin = AccountId().dec(account.publicKey);
 
-      const allowanceError = await ensureSmartContractAllowance(log, 0);
+      const allowanceError = await ensureSmartContractAllowance(
+        log,
+        chain,
+        account,
+      );
       if (allowanceError) return allowanceError;
 
       const permissionError = await ensureChainSubmitForTxBroadcast(log);
@@ -2917,11 +3180,16 @@ export const contractTests: TestDefinition[] = [
 
       const client = getClient(chain.genesis);
       const sdk = createInkSdk(client);
-      const contract = sdk.getContract(contracts.hostApiDemo, HOSTAPI_DEMO_ADDRESS);
+      const contract = sdk.getContract(
+        contracts.hostApiDemo,
+        HOSTAPI_DEMO_ADDRESS,
+      );
 
       const amountStr = args?.amount ?? "0.1";
       const [whole = "0", frac = ""] = amountStr.split(".");
-      const planck = BigInt(whole) * BigInt("10000000000") + BigInt(frac.padEnd(10, "0").slice(0, 10));
+      const planck =
+        BigInt(whole) * BigInt("10000000000") +
+        BigInt(frac.padEnd(10, "0").slice(0, 10));
       log(`Depositing ${amountStr} PAS (${planck} planck)...`);
 
       const dryRun = await contract.query("deposit", { origin, value: planck });
@@ -2929,18 +3197,25 @@ export const contractTests: TestDefinition[] = [
 
       log("Signing and submitting...");
       await new Promise<void>((resolve, reject) => {
-        dryRun.value.send().signSubmitAndWatch(signer).subscribe({
-          // eslint-disable-next-line @typescript-eslint/no-explicit-any
-          next: (ev: any) => {
-            log(`Event: ${ev.type}`);
-            if (ev.type === "txBestBlocksState" && ev.found) resolve();
-            if (ev.type === "finalized" && !ev.ok) reject(new Error("Tx failed"));
-          },
-          error: reject,
-        });
+        dryRun.value
+          .send()
+          .signSubmitAndWatch(signer)
+          .subscribe({
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            next: (ev: any) => {
+              log(`Event: ${ev.type}`);
+              if (ev.type === "txBestBlocksState" && ev.found) resolve();
+              if (ev.type === "finalized" && !ev.ok)
+                reject(new Error("Tx failed"));
+            },
+            error: reject,
+          });
       });
 
-      return success(`Deposited ${amountStr} PAS`, { planck: String(planck), contract: HOSTAPI_DEMO_ADDRESS });
+      return success(`Deposited ${amountStr} PAS`, {
+        planck: String(planck),
+        contract: HOSTAPI_DEMO_ADDRESS,
+      });
     },
   },
   {
@@ -2965,14 +3240,27 @@ export const contractTests: TestDefinition[] = [
 
       log("Fetching account...");
       const accountsProvider = createAccountsProvider();
-      const accountResult = await accountsProvider.getProductAccount(SELF_DOTNS, 0);
-      const account = accountResult.match((a) => a, () => null);
+      const accountResult = await accountsProvider.getProductAccount(
+        SELF_DOTNS,
+        0,
+      );
+      const account = accountResult.match(
+        (a) => a,
+        () => null,
+      );
       if (!account) return error("No product account available");
 
-      const signer = accountsProvider.getProductAccountSigner(account, "createTransaction");
+      const signer = accountsProvider.getProductAccountSigner(
+        account,
+        "createTransaction",
+      );
       const origin = AccountId().dec(account.publicKey);
 
-      const allowanceError = await ensureSmartContractAllowance(log, 0);
+      const allowanceError = await ensureSmartContractAllowance(
+        log,
+        chain,
+        account,
+      );
       if (allowanceError) return allowanceError;
 
       const permissionError = await ensureChainSubmitForTxBroadcast(log);
@@ -2980,38 +3268,52 @@ export const contractTests: TestDefinition[] = [
 
       const client = getClient(chain.genesis);
       const sdk = createInkSdk(client);
-      const contract = sdk.getContract(contracts.hostApiDemo, HOSTAPI_DEMO_ADDRESS);
+      const contract = sdk.getContract(
+        contracts.hostApiDemo,
+        HOSTAPI_DEMO_ADDRESS,
+      );
 
       const amountStr = args?.amount ?? "0.1";
       const [whole = "0", frac = ""] = amountStr.split(".");
       // withdraw() takes wei (18 decimals)
-      const wei = BigInt(whole) * BigInt("1000000000000000000") + BigInt(frac.padEnd(18, "0").slice(0, 18));
+      const wei =
+        BigInt(whole) * BigInt("1000000000000000000") +
+        BigInt(frac.padEnd(18, "0").slice(0, 18));
       log(`Withdrawing ${amountStr} PAS (${wei} wei)...`);
 
-      const dryRun = await contract.query("withdraw", { origin, data: { _amount: wei } });
+      const dryRun = await contract.query("withdraw", {
+        origin,
+        data: { _amount: wei },
+      });
       if (!dryRun.success) return error("Dry-run failed", dryRun.value);
 
       log("Signing and submitting...");
       await new Promise<void>((resolve, reject) => {
-        dryRun.value.send().signSubmitAndWatch(signer).subscribe({
-          // eslint-disable-next-line @typescript-eslint/no-explicit-any
-          next: (ev: any) => {
-            log(`Event: ${ev.type}`);
-            if (ev.type === "txBestBlocksState" && ev.found) resolve();
-            if (ev.type === "finalized" && !ev.ok) reject(new Error("Tx failed"));
-          },
-          error: reject,
-        });
+        dryRun.value
+          .send()
+          .signSubmitAndWatch(signer)
+          .subscribe({
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            next: (ev: any) => {
+              log(`Event: ${ev.type}`);
+              if (ev.type === "txBestBlocksState" && ev.found) resolve();
+              if (ev.type === "finalized" && !ev.ok)
+                reject(new Error("Tx failed"));
+            },
+            error: reject,
+          });
       });
 
-      return success(`Withdrew ${amountStr} PAS`, { wei: String(wei), contract: HOSTAPI_DEMO_ADDRESS });
+      return success(`Withdrew ${amountStr} PAS`, {
+        wei: String(wei),
+        contract: HOSTAPI_DEMO_ADDRESS,
+      });
     },
   },
   {
     id: "contract-query-total-deposits",
     name: "Contract: Query Total Deposits",
-    description:
-      "Reads totalDeposits() from the HostApiDemo contract",
+    description: "Reads totalDeposits() from the HostApiDemo contract",
     api: "contract.query('totalDeposits', { origin })",
     category: "contract",
     async run(chain: ChainConfig) {
@@ -3020,7 +3322,10 @@ export const contractTests: TestDefinition[] = [
       const client = getClient(chain.genesis);
       try {
         const sdk = createInkSdk(client);
-        const contract = sdk.getContract(contracts.hostApiDemo, contractAddress);
+        const contract = sdk.getContract(
+          contracts.hostApiDemo,
+          contractAddress,
+        );
         const result = await contract.query("totalDeposits", { origin });
         if (!result.success) return error("Query failed", result.value);
         return success(`Total deposits: ${result.value.response}`, {
@@ -3053,9 +3358,7 @@ export const themeTests: TestDefinition[] = [
 
         setTimeout(() => {
           sub.unsubscribe();
-          resolve(
-            success(`Received ${themes.length} theme updates`, themes),
-          );
+          resolve(success(`Received ${themes.length} theme updates`, themes));
         }, 3000);
       });
     },
@@ -3131,7 +3434,7 @@ export const authTests: TestDefinition[] = [
 
       return result.match(
         (account) =>
-          success('User identity', {
+          success("User identity", {
             ...account,
           }),
         (err) => error(`${err.name}`, err),
@@ -3150,7 +3453,10 @@ export const paymentTests: TestDefinition[] = [
     category: "payments",
     async run(_chain, logger) {
       const log = logger || (() => {});
-      const loginErr = await ensureLoggedIn(log, "Sign in to view your balance");
+      const loginErr = await ensureLoggedIn(
+        log,
+        "Sign in to view your balance",
+      );
       if (loginErr) return loginErr;
 
       const pm = createPaymentManager();
@@ -3164,10 +3470,7 @@ export const paymentTests: TestDefinition[] = [
         setTimeout(() => {
           sub.unsubscribe();
           resolve(
-            success(
-              `Received ${balances.length} balance updates`,
-              balances,
-            ),
+            success(`Received ${balances.length} balance updates`, balances),
           );
         }, 3000);
       });
@@ -3196,7 +3499,10 @@ export const paymentTests: TestDefinition[] = [
       const dotNsIdentifier = args?.dotNsIdentifier ?? SELF_DOTNS;
       const amount = BigInt(args?.amount ?? "1000000000000");
 
-      const loginErr = await ensureLoggedIn(log, "Sign in to top up your balance");
+      const loginErr = await ensureLoggedIn(
+        log,
+        "Sign in to top up your balance",
+      );
       if (loginErr) return loginErr;
 
       const pm = createPaymentManager();
@@ -3229,7 +3535,10 @@ export const paymentTests: TestDefinition[] = [
       const log = logger || (() => {});
       const amount = BigInt(args?.amount ?? "100000000000");
 
-      const loginErr = await ensureLoggedIn(log, "Sign in to request a payment");
+      const loginErr = await ensureLoggedIn(
+        log,
+        "Sign in to request a payment",
+      );
       if (loginErr) return loginErr;
 
       const pm = createPaymentManager();
@@ -3263,10 +3572,7 @@ async function runResourceAllocation(resources: AllocatableResource[]) {
         resource: resources[i].tag,
         outcome: o.tag,
       }));
-      return success(
-        `Received ${outcomes.length} outcome(s)`,
-        outcomes,
-      );
+      return success(`Received ${outcomes.length} outcome(s)`, outcomes);
     },
     (err) => error(err.value.name, err.value),
   );
@@ -3276,7 +3582,8 @@ export const allowancesTests: TestDefinition[] = [
   {
     id: "allowances-statement-store",
     name: "Allocate StatementStore Allowance",
-    description: "Requests a statement-store allowance from the host (RFC-0010)",
+    description:
+      "Requests a statement-store allowance from the host (RFC-0010)",
     api: 'hostApi.requestResourceAllocation({ tag: "v1", value: [{ tag: "StatementStoreAllowance" }] })',
     category: "allowances",
     async run() {
@@ -3325,9 +3632,7 @@ export const allowancesTests: TestDefinition[] = [
     api: 'hostApi.requestResourceAllocation({ tag: "v1", value: [{ tag: "AutoSigning" }] })',
     category: "allowances",
     async run() {
-      return runResourceAllocation([
-        { tag: "AutoSigning", value: undefined },
-      ]);
+      return runResourceAllocation([{ tag: "AutoSigning", value: undefined }]);
     },
   },
   {
