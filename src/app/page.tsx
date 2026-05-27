@@ -160,10 +160,21 @@ export default function SdkTestPage() {
 
   // Synchronous heuristic first, then confirm asynchronously through
   // @parity/product-sdk-host so we converge on the SDK-backed answer.
-  const [isInWebview, setIsInWebview] = useState<boolean | null>(() =>
-    typeof window === "undefined" ? null : isInsideContainerSync(),
-  );
+  // Local-dev escape hatch: `?dev=1` bypasses the host gate so the UI can
+  // be exercised without an actual Polkadot host webview. Host calls will
+  // still fail without a real port; this only unblocks rendering. The
+  // bypass is applied in the effect (not the initial-state lambda) to keep
+  // the SSR/CSR initial render identical and avoid hydration mismatch.
+  const [isInWebview, setIsInWebview] = useState<boolean | null>(null);
   useEffect(() => {
+    if (typeof window === "undefined") return;
+    const devBypass =
+      new URLSearchParams(window.location.search).get("dev") === "1";
+    if (devBypass) {
+      setIsInWebview(true);
+      return;
+    }
+    setIsInWebview(isInsideContainerSync());
     let cancelled = false;
     void isInsideContainer().then((inside) => {
       if (!cancelled) setIsInWebview(inside);
