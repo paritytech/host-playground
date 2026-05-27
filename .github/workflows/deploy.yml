@@ -47,9 +47,10 @@ jobs:
   deploy:
     needs: build
     runs-on: parity-int-ubuntu
-    outputs:
-      cid: ${{ steps.final.outputs.cid }}
-      domain: ${{ steps.final.outputs.domain }}
+    strategy:
+      fail-fast: false
+      matrix:
+        env: [paseo-next-v2, preview]
     steps:
       - uses: actions/setup-node@v4
         with:
@@ -73,7 +74,7 @@ jobs:
         uses: actions/cache@v4
         with:
           path: .deploy-cache
-          key: deploy-${{ steps.hash.outputs.hash }}
+          key: deploy-${{ matrix.env }}-${{ steps.hash.outputs.hash }}
 
       - name: Load cached CID
         id: cached-deploy
@@ -121,7 +122,7 @@ jobs:
             export IPFS_CID='${{ steps.cached-deploy.outputs.cid }}'
             export NODE_OPTIONS='--max-old-space-size=8192'
             export MANIFEST_DOMAIN='${{ steps.domain-input.outputs.dotns }}'
-            bulletin-deploy --env paseo-next-v2 'out' '${{ steps.domain-input.outputs.dotns }}'
+            bulletin-deploy --env ${{ matrix.env }} 'out' '${{ steps.domain-input.outputs.dotns }}'
 
       - name: Validate deployment outputs
         if: steps.cache.outputs.cache-hit != 'true'
@@ -137,34 +138,39 @@ jobs:
           mkdir -p .deploy-cache
           echo "${{ steps.deploy.outputs.cid }}" > .deploy-cache/cid
 
-      - name: Set deployment outputs
-        id: final
+      - name: Persist deployment result
         run: |
           if [ "${{ steps.cache.outputs.cache-hit }}" == "true" ]; then
             DOMAIN="${{ steps.domain-input.outputs.dotns }}"
             DOMAIN="${DOMAIN%.dot}"
-            echo "cid=${{ steps.cached-deploy.outputs.cid }}" >> "$GITHUB_OUTPUT"
-            echo "domain=${DOMAIN}" >> "$GITHUB_OUTPUT"
+            CID="${{ steps.cached-deploy.outputs.cid }}"
           else
-            echo "cid=${{ steps.deploy.outputs.cid }}" >> "$GITHUB_OUTPUT"
-            echo "domain=${{ steps.deploy.outputs.domain }}" >> "$GITHUB_OUTPUT"
+            DOMAIN="${{ steps.deploy.outputs.domain }}"
+            CID="${{ steps.deploy.outputs.cid }}"
           fi
+          mkdir -p .deploy-result
+          printf '{"env":"%s","domain":"%s","cid":"%s"}\n' "${{ matrix.env }}" "$DOMAIN" "$CID" \
+            > .deploy-result/${{ matrix.env }}.json
+          cat .deploy-result/${{ matrix.env }}.json
+
+      - name: Upload deployment result
+        uses: actions/upload-artifact@v4
+        with:
+          name: deploy-result-${{ matrix.env }}
+          path: .deploy-result/${{ matrix.env }}.json
 
       - name: Deployment summary
         run: |
-          DOMAIN="${{ steps.final.outputs.domain }}"
-          CID="${{ steps.final.outputs.cid }}"
-          if [ -z "$DOMAIN" ]; then
-            echo "### Deployment completed but domain output is missing" >> $GITHUB_STEP_SUMMARY
-            echo "" >> $GITHUB_STEP_SUMMARY
-            echo "CID \`${CID}\`" >> $GITHUB_STEP_SUMMARY
-          else
-            echo "### ${DOMAIN}.dot" >> $GITHUB_STEP_SUMMARY
-            echo "" >> $GITHUB_STEP_SUMMARY
-            echo "Browser &nbsp; https://${DOMAIN}.dot.li" >> $GITHUB_STEP_SUMMARY
-            echo "Desktop &nbsp; \`${DOMAIN}.dot\`" >> $GITHUB_STEP_SUMMARY
-            echo "CID &nbsp; \`${CID}\`" >> $GITHUB_STEP_SUMMARY
-          fi
+          DOMAIN=$(jq -r .domain .deploy-result/${{ matrix.env }}.json)
+          CID=$(jq -r .cid .deploy-result/${{ matrix.env }}.json)
+          URL="https://${DOMAIN}.paseo.li?network=${{ matrix.env }}&chainBackend=rpc-gateway"
+          {
+            echo "### ${DOMAIN}.dot — ${{ matrix.env }}"
+            echo ""
+            echo "Browser &nbsp; ${URL}"
+            echo "Desktop &nbsp; \`${DOMAIN}.dot\`"
+            echo "CID &nbsp; \`${CID}\`"
+          } >> $GITHUB_STEP_SUMMARY
 
   comment:
     if: github.event_name == 'pull_request'
@@ -173,18 +179,38 @@ jobs:
     permissions:
       pull-requests: write
     steps:
+      - name: Download deployment results
+        uses: actions/download-artifact@v4
+        with:
+          pattern: deploy-result-*
+          path: deploy-results
+          merge-multiple: true
+
       - uses: actions/github-script@v7
         with:
           script: |
-            const domain = '${{ needs.deploy.outputs.domain }}';
-            const cid = '${{ needs.deploy.outputs.cid }}';
-            const runUrl = `${process.env.GITHUB_SERVER_URL}/${process.env.GITHUB_REPOSITORY}/actions/runs/${process.env.GITHUB_RUN_ID}`;
+            const fs = require('node:fs');
+            const path = require('node:path');
 
-            const body = [
-              `**${domain}.dot** · [logs](${runUrl})`,
+            const dir = 'deploy-results';
+            const files = fs.readdirSync(dir).filter(f => f.endsWith('.json'));
+            const results = files
+              .map(f => JSON.parse(fs.readFileSync(path.join(dir, f), 'utf8')))
+              .sort((a, b) => a.env.localeCompare(b.env));
+
+            const runUrl = `${process.env.GITHUB_SERVER_URL}/${process.env.GITHUB_REPOSITORY}/actions/runs/${process.env.GITHUB_RUN_ID}`;
+            const dotns = results[0]?.domain ? `${results[0].domain}.dot` : '(no domain)';
+
+            const lines = [
+              `**${dotns}** · [logs](${runUrl})`,
               '',
-              `https://${domain}.dot.li`,
-            ].join('\n');
+            ];
+            for (const { env, domain, cid } of results) {
+              const url = `https://${domain}.paseo.li?network=${env}&chainBackend=rpc-gateway`;
+              lines.push(`- \`${env}\` — ${url} &nbsp; · CID \`${cid}\``);
+            }
+
+            const body = lines.join('\n');
 
             const { data: comments } = await github.rest.issues.listComments({
               owner: context.repo.owner,
@@ -193,7 +219,7 @@ jobs:
             });
 
             const existing = comments.find(c =>
-              c.user.type === 'Bot' && c.body.includes('.dot')
+              c.user.type === 'Bot' && c.body.includes('paseo.li')
             );
 
             if (existing) {
