@@ -1,9 +1,4 @@
-// Direct @novasamatech imports kept for feature-matrix probes:
-// `injectSpektrExtension`, `metaProvider`, `createMetaProvider`,
-// `sandboxTransport`, `createLegacyExtensionEnableFactory` are lower-level
-// surfaces superseded by Parity's higher-level wrappers (`SignerManager`,
-// `isInsideContainer`, etc.) for production use, but the playground tests
-// them directly to exercise the underlying TruAPI layer.
+// Kept on @novasamatech/host-api-wrapper to probe the raw TruAPI surface.
 import {
   createLegacyExtensionEnableFactory,
   createMetaProvider,
