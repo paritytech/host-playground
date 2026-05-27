@@ -1,11 +1,7 @@
 import {
-  createMetaProvider,
   createPapiProvider,
   hostApi,
-  injectSpektrExtension,
-  metaProvider,
   createAccountsProvider,
-  createProductChatManager,
   createStatementStore,
   createLocalStorage,
   hostLocalStorage,
@@ -99,46 +95,6 @@ function success(message: string, details?: unknown): TestResult {
 
 function error(message: string, details?: unknown): TestResult {
   return { success: false, message, details };
-}
-
-/** Request a single remote permission from the host. */
-async function ensureRemotePermission(
-  log: (msg: string) => void,
-  permission: RemotePermissionItem,
-): Promise<TestResult | null> {
-  log(`Requesting remote permission: ${permission.tag}...`);
-  const permissionResult = await hostApi.permission({
-    tag: "v1",
-    value: permission,
-  });
-  if (permissionResult.isErr()) {
-    return error(
-      `Remote permission denied (${permission.tag})`,
-      permissionResult.error,
-    );
-  }
-  return null;
-}
-
-/** Before broadcasting a signed tx through the host (incl. `signSubmitAndWatch` submit step). */
-function ensureChainSubmitForTxBroadcast(log: (msg: string) => void) {
-  return ensureRemotePermission(log, { tag: "ChainSubmit", value: undefined });
-}
-
-/** Before `preimageManager.submit` / preimage RPC submit (host gates on PreimageSubmit). */
-function ensurePreimageSubmitPermission(log: (msg: string) => void) {
-  return ensureRemotePermission(log, {
-    tag: "PreimageSubmit",
-    value: undefined,
-  });
-}
-
-/** Before `statementStore.submit` (host gates on StatementSubmit). */
-function ensureStatementSubmitPermission(log: (msg: string) => void) {
-  return ensureRemotePermission(log, {
-    tag: "StatementSubmit",
-    value: undefined,
-  });
 }
 
 /**
@@ -269,55 +225,6 @@ function lookupPreimageWithTimeout(
       resolve(null);
     }, timeoutMs);
   });
-}
-
-/**
- * Before any signing/broadcast/submit operation that requires an authenticated
- * session. Idempotent: `requestLogin` returns `alreadyConnected` without
- * prompting if a session already exists.
- */
-async function ensureLoggedIn(
-  log: (msg: string) => void,
-  reason = "Sign in to use this feature",
-): Promise<TestResult | null> {
-  const accountsProvider = createAccountsProvider();
-  const result = await accountsProvider.requestLogin(reason);
-  if (result.isErr()) {
-    return error(`Login failed: ${result.error.name}`, result.error);
-  }
-  if (result.value === "rejected") {
-    return error("User rejected login");
-  }
-  log(`Login: ${result.value}`);
-  return null;
-}
-
-/** Request a device permission with a friendly error if denied. */
-async function ensureDevicePermission(
-  log: (msg: string) => void,
-  permission:
-    | "Notifications"
-    | "Camera"
-    | "Microphone"
-    | "Bluetooth"
-    | "NFC"
-    | "Location"
-    | "Clipboard"
-    | "OpenUrl"
-    | "Biometrics",
-): Promise<TestResult | null> {
-  log(`Requesting device permission: ${permission}...`);
-  const result = await hostApi.devicePermission({
-    tag: "v1",
-    value: permission,
-  });
-  return result.match(
-    (res) =>
-      res.value
-        ? null
-        : error(`Device permission not granted: ${permission}`, res),
-    (err) => error(`Device permission denied (${permission})`, err.value),
-  );
 }
 
 // Account Tests
@@ -463,8 +370,6 @@ export const signingTests: TestDefinition[] = [
       const log = logger || (() => {});
       const dotNsIdentifier = args?.dotNsIdentifier ?? SELF_DOTNS;
 
-      const loginErr = await ensureLoggedIn(log, "Sign in to sign messages");
-      if (loginErr) return loginErr;
 
       log(`Fetching product account for ${dotNsIdentifier}...`);
       const accountsProvider = createAccountsProvider();
@@ -531,11 +436,6 @@ export const signingTests: TestDefinition[] = [
       const log = logger || (() => {});
       const dotNsIdentifier = args?.dotNsIdentifier ?? SELF_DOTNS;
 
-      const loginErr = await ensureLoggedIn(
-        log,
-        "Sign in to create a transaction",
-      );
-      if (loginErr) return loginErr;
 
       log(`Fetching product account for ${dotNsIdentifier}...`);
       const accountsProvider = createAccountsProvider();
@@ -590,11 +490,6 @@ export const signingTests: TestDefinition[] = [
     async run(chain: ChainConfig, logger?: TestLogger) {
       const log = logger || (() => {});
 
-      const loginErr = await ensureLoggedIn(
-        log,
-        "Sign in to sign and submit a batch",
-      );
-      if (loginErr) return loginErr;
 
       log("Fetching product account...");
       const accountsProvider = createAccountsProvider();
@@ -618,8 +513,6 @@ export const signingTests: TestDefinition[] = [
       );
       if (allowanceError) return allowanceError;
 
-      const permissionError = await ensureChainSubmitForTxBroadcast(log);
-      if (permissionError) return permissionError;
 
       const client = getClient(chain.genesis);
       const api = client.getUnsafeApi();
@@ -678,70 +571,6 @@ export const signingTests: TestDefinition[] = [
 
 // Extension & Provider Tests
 export const extensionTests: TestDefinition[] = [
-  {
-    id: "inject-extension",
-    name: "Inject Extension",
-    description: "Injects the Spektr extension into the page",
-    api: "injectSpektrExtension()",
-    category: "extension",
-    async run() {
-      const result = await injectSpektrExtension();
-      return result
-        ? success("Extension injected successfully")
-        : success("Extension already injected or unavailable");
-    },
-  },
-  {
-    id: "connection-status",
-    name: "Connection Status",
-    description: "Subscribes to connection status changes (10s)",
-    api: "metaProvider.subscribeConnectionStatus(callback)",
-    category: "extension",
-    async run() {
-      return new Promise((resolve) => {
-        const statuses: string[] = [];
-        const unsubscribe = metaProvider.subscribeConnectionStatus((status) => {
-          statuses.push(JSON.stringify(status));
-        });
-
-        setTimeout(() => {
-          unsubscribe();
-          resolve(
-            success(
-              `Received ${statuses.length} status updates`,
-              statuses.slice(-5),
-            ),
-          );
-        }, 10000);
-      });
-    },
-  },
-  {
-    id: "meta-provider",
-    name: "Meta Provider",
-    description: "Creates a meta provider instance",
-    api: "createMetaProvider()",
-    category: "extension",
-    async run() {
-      const provider = createMetaProvider();
-      return provider
-        ? success("Meta provider created successfully")
-        : error("Failed to create meta provider");
-    },
-  },
-  {
-    id: "papi-provider",
-    name: "PAPI Provider",
-    description: "Creates a PAPI provider for the selected chain",
-    api: "createPapiProvider(genesisHash)",
-    category: "extension",
-    async run(chain: ChainConfig) {
-      const provider = createPapiProvider(chain.genesis);
-      return success(`PAPI provider created for ${chain.name}`, {
-        provider: typeof provider,
-      });
-    },
-  },
   {
     id: "well-known-chains",
     name: "Well-Known Chains",
@@ -883,58 +712,6 @@ export const storageTests: TestDefinition[] = [
       return readValue === value
         ? success(`Factory storage round-trip OK: "${value}"`)
         : error(`Mismatch: wrote "${value}", read "${readValue}"`);
-    },
-  },
-  {
-    id: "storage-legacy-write-read",
-    name: "Storage (Legacy)",
-    description: "Writes and reads via legacy hostApi.localStorageWrite/Read",
-    api: "hostApi.localStorageWrite({ tag, value }) / localStorageRead({ tag, value })",
-    args: [
-      { name: "key", label: "Key (hex)", defaultValue: "0x746573745f6b6579" },
-    ],
-    category: "storage",
-    async run(_chain, _logger, args) {
-      const key = args?.key ?? "0x746573745f6b6579";
-      const value = `test_value_${Date.now()}`;
-      const valueBytes = new TextEncoder().encode(value);
-
-      // Write
-      const writeResult = await hostApi.localStorageWrite({
-        tag: "v1",
-        value: [key, valueBytes],
-      });
-
-      const writeSuccess = writeResult.match(
-        () => true,
-        () => false,
-      );
-
-      if (!writeSuccess) {
-        return writeResult.match(
-          () => success("Unexpected success"),
-          (err) => error(`Write failed: ${err.value.name}`),
-        );
-      }
-
-      // Read
-      const readResult = await hostApi.localStorageRead({
-        tag: "v1",
-        value: key,
-      });
-
-      return readResult.match(
-        (res) => {
-          if (!res.value) {
-            return error("Read failed: Key not found after write");
-          }
-          const readValue = new TextDecoder().decode(res.value);
-          return success(
-            `Write: "${value}" (${toHex(valueBytes)})\nRead: "${readValue}" (${toHex(res.value)})`,
-          );
-        },
-        (err) => error(`Read failed: ${err.value.name}`),
-      );
     },
   },
 ];
@@ -1242,341 +1019,6 @@ export const permissionTests: TestDefinition[] = [
   },
 ];
 
-// Chat Tests
-export const chatTests: TestDefinition[] = [
-  {
-    id: "chat-echo-bot-trigger",
-    name: "Echo Bot Trigger",
-    description:
-      "Shows the trigger command to paste in Polkadot Desktop's chat UI",
-    api: "worker: chatManager.subscribeAction() — responds to !echo",
-    args: [
-      {
-        name: "message",
-        label: "Message",
-        defaultValue: "Hello from the playground!",
-      },
-    ],
-    category: "chat",
-    async run(_chain, _logger, args) {
-      const message = args?.message ?? "Hello from the playground!";
-      const trigger = `!echo ${message}`;
-      await navigator.clipboard.writeText(trigger);
-      return success(
-        `Copied to clipboard — paste in the "Host Playground" chat room`,
-        { trigger },
-      );
-    },
-  },
-  {
-    id: "chat-manager-register-room",
-    name: "Register Room",
-    description: "Registers a chat room via createProductChatManager",
-    api: "chatManager.registerRoom({ roomId, name, icon })",
-    disabled: "Worker only — handled by the host",
-    args: [
-      {
-        name: "roomId",
-        label: "Room ID",
-        defaultValue: "host-playground-room",
-      },
-      { name: "name", label: "Name", defaultValue: "Host Playground" },
-    ],
-    category: "chat",
-    async run(_chain, _logger, args) {
-      const chatManager = createProductChatManager();
-      try {
-        const result = await chatManager.registerRoom({
-          roomId: args?.roomId ?? "host-playground-room",
-          name: args?.name ?? "Host Playground",
-          icon: "",
-        });
-        return success(`Room registration: ${result}`);
-      } catch (e) {
-        const err = e as { name?: string; payload?: { reason?: string } };
-        return error(
-          err.name
-            ? `${err.name}${err.payload?.reason ? ` - ${err.payload.reason}` : ""}`
-            : String(e),
-        );
-      }
-    },
-  },
-  {
-    id: "chat-manager-register-bot",
-    name: "Register Bot",
-    description: "Registers a bot via createProductChatManager",
-    api: "chatManager.registerBot({ botId, name, icon })",
-    disabled: "Worker only — handled by the host",
-    args: [
-      {
-        name: "botId",
-        label: "Bot ID",
-        defaultValue: "playground-bot",
-      },
-      { name: "name", label: "Name", defaultValue: "Playground Bot" },
-    ],
-    category: "chat",
-    async run(_chain, _logger, args) {
-      const chatManager = createProductChatManager();
-      try {
-        const result = await chatManager.registerBot({
-          botId: args?.botId ?? "playground-bot",
-          name: args?.name ?? "Playground Bot",
-          icon: "",
-        });
-        return success(`Bot registration: ${result}`);
-      } catch (e) {
-        const err = e as { name?: string; payload?: { reason?: string } };
-        return error(
-          err.name
-            ? `${err.name}${err.payload?.reason ? ` - ${err.payload.reason}` : ""}`
-            : String(e),
-        );
-      }
-    },
-  },
-  {
-    id: "chat-manager-send-message",
-    name: "Send Text Message to Room",
-    description:
-      "Sends a message to an existing room via createProductChatManager",
-    api: "chatManager.sendMessage(roomId, { tag: 'Text', value })",
-    disabled: "Worker only — handled by the host",
-    args: [
-      {
-        name: "roomId",
-        label: "Room ID",
-        defaultValue: "host-playground-room",
-      },
-      {
-        name: "message",
-        label: "Message",
-        defaultValue: "Hello from Host Playground!",
-      },
-    ],
-    category: "chat",
-    async run(_chain, _logger, args) {
-      const roomId = args?.roomId ?? "host-playground-room";
-      const chatManager = createProductChatManager();
-      try {
-        await chatManager.registerRoom({ roomId, name: roomId, icon: "" });
-        const result = await chatManager.sendMessage(roomId, {
-          tag: "Text",
-          value: args?.message ?? "Hello from Host Playground!",
-        });
-        return success(`Message sent (ID: ${result.messageId})`);
-      } catch (e) {
-        return error(`Failed to send: ${e}`);
-      }
-    },
-  },
-  {
-    id: "chat-manager-send-custom-message",
-    name: "Send Custom Message to Room",
-    description: "Sends a custom (binary) message to an existing room",
-    api: "chatManager.sendMessage(roomId, { tag: 'Custom', value })",
-    disabled: "Worker only — handled by the host",
-    args: [
-      {
-        name: "roomId",
-        label: "Room ID",
-        defaultValue: "host-playground-room",
-      },
-    ],
-    category: "chat",
-    async run(_chain, _logger, args) {
-      const roomId = args?.roomId ?? "host-playground-room";
-      const chatManager = createProductChatManager();
-      const payload = new TextEncoder().encode(
-        JSON.stringify({ action: "test", ts: Date.now() }),
-      );
-      try {
-        const result = await chatManager.sendMessage(roomId, {
-          tag: "Custom",
-          value: { messageType: "host-playground", payload },
-        });
-        return success(`Custom message sent (ID: ${result.messageId})`);
-      } catch (e) {
-        return error(`Failed to send — is the room registered? ${e}`);
-      }
-    },
-  },
-  {
-    id: "chat-manager-send-message-to-user",
-    name: "Send Message to User",
-    description:
-      "Sends a statement to a user-specific topic via createStatementStore",
-    api: "statementStore.createProof(accountId, statement) + statementStore.submit(signedStatement)",
-    disabled: "Worker only — handled by the host",
-    args: [
-      {
-        name: "senderDotNsId",
-        label: "Sender DotNS ID",
-        defaultValue: SELF_DOTNS,
-      },
-      {
-        name: "recipientUsername",
-        label: "Recipient Username",
-        async defaultValue() {
-          const accountsProvider = createAccountsProvider();
-          const result = await accountsProvider.getLegacyAccounts();
-          return result.match(
-            (accounts) => accounts[0]?.name ?? "",
-            () => "",
-          );
-        },
-      },
-      {
-        name: "message",
-        label: "Message",
-        defaultValue: "Hello from Host Playground!",
-      },
-    ],
-    category: "chat",
-    async run(_chain, _logger, args) {
-      const senderDotNsId = args?.senderDotNsId ?? SELF_DOTNS;
-      const messageText = args?.message ?? "Hello from Host Playground!";
-      let recipientUsername = args?.recipientUsername ?? "";
-      if (!recipientUsername) {
-        const accountsProvider = createAccountsProvider();
-        const accountsResult = await accountsProvider.getLegacyAccounts();
-        recipientUsername = accountsResult.match(
-          (accounts) => accounts[0]?.name ?? "",
-          () => "",
-        );
-      }
-      const statementStore = createStatementStore();
-      if (!recipientUsername)
-        return error("No recipient username — not signed in?");
-      const log = _logger || (() => {});
-      const loginErr = await ensureLoggedIn(
-        log,
-        "Sign in to message another user",
-      );
-      if (loginErr) return loginErr;
-      const permErr = await ensureStatementSubmitPermission(log);
-      if (permErr) return permErr;
-
-      const encoder = new TextEncoder();
-      const topic = encoder.encode(`host-playground:${recipientUsername}`);
-      const data = encoder.encode(messageText);
-      const statement = {
-        proof: undefined,
-        topics: [topic],
-        data,
-        channel: undefined,
-        decryptionKey: undefined,
-        expiry: createExpiryFromDuration(STATEMENT_TTL_SECS),
-      };
-      try {
-        const proof = await statementStore.createProof(
-          [senderDotNsId, 0],
-          statement,
-        );
-        await statementStore.submit({ ...statement, proof });
-        return success(
-          `Statement submitted to topic "host-playground:${recipientUsername}"`,
-          {
-            topic: `host-playground:${recipientUsername}`,
-            message: messageText,
-          },
-        );
-      } catch (e) {
-        return error(`Failed to send: ${e}`);
-      }
-    },
-  },
-  {
-    id: "chat-manager-subscribe-list",
-    name: "Subscribe Chat List",
-    description: "Subscribes to chat list updates (5s)",
-    api: "chatManager.subscribeChatList(callback)",
-    disabled: "Worker only — handled by the host",
-    category: "chat",
-    async run() {
-      const chatManager = createProductChatManager();
-      return new Promise((resolve) => {
-        const rooms: unknown[] = [];
-        const subscription = chatManager.subscribeChatList((chatRooms) => {
-          rooms.push(...chatRooms);
-        });
-        setTimeout(() => {
-          subscription.unsubscribe();
-          resolve(
-            success(
-              `Received ${rooms.length} room updates in 5s`,
-              rooms.slice(-5),
-            ),
-          );
-        }, 5000);
-      });
-    },
-  },
-  {
-    id: "chat-manager-subscribe-action",
-    name: "Subscribe Chat Actions",
-    description: "Subscribes to incoming chat actions (5s)",
-    api: "chatManager.subscribeAction(callback)",
-    disabled: "Worker only — handled by the host",
-    category: "chat",
-    async run() {
-      const chatManager = createProductChatManager();
-      return new Promise((resolve) => {
-        const actions: unknown[] = [];
-        const subscription = chatManager.subscribeAction((action) => {
-          actions.push(action);
-        });
-        setTimeout(() => {
-          subscription.unsubscribe();
-          resolve(
-            success(
-              `Received ${actions.length} actions in 5s`,
-              actions.slice(-5),
-            ),
-          );
-        }, 5000);
-      });
-    },
-  },
-  {
-    id: "chat-manager-custom-renderer",
-    name: "Custom Message Renderer",
-    description: "Registers a custom message rendering handler (5s)",
-    api: "chatManager.onCustomMessageRenderingRequest(callback)",
-    disabled: "Worker only — handled by the host",
-    category: "chat",
-    async run() {
-      const chatManager = createProductChatManager();
-      return new Promise((resolve) => {
-        let requestCount = 0;
-        const unsubscribe = chatManager.onCustomMessageRenderingRequest(
-          (params, render) => {
-            requestCount++;
-            render({
-              tag: "Text",
-              value: {
-                modifiers: [],
-                props: { style: undefined, color: undefined },
-                children: [
-                  { tag: "String", value: `Rendered: ${params.messageType}` },
-                ],
-              },
-            });
-            return () => {};
-          },
-        );
-        setTimeout(() => {
-          unsubscribe();
-          resolve(
-            success(`Renderer registered, handled ${requestCount} requests`),
-          );
-        }, 5000);
-      });
-    },
-  },
-];
-
 // Statement Store Tests
 export const statementTests: TestDefinition[] = [
   {
@@ -1596,11 +1038,6 @@ export const statementTests: TestDefinition[] = [
       const log = logger || (() => {});
       const dotNsIdentifier = args?.dotNsIdentifier ?? SELF_DOTNS;
 
-      const loginErr = await ensureLoggedIn(
-        log,
-        "Sign in to create a statement proof",
-      );
-      if (loginErr) return loginErr;
 
       const statementStore = createStatementStore();
       const messageBytes = new TextEncoder().encode(`Statement: ${Date.now()}`);
@@ -1640,11 +1077,6 @@ export const statementTests: TestDefinition[] = [
     async run(_chain, logger) {
       const log = logger || (() => {});
 
-      const loginErr = await ensureLoggedIn(
-        log,
-        "Sign in to create a statement proof",
-      );
-      if (loginErr) return loginErr;
 
       const messageBytes = new TextEncoder().encode(`Statement: ${Date.now()}`);
       const proof = await hostApi.statementStoreCreateProofAuthorized({
@@ -1692,11 +1124,6 @@ export const statementTests: TestDefinition[] = [
       const log = logger || (() => {});
       const dotNsIdentifier = args?.dotNsIdentifier ?? SELF_DOTNS;
 
-      const loginErr = await ensureLoggedIn(
-        log,
-        "Sign in to submit a statement",
-      );
-      if (loginErr) return loginErr;
 
       const statementStore = createStatementStore();
       const messageBytes = new TextEncoder().encode(`Statement: ${Date.now()}`);
@@ -1726,8 +1153,6 @@ export const statementTests: TestDefinition[] = [
           topics: [],
           data: messageBytes,
         };
-        const submitPerm = await ensureStatementSubmitPermission(log);
-        if (submitPerm) return submitPerm;
         log("Submitting signed statement...");
         await statementStore.submit(signedStatement);
         return success("Statement submitted successfully");
@@ -1829,13 +1254,6 @@ export const preimageTests: TestDefinition[] = [
     category: "preimage",
     async run(_chain, logger) {
       const log = logger || (() => {});
-      const loginErr = await ensureLoggedIn(
-        log,
-        "Sign in to submit a preimage",
-      );
-      if (loginErr) return loginErr;
-      const permErr = await ensurePreimageSubmitPermission(log);
-      if (permErr) return permErr;
 
       const data = new TextEncoder().encode(`preimage_${Date.now()}`);
       const hash = await preimageManager.submit(data);
@@ -1908,13 +1326,6 @@ export const preimageTests: TestDefinition[] = [
     category: "preimage",
     async run(_chain, logger) {
       const log = logger || (() => {});
-      const loginErr = await ensureLoggedIn(
-        log,
-        "Sign in to submit a preimage",
-      );
-      if (loginErr) return loginErr;
-      const permErr = await ensurePreimageSubmitPermission(log);
-      if (permErr) return permErr;
 
       const manager = createPreimageManager();
       const data = new TextEncoder().encode(`factory_${Date.now()}`);
@@ -1938,11 +1349,6 @@ export const preimageTests: TestDefinition[] = [
     async run(chain, logger) {
       const log = logger || (() => {});
 
-      const loginErr = await ensureLoggedIn(
-        log,
-        "Sign in to upload a file to Bulletin",
-      );
-      if (loginErr) return loginErr;
 
       // Allowance + permission setup (mirrors e2e/allowance-flows.spec.ts)
       log("Requesting BulletInAllowance...");
@@ -1953,8 +1359,6 @@ export const preimageTests: TestDefinition[] = [
       if (allocRes.isErr()) {
         return error("Bulletin allowance request failed", allocRes.error);
       }
-      const permErr = await ensurePreimageSubmitPermission(log);
-      if (permErr) return permErr;
 
       // 1. Generate timestamped file
       const ts = new Date().toISOString();
@@ -2145,8 +1549,6 @@ export const notificationTests: TestDefinition[] = [
       const text = args?.text ?? "Hello from demo product!";
       const deeplink = args?.deeplink?.trim() || undefined;
 
-      const permErr = await ensureDevicePermission(log, "Notifications");
-      if (permErr) return permErr;
 
       const result = await hostApi.pushNotification({
         tag: "v1",
@@ -2189,8 +1591,6 @@ export const navigationTests: TestDefinition[] = [
     async run(_chain, logger, args) {
       const log = logger || (() => {});
       const url = args?.url ?? "https://search.dot";
-      const permErr = await ensureDevicePermission(log, "OpenUrl");
-      if (permErr) return permErr;
       const result = await hostApi.navigateTo({ tag: "v1", value: url });
       return result.match(
         () => success(`Navigated to ${url}`),
@@ -2208,8 +1608,6 @@ export const navigationTests: TestDefinition[] = [
     async run(_chain, logger, args) {
       const log = logger || (() => {});
       const url = args?.url ?? "https://polkadot.com";
-      const permErr = await ensureDevicePermission(log, "OpenUrl");
-      if (permErr) return permErr;
       const result = await hostApi.navigateTo({ tag: "v1", value: url });
       return result.match(
         () => success(`Navigated to ${url}`),
@@ -2278,371 +1676,6 @@ export const chainTests: TestDefinition[] = [
     },
   },
   {
-    id: "chain-head-follow",
-    name: "Chain Head: Follow",
-    description:
-      "Subscribes to chain head events for 10s (blocks, finalization)",
-    api: "hostApi.chainHeadFollowSubscribe({ tag: 'v1', value: { genesisHash, withRuntime } }, callback)",
-    category: "chain",
-    async run(chain: ChainConfig) {
-      return new Promise((resolve) => {
-        const events: { tag: string; blockHash?: string }[] = [];
-
-        const subscription = hostApi.chainHeadFollowSubscribe(
-          {
-            tag: "v1",
-            value: { genesisHash: chain.genesis, withRuntime: false },
-          },
-          (event) => {
-            if (event.tag === "v1") {
-              const e = event.value;
-              switch (e.tag) {
-                case "Initialized":
-                  events.push({
-                    tag: "Initialized",
-                    blockHash: e.value.finalizedBlockHashes[0],
-                  });
-                  break;
-                case "NewBlock":
-                  events.push({
-                    tag: "NewBlock",
-                    blockHash: e.value.blockHash,
-                  });
-                  break;
-                case "BestBlockChanged":
-                  events.push({
-                    tag: "BestBlockChanged",
-                    blockHash: e.value.bestBlockHash,
-                  });
-                  break;
-                case "Finalized":
-                  events.push({
-                    tag: "Finalized",
-                    blockHash: e.value.finalizedBlockHashes[0],
-                  });
-                  break;
-                default:
-                  events.push({ tag: e.tag });
-              }
-            }
-          },
-        );
-
-        setTimeout(() => {
-          subscription.unsubscribe();
-          resolve(
-            success(
-              `Received ${events.length} chain head events in 10s`,
-              events.slice(-10),
-            ),
-          );
-        }, 10000);
-      });
-    },
-  },
-  {
-    id: "chain-head-header",
-    name: "Chain Head: Header",
-    description: "Gets the header of the latest finalized block",
-    api: "hostApi.chainHeadHeader({ tag: 'v1', value: { genesisHash, followSubscriptionId, hash } })",
-    category: "chain",
-    async run(chain: ChainConfig, logger) {
-      const log = logger || (() => {});
-      log("Starting follow subscription...");
-
-      return new Promise((resolve) => {
-        const subscription = hostApi.chainHeadFollowSubscribe(
-          {
-            tag: "v1",
-            value: { genesisHash: chain.genesis, withRuntime: false },
-          },
-          async (event) => {
-            if (event.tag !== "v1") return;
-            const e = event.value;
-            if (e.tag !== "Initialized") return;
-
-            const blockHash = e.value.finalizedBlockHashes[0]!;
-            const subscriptionId = (subscription as unknown as { id: string })
-              .id;
-            log(
-              `Got finalized block, fetching header for ${blockHash.slice(0, 18)}...`,
-            );
-
-            try {
-              const result = await hostApi.chainHeadHeader({
-                tag: "v1",
-                value: {
-                  genesisHash: chain.genesis,
-                  followSubscriptionId: subscriptionId,
-                  hash: blockHash,
-                },
-              });
-
-              subscription.unsubscribe();
-              result.match(
-                (res) =>
-                  resolve(
-                    success(`Header: ${res.value?.slice(0, 40)}...`, {
-                      blockHash,
-                      header: res.value,
-                    }),
-                  ),
-                (err) => resolve(error(err.value.name, err.value)),
-              );
-            } catch (e) {
-              subscription.unsubscribe();
-              resolve(error(`Failed to get header: ${e}`));
-            }
-          },
-        );
-
-        setTimeout(() => {
-          subscription.unsubscribe();
-          resolve(error("Timed out waiting for Initialized event"));
-        }, 15000);
-      });
-    },
-  },
-  {
-    id: "chain-head-body",
-    name: "Chain Head: Body",
-    description: "Gets the body (extrinsics) of the latest finalized block",
-    api: "hostApi.chainHeadBody({ tag: 'v1', value: { genesisHash, followSubscriptionId, hash } })",
-    category: "chain",
-    async run(chain: ChainConfig, logger) {
-      const log = logger || (() => {});
-      log("Starting follow subscription...");
-
-      return new Promise((resolve) => {
-        const subscription = hostApi.chainHeadFollowSubscribe(
-          {
-            tag: "v1",
-            value: { genesisHash: chain.genesis, withRuntime: false },
-          },
-          async (event) => {
-            if (event.tag !== "v1") return;
-            const e = event.value;
-            if (e.tag !== "Initialized") return;
-
-            const blockHash = e.value.finalizedBlockHashes[0]!;
-            const subscriptionId = (subscription as unknown as { id: string })
-              .id;
-            log(`Fetching body for ${blockHash.slice(0, 18)}...`);
-
-            try {
-              const result = await hostApi.chainHeadBody({
-                tag: "v1",
-                value: {
-                  genesisHash: chain.genesis,
-                  followSubscriptionId: subscriptionId,
-                  hash: blockHash,
-                },
-              });
-
-              subscription.unsubscribe();
-              result.match(
-                (res) =>
-                  resolve(
-                    success(`Body operation: ${res.value.tag}`, res.value),
-                  ),
-                (err) => resolve(error(err.value.name, err.value)),
-              );
-            } catch (e) {
-              subscription.unsubscribe();
-              resolve(error(`Failed to get body: ${e}`));
-            }
-          },
-        );
-
-        setTimeout(() => {
-          subscription.unsubscribe();
-          resolve(error("Timed out waiting for Initialized event"));
-        }, 15000);
-      });
-    },
-  },
-  {
-    id: "chain-head-storage",
-    name: "Chain Head: Storage",
-    description: "Queries runtime storage for System.Account using chain head",
-    api: "hostApi.chainHeadStorage({ tag: 'v1', value: { genesisHash, followSubscriptionId, hash, items, childTrie } })",
-    category: "chain",
-    async run(chain: ChainConfig, logger) {
-      const log = logger || (() => {});
-      log("Starting follow subscription...");
-
-      return new Promise((resolve) => {
-        const subscription = hostApi.chainHeadFollowSubscribe(
-          {
-            tag: "v1",
-            value: { genesisHash: chain.genesis, withRuntime: false },
-          },
-          async (event) => {
-            if (event.tag !== "v1") return;
-            const e = event.value;
-            if (e.tag !== "Initialized") return;
-
-            const blockHash = e.value.finalizedBlockHashes[0]!;
-            const subscriptionId = (subscription as unknown as { id: string })
-              .id;
-            log(`Querying storage at ${blockHash.slice(0, 18)}...`);
-
-            try {
-              // Query System.Account storage prefix
-              const storageKey =
-                "0x26aa394eea5630e07c48ae0c9558cef7" as `0x${string}`;
-              const result = await hostApi.chainHeadStorage({
-                tag: "v1",
-                value: {
-                  genesisHash: chain.genesis,
-                  followSubscriptionId: subscriptionId,
-                  hash: blockHash,
-                  items: [{ key: storageKey, type: "Value" as const }],
-                  childTrie: null,
-                },
-              });
-
-              subscription.unsubscribe();
-              result.match(
-                (res) =>
-                  resolve(
-                    success(`Storage operation: ${res.value.tag}`, res.value),
-                  ),
-                (err) => resolve(error(err.value.name, err.value)),
-              );
-            } catch (e) {
-              subscription.unsubscribe();
-              resolve(error(`Failed to query storage: ${e}`));
-            }
-          },
-        );
-
-        setTimeout(() => {
-          subscription.unsubscribe();
-          resolve(error("Timed out waiting for Initialized event"));
-        }, 15000);
-      });
-    },
-  },
-  {
-    id: "chain-head-call",
-    name: "Chain Head: Call",
-    description: "Makes a runtime API call (Core_version) via chain head",
-    api: "hostApi.chainHeadCall({ tag: 'v1', value: { genesisHash, followSubscriptionId, hash, function, callParameters } })",
-    category: "chain",
-    async run(chain: ChainConfig, logger) {
-      const log = logger || (() => {});
-      log("Starting follow subscription...");
-
-      return new Promise((resolve) => {
-        const subscription = hostApi.chainHeadFollowSubscribe(
-          {
-            tag: "v1",
-            value: { genesisHash: chain.genesis, withRuntime: false },
-          },
-          async (event) => {
-            if (event.tag !== "v1") return;
-            const e = event.value;
-            if (e.tag !== "Initialized") return;
-
-            const blockHash = e.value.finalizedBlockHashes[0]!;
-            const subscriptionId = (subscription as unknown as { id: string })
-              .id;
-            log(`Calling Core_version at ${blockHash.slice(0, 18)}...`);
-
-            try {
-              const result = await hostApi.chainHeadCall({
-                tag: "v1",
-                value: {
-                  genesisHash: chain.genesis,
-                  followSubscriptionId: subscriptionId,
-                  hash: blockHash,
-                  function: "Core_version",
-                  callParameters: "0x" as `0x${string}`,
-                },
-              });
-
-              subscription.unsubscribe();
-              result.match(
-                (res) =>
-                  resolve(
-                    success(`Call operation: ${res.value.tag}`, res.value),
-                  ),
-                (err) => resolve(error(err.value.name, err.value)),
-              );
-            } catch (e) {
-              subscription.unsubscribe();
-              resolve(error(`Failed to make runtime call: ${e}`));
-            }
-          },
-        );
-
-        setTimeout(() => {
-          subscription.unsubscribe();
-          resolve(error("Timed out waiting for Initialized event"));
-        }, 15000);
-      });
-    },
-  },
-  {
-    id: "chain-head-unpin",
-    name: "Chain Head: Unpin",
-    description: "Unpins a previously pinned block hash",
-    api: "hostApi.chainHeadUnpin({ tag: 'v1', value: { genesisHash, followSubscriptionId, hashes } })",
-    category: "chain",
-    async run(chain: ChainConfig, logger) {
-      const log = logger || (() => {});
-      log("Starting follow subscription...");
-
-      return new Promise((resolve) => {
-        const subscription = hostApi.chainHeadFollowSubscribe(
-          {
-            tag: "v1",
-            value: { genesisHash: chain.genesis, withRuntime: false },
-          },
-          async (event) => {
-            if (event.tag !== "v1") return;
-            const e = event.value;
-            if (e.tag !== "Initialized") return;
-
-            const blockHash = e.value.finalizedBlockHashes[0]!;
-            const subscriptionId = (subscription as unknown as { id: string })
-              .id;
-            log(`Unpinning block ${blockHash.slice(0, 18)}...`);
-
-            try {
-              const result = await hostApi.chainHeadUnpin({
-                tag: "v1",
-                value: {
-                  genesisHash: chain.genesis,
-                  followSubscriptionId: subscriptionId,
-                  hashes: [blockHash],
-                },
-              });
-
-              subscription.unsubscribe();
-              result.match(
-                () =>
-                  resolve(
-                    success(`Unpinned block ${blockHash.slice(0, 18)}...`),
-                  ),
-                (err) => resolve(error(err.value.name, err.value)),
-              );
-            } catch (e) {
-              subscription.unsubscribe();
-              resolve(error(`Failed to unpin: ${e}`));
-            }
-          },
-        );
-
-        setTimeout(() => {
-          subscription.unsubscribe();
-          resolve(error("Timed out waiting for Initialized event"));
-        }, 15000);
-      });
-    },
-  },
-  {
     id: "chain-transaction-broadcast",
     name: "Transaction: Broadcast",
     description: "Broadcasts a dummy transaction (expected to fail validation)",
@@ -2706,187 +1739,6 @@ export const chainTests: TestDefinition[] = [
         },
         (err) => error(err.value.name, err.value),
       );
-    },
-  },
-  {
-    id: "chain-head-continue",
-    name: "Chain Head: Continue",
-    description: "Starts a storage query then continues the operation",
-    api: "hostApi.chainHeadContinue({ tag: 'v1', value: { genesisHash, followSubscriptionId, operationId } })",
-    category: "chain",
-    async run(chain: ChainConfig, logger) {
-      const log = logger || (() => {});
-      log("Starting follow subscription...");
-
-      return new Promise((resolve) => {
-        const subscription = hostApi.chainHeadFollowSubscribe(
-          {
-            tag: "v1",
-            value: { genesisHash: chain.genesis, withRuntime: false },
-          },
-          async (event) => {
-            if (event.tag !== "v1") return;
-            const e = event.value;
-            if (e.tag !== "Initialized") return;
-
-            const blockHash = e.value.finalizedBlockHashes[0]!;
-            const subscriptionId = (subscription as unknown as { id: string })
-              .id;
-            log(
-              "Starting storage query to trigger OperationWaitingForContinue...",
-            );
-
-            try {
-              // Query with DescendantsValues to increase chance of pagination
-              const storageKey =
-                "0x26aa394eea5630e07c48ae0c9558cef7" as `0x${string}`;
-              const storageResult = await hostApi.chainHeadStorage({
-                tag: "v1",
-                value: {
-                  genesisHash: chain.genesis,
-                  followSubscriptionId: subscriptionId,
-                  hash: blockHash,
-                  items: [
-                    { key: storageKey, type: "DescendantsValues" as const },
-                  ],
-                  childTrie: null,
-                },
-              });
-
-              const operationId = storageResult.match(
-                (res) =>
-                  res.value.tag === "Started"
-                    ? res.value.value.operationId
-                    : null,
-                () => null,
-              );
-
-              if (!operationId) {
-                subscription.unsubscribe();
-                resolve(
-                  success(
-                    "Storage query returned LimitReached — no operation to continue",
-                  ),
-                );
-                return;
-              }
-
-              log(`Calling continue on operation ${operationId}...`);
-              const continueResult = await hostApi.chainHeadContinue({
-                tag: "v1",
-                value: {
-                  genesisHash: chain.genesis,
-                  followSubscriptionId: subscriptionId,
-                  operationId,
-                },
-              });
-
-              subscription.unsubscribe();
-              continueResult.match(
-                () => resolve(success(`Continued operation ${operationId}`)),
-                (err) => resolve(error(err.value.name, err.value)),
-              );
-            } catch (e) {
-              subscription.unsubscribe();
-              resolve(error(`Failed: ${e}`));
-            }
-          },
-        );
-
-        setTimeout(() => {
-          subscription.unsubscribe();
-          resolve(error("Timed out waiting for Initialized event"));
-        }, 15000);
-      });
-    },
-  },
-  {
-    id: "chain-head-stop-operation",
-    name: "Chain Head: Stop Operation",
-    description: "Starts a storage query then stops the operation",
-    api: "hostApi.chainHeadStopOperation({ tag: 'v1', value: { genesisHash, followSubscriptionId, operationId } })",
-    category: "chain",
-    async run(chain: ChainConfig, logger) {
-      const log = logger || (() => {});
-      log("Starting follow subscription...");
-
-      return new Promise((resolve) => {
-        const subscription = hostApi.chainHeadFollowSubscribe(
-          {
-            tag: "v1",
-            value: { genesisHash: chain.genesis, withRuntime: false },
-          },
-          async (event) => {
-            if (event.tag !== "v1") return;
-            const e = event.value;
-            if (e.tag !== "Initialized") return;
-
-            const blockHash = e.value.finalizedBlockHashes[0]!;
-            const subscriptionId = (subscription as unknown as { id: string })
-              .id;
-            log("Starting storage query...");
-
-            try {
-              const storageKey =
-                "0x26aa394eea5630e07c48ae0c9558cef7" as `0x${string}`;
-              const storageResult = await hostApi.chainHeadStorage({
-                tag: "v1",
-                value: {
-                  genesisHash: chain.genesis,
-                  followSubscriptionId: subscriptionId,
-                  hash: blockHash,
-                  items: [
-                    { key: storageKey, type: "DescendantsValues" as const },
-                  ],
-                  childTrie: null,
-                },
-              });
-
-              const operationId = storageResult.match(
-                (res) =>
-                  res.value.tag === "Started"
-                    ? res.value.value.operationId
-                    : null,
-                () => null,
-              );
-
-              if (!operationId) {
-                subscription.unsubscribe();
-                resolve(
-                  success(
-                    "Storage query returned LimitReached — no operation to stop",
-                  ),
-                );
-                return;
-              }
-
-              log(`Stopping operation ${operationId}...`);
-              const stopResult = await hostApi.chainHeadStopOperation({
-                tag: "v1",
-                value: {
-                  genesisHash: chain.genesis,
-                  followSubscriptionId: subscriptionId,
-                  operationId,
-                },
-              });
-
-              subscription.unsubscribe();
-              stopResult.match(
-                () => resolve(success(`Stopped operation ${operationId}`)),
-                (err) => resolve(error(err.value.name, err.value)),
-              );
-            } catch (e) {
-              subscription.unsubscribe();
-              resolve(error(`Failed: ${e}`));
-            }
-          },
-        );
-
-        setTimeout(() => {
-          subscription.unsubscribe();
-          resolve(error("Timed out waiting for Initialized event"));
-        }, 15000);
-      });
     },
   },
   {
@@ -2998,8 +1850,6 @@ export const contractTests: TestDefinition[] = [
     async run(chain: ChainConfig, logger?: TestLogger, args?) {
       const log = logger || (() => {});
 
-      const loginErr = await ensureLoggedIn(log, "Sign in to call a contract");
-      if (loginErr) return loginErr;
 
       log("Fetching account...");
       const accountsProvider = createAccountsProvider();
@@ -3026,8 +1876,6 @@ export const contractTests: TestDefinition[] = [
       );
       if (allowanceError) return allowanceError;
 
-      const permissionError = await ensureChainSubmitForTxBroadcast(log);
-      if (permissionError) return permissionError;
 
       const client = getClient(chain.genesis);
       const sdk = createInkSdk(client);
@@ -3147,8 +1995,6 @@ export const contractTests: TestDefinition[] = [
     async run(chain: ChainConfig, logger?: TestLogger, args?) {
       const log = logger || (() => {});
 
-      const loginErr = await ensureLoggedIn(log, "Sign in to call a contract");
-      if (loginErr) return loginErr;
 
       log("Fetching account...");
       const accountsProvider = createAccountsProvider();
@@ -3175,8 +2021,6 @@ export const contractTests: TestDefinition[] = [
       );
       if (allowanceError) return allowanceError;
 
-      const permissionError = await ensureChainSubmitForTxBroadcast(log);
-      if (permissionError) return permissionError;
 
       const client = getClient(chain.genesis);
       const sdk = createInkSdk(client);
@@ -3235,8 +2079,6 @@ export const contractTests: TestDefinition[] = [
     async run(chain: ChainConfig, logger?: TestLogger, args?) {
       const log = logger || (() => {});
 
-      const loginErr = await ensureLoggedIn(log, "Sign in to call a contract");
-      if (loginErr) return loginErr;
 
       log("Fetching account...");
       const accountsProvider = createAccountsProvider();
@@ -3263,8 +2105,6 @@ export const contractTests: TestDefinition[] = [
       );
       if (allowanceError) return allowanceError;
 
-      const permissionError = await ensureChainSubmitForTxBroadcast(log);
-      if (permissionError) return permissionError;
 
       const client = getClient(chain.genesis);
       const sdk = createInkSdk(client);
@@ -3453,11 +2293,6 @@ export const paymentTests: TestDefinition[] = [
     category: "payments",
     async run(_chain, logger) {
       const log = logger || (() => {});
-      const loginErr = await ensureLoggedIn(
-        log,
-        "Sign in to view your balance",
-      );
-      if (loginErr) return loginErr;
 
       const pm = createPaymentManager();
 
@@ -3476,89 +2311,12 @@ export const paymentTests: TestDefinition[] = [
       });
     },
   },
-  {
-    id: "payment-top-up",
-    name: "Top Up",
-    description: "Top up the payment balance from a product account",
-    api: "paymentManager.topUp(amount, source)",
-    args: [
-      {
-        name: "dotNsIdentifier",
-        label: "DotNS ID",
-        defaultValue: SELF_DOTNS,
-      },
-      {
-        name: "amount",
-        label: "Amount (smallest unit)",
-        defaultValue: "1000000000000",
-      },
-    ],
-    category: "payments",
-    async run(_chain, logger, args) {
-      const log = logger || (() => {});
-      const dotNsIdentifier = args?.dotNsIdentifier ?? SELF_DOTNS;
-      const amount = BigInt(args?.amount ?? "1000000000000");
-
-      const loginErr = await ensureLoggedIn(
-        log,
-        "Sign in to top up your balance",
-      );
-      if (loginErr) return loginErr;
-
-      const pm = createPaymentManager();
-
-      try {
-        await pm.topUp(amount, {
-          type: "productAccount",
-          derivationIndex: 0,
-        });
-        return success(`Topped up ${amount}`);
-      } catch (e) {
-        return error(`Top-up failed: ${e}`);
-      }
-    },
-  },
-  {
-    id: "payment-request",
-    name: "Request Payment",
-    description: "Request a payment to a destination account",
-    api: "paymentManager.requestPayment(amount, destination)",
-    args: [
-      {
-        name: "amount",
-        label: "Amount (smallest unit)",
-        defaultValue: "100000000000",
-      },
-    ],
-    category: "payments",
-    async run(_chain, logger, args) {
-      const log = logger || (() => {});
-      const amount = BigInt(args?.amount ?? "100000000000");
-
-      const loginErr = await ensureLoggedIn(
-        log,
-        "Sign in to request a payment",
-      );
-      if (loginErr) return loginErr;
-
-      const pm = createPaymentManager();
-      const destination = new Uint8Array(32); // zero address for test
-
-      try {
-        const receipt = await pm.requestPayment(amount, destination);
-        return success(`Payment requested: ${receipt.id}`, receipt);
-      } catch (e) {
-        return error(`Payment request failed: ${e}`);
-      }
-    },
-  },
 ];
 
 type AllocatableResource =
   | { tag: "StatementStoreAllowance"; value: undefined }
   | { tag: "BulletInAllowance"; value: undefined }
-  | { tag: "SmartContractAllowance"; value: number }
-  | { tag: "AutoSigning"; value: undefined };
+  | { tag: "SmartContractAllowance"; value: number };
 
 async function runResourceAllocation(resources: AllocatableResource[]) {
   const result = await hostApi.requestResourceAllocation({
@@ -3626,16 +2384,6 @@ export const allowancesTests: TestDefinition[] = [
     },
   },
   {
-    id: "allowances-auto-signing",
-    name: "Allocate Auto-Signing",
-    description: "Requests auto-signing capability from the host (RFC-0010)",
-    api: 'hostApi.requestResourceAllocation({ tag: "v1", value: [{ tag: "AutoSigning" }] })',
-    category: "allowances",
-    async run() {
-      return runResourceAllocation([{ tag: "AutoSigning", value: undefined }]);
-    },
-  },
-  {
     id: "allowances-all",
     name: "Allocate All Resources",
     description:
@@ -3655,7 +2403,6 @@ export const allowancesTests: TestDefinition[] = [
         { tag: "StatementStoreAllowance", value: undefined },
         { tag: "BulletInAllowance", value: undefined },
         { tag: "SmartContractAllowance", value: derivationIndex },
-        { tag: "AutoSigning", value: undefined },
       ]);
     },
   },
@@ -3667,7 +2414,6 @@ export const testsByCategory = {
   extension: extensionTests,
   storage: storageTests,
   permissions: permissionTests,
-  chat: chatTests,
   statements: statementTests,
   preimage: preimageTests,
   notifications: notificationTests,

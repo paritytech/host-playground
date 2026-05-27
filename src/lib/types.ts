@@ -23,7 +23,6 @@ export type TestCategory =
   | "signing"
   | "storage"
   | "permissions"
-  | "chat"
   | "statements"
   | "preimage"
   | "notifications"
