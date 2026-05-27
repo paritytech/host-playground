@@ -229,13 +229,6 @@ function lookupPreimageWithTimeout(
   });
 }
 
-/** Direct `wsProvider` RPC + tx broadcast: requests Remote then ChainSubmit sequentially. */
-async function ensureDirectWsSignSubmitPermissions(log: (msg: string) => void, wsUrl: string) {
-  const remoteErr = await ensureRemotePermission(log, { tag: "Remote", value: [wsUrl] });
-  if (remoteErr) return remoteErr;
-  return ensureRemotePermission(log, { tag: "ChainSubmit", value: undefined });
-}
-
 /**
  * Before any signing/broadcast/submit operation that requires an authenticated
  * session. Idempotent: `requestLogin` returns `alreadyConnected` without
@@ -471,104 +464,6 @@ export const signingTests: TestDefinition[] = [
         (res) => success("Message signed", res.value),
         (err) => error(err.value.name, err.value),
       );
-    },
-  },
-  {
-    id: "sign-payload-ws",
-    name: "Sign Payload (wsProvider)",
-    description:
-      "Signs a remark using a direct WebSocket connection instead of createPapiProvider",
-    api: "createClient(getWsProvider(wsUrl)) + tx.signSubmitAndWatch(signer)",
-    warning: "Should fail in proper sandboxing",
-    args: [
-      {
-        name: "dotNsIdentifier",
-        label: "DotNS ID",
-        defaultValue: SELF_DOTNS,
-      },
-      {
-        name: "message",
-        label: "Remark",
-        defaultValue: "Remark from Host Playground",
-      },
-    ],
-    category: "signing",
-    async run(chain: ChainConfig, logger?: TestLogger, args?) {
-      const log = logger || (() => {});
-      const dotNsIdentifier = args?.dotNsIdentifier ?? SELF_DOTNS;
-
-      const loginErr = await ensureLoggedIn(log, "Sign in to sign via direct WebSocket");
-      if (loginErr) return loginErr;
-
-      log(`Fetching product account for ${dotNsIdentifier}...`);
-      const accountsProvider = createAccountsProvider();
-      const accountResult =
-        await accountsProvider.getProductAccount(dotNsIdentifier);
-
-      const account = accountResult.match(
-        (a) => a,
-        (err) => {
-          log(`getProductAccount failed: ${err.name}`);
-          return null;
-        },
-      );
-
-      if (!account) {
-        return error(
-          `No product account for "${dotNsIdentifier}" — check that the user is signed in`,
-        );
-      }
-
-      const signer = accountsProvider.getProductAccountSigner(account);
-
-      log(`Connecting directly via WebSocket to ${chain.wsUrl}...`);
-      const { getWsProvider } = await import("@polkadot-api/ws-provider");
-      const client = createClient(getWsProvider(chain.wsUrl));
-
-      try {
-        const api = client.getUnsafeApi();
-
-        // On asset-hub-next the AsPgas signed extension routes the tx fee
-        // through pallet-revive's H160 mapping, so the product account must
-        // be PGAS-allocated before *any* tx broadcast — even a plain remark
-        // — or the chain rejects with InvalidTransaction::Payment.
-        const allowanceError = await ensureSmartContractAllowance(log, 0);
-        if (allowanceError) return allowanceError;
-
-        const permErr = await ensureDirectWsSignSubmitPermissions(log, chain.wsUrl);
-        if (permErr) return permErr;
-
-        log("Preparing transaction...");
-        const message = args?.message ?? "Remark from Host Playground";
-        const tx = api.tx.System.remark({
-          remark: Binary.fromText(message),
-        });
-
-        log("Signing with product account signer...");
-
-        return await new Promise<TestResult>((resolve, reject) => {
-          tx.signSubmitAndWatch(signer).subscribe({
-            next: (event) => {
-              log(`Event: ${event.type}`);
-              if (event.type === "txBestBlocksState" && event.found) {
-                log("Included in block");
-              } else if (event.type === "finalized") {
-                resolve(
-                  success(`Transaction finalized on ${chain.name}`, {
-                    txHash: event.txHash,
-                    address: toHex(account.publicKey),
-                  }),
-                );
-              }
-            },
-            error: (e) => reject(e),
-          });
-        });
-      } catch (e) {
-        return error(`Direct WebSocket connection failed: ${e}`);
-      } finally {
-        client.destroy();
-      }
     },
   },
   {
