@@ -48,7 +48,17 @@ function getClient(genesis: `0x${string}`): PolkadotClient {
 }
 
 const HOSTAPI_DEMO_ADDRESS = deployment.hostApiDemo;
-const READ_ORIGIN = "5GrwvaEF5zXb26Fz9rcQpDWS57CtERHpNehXCPcNoHGKutQY";
+// SS58 used as the `origin` for pallet-revive contract view dry-runs. Must be
+// a substrate account that already has an H160 mapping in Revive.OriginalAccount —
+// otherwise the chain returns AccountUnmapped even on read-only calls.
+//
+// This is the bulletin-deploy / CI deployer's H160 (0x47d761b4…) padded to a
+// 32-byte AccountId32 with 12×0xEE per pallet-revive's mapping convention,
+// then SS58-encoded with the chain's prefix 0. The deployer auto-maps the
+// first time it signs a tx (which it does on every `bulletin-deploy` run),
+// so this address is reliably mapped on every env we target. Public; only
+// the matching MNEMONIC needs to stay in secrets.
+const READ_ORIGIN = "12dCP8UFhSktvmSgJcP93tNPdgVQMdBQqJNcFrZTnDoiBE9Y";
 
 // The DotNS identifier the host bound this product under. The desktop's
 // handleCreateTransaction gate rejects with PermissionDenied when the signer's
