@@ -1,17 +1,19 @@
-import { metaProvider } from "@novasamatech/host-api-wrapper";
 import { useEffect, useState } from "react";
+import type { SignerState } from "@parity/product-sdk-signer";
+import { signerManager, ensureSignerConnected } from "./signer";
 
 type ConnectionStatus = "connecting" | "connected" | "disconnected";
 
 export const useConnectionStatus = () => {
-  const [status, setStatus] = useState<ConnectionStatus | null>(null);
+  const [state, setState] = useState<SignerState | null>(null);
 
   useEffect(() => {
-    const unsubscribe = metaProvider.subscribeConnectionStatus((s) => {
-      setStatus(s);
-    });
+    setState(signerManager.getState());
+    const unsubscribe = signerManager.subscribe(setState);
+    void ensureSignerConnected();
     return unsubscribe;
   }, []);
 
-  return status;
+  if (!state) return null;
+  return state.status as ConnectionStatus;
 };
