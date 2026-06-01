@@ -180,7 +180,12 @@ const SELF_DOTNS = (() => {
   }
   if (hostname.endsWith(".dot")) return hostname;
   const segments = hostname.split(".");
-  if (segments.length >= 3) return `${segments.slice(0, -2).join(".")}.dot`;
+  if (segments.length >= 3) {
+    let label = segments.slice(0, -2);
+    // drop the `app` infra subdomain preview hosts insert (<name>.app.<root> → <name>)
+    if (label[label.length - 1] === "app") label = label.slice(0, -1);
+    if (label.length > 0) return `${label.join(".")}.dot`;
+  }
   return fallback;
 })();
 
