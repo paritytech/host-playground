@@ -7,7 +7,7 @@ import {
   Loader2,
   User,
 } from "lucide-react";
-import { SpektrExtensionName } from "@novasamatech/host-api-wrapper";
+import { isInsideContainerSync } from "@parity/product-sdk-host";
 import { Badge } from "@/src/components/badge";
 import {
   Card,
@@ -34,7 +34,20 @@ export function EnvironmentInfo({
   accounts,
   accountsLoading,
 }: EnvironmentInfoProps) {
-  const isInWebview = accountsLoading ? null : accounts !== null;
+  const isInWebview = isInsideContainerSync();
+
+  if (!isInWebview) {
+    return (
+      <Card>
+        <CardContent className="p-4">
+          <div className="flex items-center gap-2 text-xs text-warning">
+            <AlertTriangle className="h-3.5 w-3.5 shrink-0" />
+            <span>Not running inside a host container.</span>
+          </div>
+        </CardContent>
+      </Card>
+    );
+  }
 
   return (
     <Card>

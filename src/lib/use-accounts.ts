@@ -1,60 +1,48 @@
-import {
-  injectSpektrExtension,
-  createAccountsProvider,
-} from "@novasamatech/host-api-wrapper";
+import { useEffect, useState } from "react";
 import { toHex } from "polkadot-api/utils";
-import { useCallback, useEffect, useState } from "react";
+import type { SignerState } from "@parity/product-sdk-signer";
+import { signerManager, ensureSignerConnected } from "./signer";
 
 export interface SdkAccount {
   publicKey: string; // hex-encoded
   name: string | undefined;
 }
 
+function mapAccounts(state: SignerState): SdkAccount[] | null {
+  if (state.status !== "connected") return null;
+  return state.accounts.map((a) => ({
+    publicKey: toHex(a.publicKey),
+    name: a.name ?? undefined,
+  }));
+}
+
 export const useAccounts = () => {
-  const [accounts, setAccounts] = useState<SdkAccount[] | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
-  const [isReady, setIsReady] = useState<boolean | null>(null);
-  const [error, setError] = useState<Error | null>(null);
-
-  const connect = useCallback(async () => {
-    setIsLoading(true);
-    setError(null);
-
-    try {
-      const ready = await injectSpektrExtension();
-      setIsReady(ready);
-
-      if (!ready) {
-        setAccounts(null);
-        return null;
-      }
-
-      const accountsProvider = createAccountsProvider();
-      const result = await accountsProvider.getLegacyAccounts();
-
-      const mapped = result.match(
-        (accs) =>
-          accs.map((a) => ({
-            publicKey: toHex(a.publicKey),
-            name: a.name,
-          })),
-        () => null,
-      );
-
-      setAccounts(mapped);
-      return mapped;
-    } catch (err) {
-      console.error("[useAccounts] Error:", err);
-      setError(err instanceof Error ? err : new Error("Failed to connect"));
-      return null;
-    } finally {
-      setIsLoading(false);
-    }
-  }, []);
+  const [state, setState] = useState<SignerState>(() => signerManager.getState());
 
   useEffect(() => {
-    connect();
-  }, [connect]);
+    setState(signerManager.getState());
+    const unsubscribe = signerManager.subscribe(setState);
+    void ensureSignerConnected();
+    return unsubscribe;
+  }, []);
 
-  return { accounts, isLoading, isReady, error, connect };
+  const accounts = mapAccounts(state);
+  const isLoading = state.status === "connecting";
+  // isReady mirrors the previous injectSpektrExtension() boolean: true once a
+  // host connection is established, false once the host has explicitly failed,
+  // null while we are still attempting the first connect.
+  const isReady: boolean | null =
+    state.status === "connected"
+      ? true
+      : state.error
+        ? false
+        : null;
+  const error = state.error ? toError(state.error) : null;
+
+  return { accounts, isLoading, isReady, error, connect: ensureSignerConnected };
 };
+
+function toError(err: unknown): Error {
+  if (err instanceof Error) return err;
+  return new Error(typeof err === "string" ? err : JSON.stringify(err));
+}
