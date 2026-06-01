@@ -10,6 +10,9 @@ test.describe('Auth', () => {
 
   test('get user identity', async ({ testHost }) => {
     const frame = await waitForAppReady(testHost);
+    // host-api-test-sdk >=0.8.4 starts sessions unauthenticated; getUserId
+    // needs a logged-in session, so authenticate first.
+    await testHost.simulateReconnect();
     const result = await runTest(frame, 'get-user-id');
     expect(result).toBe('success');
   });
