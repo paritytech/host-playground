@@ -73,7 +73,7 @@ export const CHAINS = {
     name: "Paseo Next v2 Hub",
     network: "Testnet",
     genesis:
-      "0x173cea9df45656cf612c8b8ece56e04e9a693c69cfaac47d3628dae735067af8" as const,
+      "0xbf0488dbe9daa1de1c08c5f743e26fdc2a4ecd74cf87dd1b4b1eeb99ae4ef19f" as const,
     wsUrl: "wss://paseo-asset-hub-next-rpc.polkadot.io",
     // Gateway returns 404 without the `/ipfs/<cid>` path segment and 504
     // (try-then-fail) with it — confirmed by direct probe 2026-05-26.
