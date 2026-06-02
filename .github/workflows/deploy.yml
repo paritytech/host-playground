@@ -148,8 +148,15 @@ jobs:
             DOMAIN="${{ steps.deploy.outputs.domain }}"
             CID="${{ steps.deploy.outputs.cid }}"
           fi
+          # Translate bulletin-deploy env id → dot.li network name (most match
+          # 1:1; "preview" is the exception — dot.li knows it as "previewnet").
+          case "${{ matrix.env }}" in
+            preview) NETWORK="previewnet" ;;
+            *) NETWORK="${{ matrix.env }}" ;;
+          esac
           mkdir -p .deploy-result
-          printf '{"env":"%s","domain":"%s","cid":"%s"}\n' "${{ matrix.env }}" "$DOMAIN" "$CID" \
+          printf '{"env":"%s","network":"%s","domain":"%s","cid":"%s"}\n' \
+            "${{ matrix.env }}" "$NETWORK" "$DOMAIN" "$CID" \
             > .deploy-result/${{ matrix.env }}.json
           cat .deploy-result/${{ matrix.env }}.json
 
@@ -162,8 +169,9 @@ jobs:
       - name: Deployment summary
         run: |
           DOMAIN=$(jq -r .domain .deploy-result/${{ matrix.env }}.json)
+          NETWORK=$(jq -r .network .deploy-result/${{ matrix.env }}.json)
           CID=$(jq -r .cid .deploy-result/${{ matrix.env }}.json)
-          URL="https://${DOMAIN}.paseo.li?network=${{ matrix.env }}&chainBackend=rpc-gateway"
+          URL="https://${DOMAIN}.paseo.li?network=${NETWORK}&chainBackend=rpc-gateway"
           {
             echo "### ${DOMAIN}.dot — ${{ matrix.env }}"
             echo ""
@@ -205,8 +213,8 @@ jobs:
               `**${dotns}** · [logs](${runUrl})`,
               '',
             ];
-            for (const { env, domain, cid } of results) {
-              const url = `https://${domain}.paseo.li?network=${env}&chainBackend=rpc-gateway`;
+            for (const { env, network, domain, cid } of results) {
+              const url = `https://${domain}.paseo.li?network=${network}&chainBackend=rpc-gateway`;
               lines.push(`- \`${env}\` — ${url} &nbsp; · CID \`${cid}\``);
             }
 
