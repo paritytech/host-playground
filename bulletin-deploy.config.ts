@@ -31,5 +31,12 @@ export default {
       path: "./out",
       appVersion: [0, 1, 0] as const,
     },
+    {
+      kind: "worker" as const,
+      path: "./out/worker",
+      appVersion: [0, 1, 0] as const,
+      entrypoint: "index.js",
+      includes: { chat: true, pocket: false },
+    },
   ],
 };
