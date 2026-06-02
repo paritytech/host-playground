@@ -102,6 +102,7 @@ export function TestButton({
               <input
                 type="text"
                 disabled={!!test.disabled}
+                data-testid={`arg-${test.id}-${arg.name}`}
                 value={argValues[arg.name] ?? (typeof arg.defaultValue === "string" ? arg.defaultValue : "")}
                 onChange={(e) =>
                   setArgValues((prev) => ({
