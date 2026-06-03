@@ -1036,7 +1036,7 @@ export const permissionTests: TestDefinition[] = [
     async run() {
       const result = await (await truApi()).permission({
         tag: "v1",
-        value: { tag: "WebRTC", value: undefined },
+        value: { tag: "WebRtc", value: undefined },
       });
 
       return result.match(
@@ -1448,10 +1448,10 @@ export const preimageTests: TestDefinition[] = [
 
 
       // Allowance + permission setup (mirrors e2e/allowance-flows.spec.ts)
-      log("Requesting BulletInAllowance...");
+      log("Requesting BulletinAllowance...");
       const allocRes = await (await truApi()).requestResourceAllocation({
         tag: "v1",
-        value: [{ tag: "BulletInAllowance", value: undefined }],
+        value: [{ tag: "BulletinAllowance", value: undefined }],
       });
       if (allocRes.isErr()) {
         return error("Bulletin allowance request failed", allocRes.error);
@@ -2352,7 +2352,8 @@ export const themeTests: TestDefinition[] = [
       return new Promise((resolve) => {
         const themes: string[] = [];
         const sub = themeProvider.subscribeTheme((theme) => {
-          themes.push(theme);
+          // v0.6: subscribeTheme now yields { name, variant } instead of a string
+          themes.push(theme.variant);
         });
 
         setTimeout(() => {
@@ -2481,7 +2482,7 @@ export const paymentTests: TestDefinition[] = [
 
 type AllocatableResource =
   | { tag: "StatementStoreAllowance"; value: undefined }
-  | { tag: "BulletInAllowance"; value: undefined }
+  | { tag: "BulletinAllowance"; value: undefined }
   | { tag: "SmartContractAllowance"; value: number };
 
 async function runResourceAllocation(resources: AllocatableResource[]) {
@@ -2520,11 +2521,11 @@ export const allowancesTests: TestDefinition[] = [
     id: "allowances-bulletin",
     name: "Allocate Bulletin Allowance",
     description: "Requests a bulletin allowance from the host (RFC-0010)",
-    api: 'truApi().requestResourceAllocation({ tag: "v1", value: [{ tag: "BulletInAllowance" }] })',
+    api: 'truApi().requestResourceAllocation({ tag: "v1", value: [{ tag: "BulletinAllowance" }] })',
     category: "allowances",
     async run() {
       return runResourceAllocation([
-        { tag: "BulletInAllowance", value: undefined },
+        { tag: "BulletinAllowance", value: undefined },
       ]);
     },
   },
@@ -2567,7 +2568,7 @@ export const allowancesTests: TestDefinition[] = [
       const derivationIndex = Number(args?.derivationIndex ?? "0");
       return runResourceAllocation([
         { tag: "StatementStoreAllowance", value: undefined },
-        { tag: "BulletInAllowance", value: undefined },
+        { tag: "BulletinAllowance", value: undefined },
         { tag: "SmartContractAllowance", value: derivationIndex },
       ]);
     },
