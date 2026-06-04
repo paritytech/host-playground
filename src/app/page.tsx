@@ -9,6 +9,7 @@ import { LogViewer } from "@/src/components/log-viewer";
 import { TestCategoryCard } from "@/src/components/test-category";
 import { SidebarNav } from "@/src/components/sidebar-nav";
 import { ChainSelector } from "@/src/components/chain-selector";
+import { Diagnostics } from "@/src/components/diagnostics";
 import { testsByCategory } from "@/src/lib/tests";
 import {
   CHAINS,
@@ -235,6 +236,7 @@ export default function SdkTestPage() {
 
       {/* Main Content - Three Column Layout */}
       <main className="max-w-400 mx-auto px-8 py-8">
+        <Diagnostics chain={currentChain} navigate={navigate} />
         <div className="grid grid-cols-1 lg:grid-cols-[200px_1fr_500px] gap-8">
           {/* Left Column: Sidebar Nav */}
           <div className="hidden lg:block">
