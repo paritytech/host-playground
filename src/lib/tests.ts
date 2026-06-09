@@ -19,6 +19,7 @@ import {
   type RemotePermissionItem,
 } from "@parity/product-sdk-host";
 import { WellKnownChain } from "@parity/product-sdk-chain-client";
+import { hashToCid, queryBytes } from "@parity/product-sdk-cloud-storage";
 import {
   AccountId,
   Binary,
@@ -28,10 +29,6 @@ import {
 import { toHex, fromHex } from "polkadot-api/utils";
 import { createInkSdk } from "@polkadot-api/sdk-ink";
 import { contracts } from "@polkadot-api/descriptors";
-import { CID } from "multiformats/cid";
-import { create as createMultihashDigest } from "multiformats/hashes/digest";
-import { sha256 } from "multiformats/hashes/sha2";
-import { blake2b } from "@noble/hashes/blake2b";
 import { CHAINS } from "./types";
 import deployment from "../../programs/deployment.json";
 import {
@@ -273,47 +270,6 @@ function createExpiryFromDuration(
 
 /** Default statement TTL — long enough for a slow proof-then-submit round-trip. */
 const STATEMENT_TTL_SECS = 300;
-
-// IPFS multicodec / multihash constants
-const IPFS_CODEC_RAW = 0x55;
-const IPFS_HASH_BLAKE2B_256 = 0xb220;
-
-async function candidateCidsForBytes(
-  data: Uint8Array,
-): Promise<Array<{ algo: string; cid: string }>> {
-  const sha = await sha256.digest(data);
-  const blake = blake2b(data, { dkLen: 32 });
-  const blakeMh = createMultihashDigest(IPFS_HASH_BLAKE2B_256, blake);
-  return [
-    { algo: "sha2-256", cid: CID.createV1(IPFS_CODEC_RAW, sha).toString() },
-    {
-      algo: "blake2b-256",
-      cid: CID.createV1(IPFS_CODEC_RAW, blakeMh).toString(),
-    },
-  ];
-}
-
-async function lookupPreimageWithTimeout(
-  hash: `0x${string}`,
-  timeoutMs: number,
-): Promise<Uint8Array | null> {
-  const preimageManager = await pm();
-  return new Promise((resolve) => {
-    let done = false;
-    const sub = preimageManager.lookup(hash, (preimage) => {
-      if (done) return;
-      done = true;
-      sub.unsubscribe();
-      resolve(preimage);
-    });
-    setTimeout(() => {
-      if (done) return;
-      done = true;
-      sub.unsubscribe();
-      resolve(null);
-    }, timeoutMs);
-  });
-}
 
 // Account Tests
 export const accountTests: TestDefinition[] = [
@@ -1438,14 +1394,13 @@ export const preimageTests: TestDefinition[] = [
   },
   {
     id: "bulletin-upload-and-verify",
-    name: "Upload File to Bulletin & Verify via IPFS",
+    name: "Upload File to Bulletin & Verify (Cloud Storage SDK)",
     description:
-      "Submits a timestamped text file, retrieves it via host lookup, and fetches it through the chain's IPFS gateway. Asserts three-way byte equality.",
-    api: "pm().submit + pm().lookup + fetch(`${chain.ipfs}/${cid}`)",
+      "Submits a timestamped text file via the host preimage manager, derives its CID, then fetches it back via `queryBytes` from @parity/product-sdk-cloud-storage. The SDK routes the lookup through the host's preimage subscription — no centralised IPFS gateway is contacted from the dApp.",
+    api: "pm().submit + hashToCid + queryBytes(cid)",
     category: "preimage",
     async run(chain, logger) {
       const log = logger || (() => {});
-
 
       // Allowance + permission setup (mirrors e2e/allowance-flows.spec.ts)
       log("Requesting BulletinAllowance...");
@@ -1457,7 +1412,6 @@ export const preimageTests: TestDefinition[] = [
         return error("Bulletin allowance request failed", allocRes.error);
       }
 
-      // 1. Generate timestamped file
       const ts = new Date().toISOString();
       const filename = `host-playground-upload-${Date.now()}.txt`;
       const content =
@@ -1468,161 +1422,40 @@ export const preimageTests: TestDefinition[] = [
       const payload = new TextEncoder().encode(content);
       log(`Generated ${payload.length} bytes (${filename})`);
 
-      // 2. Submit via host
-      log("Submitting via (await pm()).submit...");
+      log("Submitting via pm().submit...");
       const hash = await (await pm()).submit(payload);
       log(`Host returned hash: ${hash}`);
 
-      // 3. Lookup via host — proves bytes round-trip through the host's bulletin path
-      log("Looking up via (await pm()).lookup (10s)...");
-      const lookupBytes = await lookupPreimageWithTimeout(hash, 10_000);
-      if (!lookupBytes) {
-        return error("Host lookup returned null / timed out", {
-          hash,
-          submitted: toHex(payload),
-        });
-      }
-      const payloadEqualsLookup = bytesEqual(payload, lookupBytes);
+      // The host writes single-chunk content with the chain's defaults
+      // (blake2b-256 + raw codec), which `hashToCid` also defaults to.
+      const cid = hashToCid(hash);
+      log(`Derived CID: ${cid}`);
+
+      log("Fetching via cloud-storage queryBytes (host preimage path)...");
+      const fetched = await queryBytes(cid, { lookupTimeoutMs: 60_000 });
+      const payloadEqualsFetched = bytesEqual(payload, fetched);
       log(
-        `Host lookup: ${lookupBytes.length} bytes, equal=${payloadEqualsLookup}`,
+        `Fetched ${fetched.length} bytes, equal=${payloadEqualsFetched}`,
       );
-      if (!payloadEqualsLookup) {
-        return error("Host lookup bytes ≠ submitted payload", {
+      if (!payloadEqualsFetched) {
+        return error("Fetched bytes ≠ submitted payload", {
           hash,
+          cid,
           submitted: toHex(payload),
-          lookup: toHex(lookupBytes),
+          fetched: toHex(fetched),
         });
-      }
-
-      // 4. Compute candidate CIDs (host SDK returns a raw hash, not a CID — we
-      //    try the two realistic (codec, hashing) defaults the bulletin runtime
-      //    accepts).
-      const candidates = await candidateCidsForBytes(payload);
-      log(
-        `Candidate CIDs: ${candidates
-          .map((c) => `${c.algo}=${c.cid.slice(0, 14)}…`)
-          .join(", ")}`,
-      );
-
-      if (!chain.ipfs) {
-        return success(
-          `Submit + host lookup OK (${payload.length} bytes); IPFS skipped — no gateway configured for ${chain.name}`,
-          {
-            filename,
-            content,
-            hash,
-            submittedBytes: payload.length,
-            lookupBytes: lookupBytes.length,
-            payloadEqualsLookup,
-            candidateCids: candidates,
-            ipfsStatus: "skipped: chain.ipfs not configured",
-          },
-        );
-      }
-
-      // 5. Try each candidate against the gateway; first byte-equal match wins.
-      const gateway = chain.ipfs.replace(/\/$/, "");
-      type Probe = {
-        algo: string;
-        cid: string;
-        url: string;
-        status: number | string;
-        bytes?: number;
-        equal?: boolean;
-      };
-      const probes: Probe[] = [];
-      let matched: { algo: string; cid: string; bytes: Uint8Array } | null =
-        null;
-
-      // IPFS propagation from the chain's bulletin pinner to the gateway
-      // isn't instant — observed up to ~45 s between on-chain inclusion
-      // and the gateway resolving the CID. A single best-effort fetch
-      // per candidate produced "inconclusive" results that read like a
-      // verification failure to operators; the file IS on IPFS, the
-      // gateway just hasn't seen it yet. Poll each candidate until we
-      // either get a byte-equal response or a hard 4xx (other than 504
-      // which the gateway emits while propagation is in flight).
-      //
-      // Budget: 60 s total per candidate, 5 s between polls. We stop
-      // probing remaining candidates as soon as one matches.
-      const totalBudgetMs = 60_000;
-      const pollIntervalMs = 5_000;
-
-      for (const cand of candidates) {
-        const url = `${gateway}/${cand.cid}`;
-        log(`Probing ${url} (up to ${totalBudgetMs / 1000}s)...`);
-        const probe: Probe = {
-          algo: cand.algo,
-          cid: cand.cid,
-          url,
-          status: "",
-        };
-        const deadline = Date.now() + totalBudgetMs;
-        let lastStatus: number | string = "";
-        while (Date.now() < deadline) {
-          try {
-            const r = await fetch(url, {
-              signal: AbortSignal.timeout(10_000),
-            });
-            lastStatus = r.status;
-            if (r.ok) {
-              const bytes = new Uint8Array(await r.arrayBuffer());
-              probe.status = r.status;
-              probe.bytes = bytes.length;
-              probe.equal = bytesEqual(payload, bytes);
-              if (probe.equal) {
-                matched = { algo: cand.algo, cid: cand.cid, bytes };
-              }
-              break;
-            }
-            // 504 (gateway timeout) and 502 (bad gateway) on these
-            // hosts mean "IPFS still propagating" — keep polling. 404
-            // also can be transient on first request to a gateway that
-            // hasn't seen the CID yet; treat it the same. Hard-fail
-            // only on auth/permission errors.
-            if ([401, 403, 451].includes(r.status)) break;
-          } catch (e) {
-            lastStatus = `error: ${e instanceof Error ? e.message : String(e)}`;
-          }
-          if (Date.now() + pollIntervalMs >= deadline) break;
-          await new Promise((r) => setTimeout(r, pollIntervalMs));
-        }
-        if (probe.status === "") probe.status = lastStatus;
-        probes.push(probe);
-        if (matched) break;
-      }
-
-      if (!matched) {
-        return success(
-          `Submit + host lookup OK (${payload.length} bytes); IPFS verification inconclusive — no candidate CID resolved at ${gateway}`,
-          {
-            filename,
-            content,
-            hash,
-            submittedBytes: payload.length,
-            lookupBytes: lookupBytes.length,
-            payloadEqualsLookup,
-            ipfsStatus: "inconclusive: no candidate CID resolved or matched",
-            probes,
-          },
-        );
       }
 
       return success(
-        `Three-way verified: submit + host lookup + IPFS (${matched.algo}) all ${payload.length} bytes`,
+        `Round-tripped via host preimage + Cloud Storage SDK (${payload.length} bytes)`,
         {
           filename,
           content,
           hash,
-          cid: matched.cid,
-          cidAlgo: matched.algo,
-          gatewayUrl: `${gateway}/${matched.cid}`,
+          cid,
           submittedBytes: payload.length,
-          lookupBytes: lookupBytes.length,
-          ipfsBytes: matched.bytes.length,
-          payloadEqualsLookup: true,
-          payloadEqualsIpfs: true,
-          probes,
+          fetchedBytes: fetched.length,
+          payloadEqualsFetched: true,
         },
       );
     },

@@ -40,7 +40,6 @@ export interface ChainConfig {
   network: string;
   genesis: `0x${string}`;
   wsUrl: string;
-  ipfs?: string;
   ss58Prefix: number;
 }
 
@@ -75,13 +74,6 @@ export const CHAINS = {
     genesis:
       "0xbf0488dbe9daa1de1c08c5f743e26fdc2a4ecd74cf87dd1b4b1eeb99ae4ef19f" as const,
     wsUrl: "wss://paseo-asset-hub-next-rpc.polkadot.io",
-    // Gateway returns 404 without the `/ipfs/<cid>` path segment and 504
-    // (try-then-fail) with it — confirmed by direct probe 2026-05-26.
-    // Keeping the path in the config matches the other two networks
-    // (`/ipfs` on PASEO_ASSET_HUB, `/ipfs/` on PREVIEWNET_ASSET_HUB) so
-    // the bulletin-upload test's `${chain.ipfs}/${cid}` URL works
-    // uniformly across networks.
-    ipfs: "https://paseo-bulletin-next-ipfs.polkadot.io/ipfs",
     ss58Prefix: 0,
   },
   PREVIEWNET_ASSET_HUB: {
@@ -90,7 +82,6 @@ export const CHAINS = {
     genesis:
       "0x4bad3ce960c32a1d55005d258883d14fc6eca4486af35500bed93c314fbdb192" as const,
     wsUrl: "wss://previewnet.substrate.dev/asset-hub",
-    ipfs: "https://previewnet.substrate.dev/ipfs/",
     ss58Prefix: 0,
   },
   PASEO_ASSET_HUB: {
@@ -99,7 +90,6 @@ export const CHAINS = {
     genesis:
       "0xd6eec26135305a8ad257a20d003357284c8aa03d0bdb2b357ab0a22371e11ef2" as const,
     wsUrl: "wss://sys.ibp.network/asset-hub-paseo",
-    ipfs: "https://paseo-ipfs.polkadot.io/ipfs",
     ss58Prefix: 0,
   },
 } as const;
