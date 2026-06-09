@@ -17,6 +17,7 @@
   },
   "dependencies": {
     "@parity/product-sdk-chain-client": "^0.6.0",
+    "@parity/product-sdk-cloud-storage": "^0.6.0",
     "@parity/product-sdk-host": "^0.7.0",
     "@parity/product-sdk-signer": "^0.6.1",
     "@polkadot-api/descriptors": "file:.papi/descriptors",
@@ -28,7 +29,6 @@
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
     "lucide-react": "^0.545.0",
-    "multiformats": "^14.0.0",
     "next": "15.5.10",
     "polkadot-api": "^2.1.0",
     "react": "^19.2.1",
