@@ -462,6 +462,57 @@ export const signingTests: TestDefinition[] = [
     },
   },
   {
+    id: "sign-raw-legacy",
+    name: "Sign Raw with Legacy Account",
+    description:
+      "Signs a raw message with a legacy account via getLegacyAccountSigner.signBytes.",
+    api: "accountsProvider.getLegacyAccountSigner(account).signBytes(bytes)",
+    args: [
+      {
+        name: "message",
+        label: "Message",
+        defaultValue: "Hello from a legacy account!",
+      },
+    ],
+    category: "signing",
+    async run(_chain, logger, args) {
+      const log = logger || (() => {});
+      const accountsProvider = await accounts();
+
+      log("Fetching legacy accounts...");
+      const account = (await accountsProvider.getLegacyAccounts()).match(
+        (list) => list[0] ?? null,
+        (err) => {
+          log(`getLegacyAccounts failed: ${err.name}`);
+          return null;
+        },
+      );
+      if (!account) {
+        return error(
+          "No legacy account available — check that the user is signed in",
+        );
+      }
+
+      log(
+        `Legacy account: ${account.name ?? "(unnamed)"} ${toHex(account.publicKey).slice(0, 18)}...`,
+      );
+
+      // signBytes routes through the host's address-based legacy raw path
+      // (signRawWithLegacyAccount), as opposed to the product-account signRaw
+      // used by the "Sign Raw Message" test above.
+      const signer = accountsProvider.getLegacyAccountSigner(account);
+      const message = args?.message ?? "Hello from a legacy account!";
+      const messageBytes = new TextEncoder().encode(message);
+
+      log("Signing raw bytes with legacy account signer...");
+      const signature = await signer.signBytes(messageBytes);
+      return success("Message signed with legacy account", {
+        account: account.name,
+        signature: toHex(signature),
+      });
+    },
+  },
+  {
     id: "create-transaction-legacy",
     name: "Create Transaction with Legacy Account",
     description:
