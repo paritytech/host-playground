@@ -24,8 +24,11 @@ import {
   Binary,
   createClient,
   type PolkadotClient,
+  type PolkadotSigner,
 } from "polkadot-api";
 import { toHex, fromHex } from "polkadot-api/utils";
+import { decAnyMetadata, unifyMetadata } from "@polkadot-api/substrate-bindings";
+import { assertEnumVariant, enumValue } from "@novasamatech/host-api";
 import { createInkSdk } from "@polkadot-api/sdk-ink";
 import { contracts } from "@polkadot-api/descriptors";
 import {
@@ -332,6 +335,60 @@ async function resolveUserId(
   return { publicKey: AccountId().enc(ownerAddress), name: username };
 }
 
+/**
+ * A PolkadotSigner for a legacy (address-based) account whose signTx goes
+ * through the host's createTransaction path — hostApi.createTransactionWithLegacyAccount
+ * (RFC legacy createTransaction; session.createTransactionLegacy on the host).
+ * The host builds the extrinsic from raw callData + extensions, so — unlike the
+ * PJS signPayloadWithLegacyAccount path that getLegacyAccountSigner uses — it
+ * supports this chain's custom signed extensions (e.g. AuthorizeValueTransfer).
+ */
+function legacyCreateTransactionSigner(publicKey: Uint8Array): PolkadotSigner {
+  return {
+    publicKey,
+    async signTx(callData, signedExtensions, metadata) {
+      const decMeta = unifyMetadata(decAnyMetadata(metadata));
+      const versions = decMeta.extrinsic.version;
+      const latestVersion = versions.reduce((acc, v) => Math.max(acc, v), 0);
+      const txExtVersion = latestVersion === 4 ? 0 : latestVersion;
+
+      const checkGenesis = signedExtensions["CheckGenesis"];
+      if (!checkGenesis) throw new Error("Can't find genesis hash on transaction");
+
+      const txPayload = {
+        signer: publicKey,
+        genesisHash: checkGenesis.additionalSigned,
+        callData,
+        extensions: Object.values(signedExtensions).map(
+          ({ identifier, value, additionalSigned }) => ({
+            id: identifier,
+            extra: value,
+            additionalSigned,
+          }),
+        ),
+        txExtVersion,
+      };
+
+      const response = await (
+        await truApi()
+      ).createTransactionWithLegacyAccount(enumValue("v1", txPayload));
+      return response.match(
+        (res) => {
+          assertEnumVariant(res, "v1", "Unsupported message version");
+          return res.value;
+        },
+        (err) => {
+          assertEnumVariant(err, "v1", "Unsupported message version");
+          throw err.value;
+        },
+      );
+    },
+    async signBytes() {
+      throw new Error("signBytes not supported by the legacy createTransaction signer");
+    },
+  };
+}
+
 // Account Tests
 export const accountTests: TestDefinition[] = [
   {
@@ -560,8 +617,8 @@ export const signingTests: TestDefinition[] = [
     id: "create-transaction-legacy",
     name: "Create Transaction with Legacy Account",
     description:
-      "Signs a transaction offline with a legacy account. Returns the signed bytes without broadcasting.",
-    api: "tx.sign(accountsProvider.getLegacyAccountSigner(account))",
+      "Signs a transaction offline as the logged-in user's account (resolved via getUserId + People chain) by calling hostApi.createTransactionWithLegacyAccount directly — bypassing getLegacyAccountSigner's PJS signPayload path. Returns the signed bytes without broadcasting.",
+    api: "truApi().createTransactionWithLegacyAccount({ signer, genesisHash, callData, extensions, txExtVersion })",
     args: [
       {
         name: "message",
@@ -575,14 +632,14 @@ export const signingTests: TestDefinition[] = [
 
       const account = await resolveUserId(chain, log);
       if (!account) {
-        return error("Could not resolve legacy account from user identity");
+        return error("Could not resolve account from user identity");
       }
 
-      // getLegacyAccountSigner signs via the host's address-based legacy
-      // path (signPayloadWithLegacyAccount), as opposed to the product-account
-      // signer used by the "Create Transaction" test above.
-      const accountsProvider = await accounts();
-      const signer = accountsProvider.getLegacyAccountSigner(account);
+      // Sign by calling hostApi.createTransactionWithLegacyAccount directly
+      // (host builds the extrinsic), bypassing getLegacyAccountSigner's PJS
+      // signPayload path so this chain's custom signed extensions (e.g.
+      // AuthorizeValueTransfer) are supported.
+      const signer = legacyCreateTransactionSigner(account.publicKey);
 
       const client = await getClient(chain.genesis);
       const api = client.getUnsafeApi();
@@ -591,7 +648,7 @@ export const signingTests: TestDefinition[] = [
         args?.message ?? "Create Transaction from a legacy account";
       const tx = api.tx.System.remark({ remark: Binary.fromText(message) });
 
-      log("Signing transaction with legacy account signer...");
+      log("Signing (createTransactionWithLegacyAccount)...");
       const signedBytes = await tx.sign(signer);
       const signedHex = toHex(signedBytes);
       return success(`Transaction signed (${signedBytes.length} bytes)`, {
