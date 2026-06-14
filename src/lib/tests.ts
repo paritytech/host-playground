@@ -462,8 +462,66 @@ export const signingTests: TestDefinition[] = [
     },
   },
   {
+    id: "create-transaction-legacy",
+    name: "Create Transaction with Legacy Account",
+    description:
+      "Signs a transaction offline with a legacy account. Returns the signed bytes without broadcasting.",
+    api: "tx.sign(accountsProvider.getLegacyAccountSigner(account))",
+    args: [
+      {
+        name: "message",
+        label: "Remark",
+        defaultValue: "Create Transaction from a legacy account",
+      },
+    ],
+    category: "signing",
+    async run(chain, logger, args) {
+      const log = logger || (() => {});
+      const accountsProvider = await accounts();
+
+      log("Fetching legacy accounts...");
+      const account = (await accountsProvider.getLegacyAccounts()).match(
+        (list) => list[0] ?? null,
+        (err) => {
+          log(`getLegacyAccounts failed: ${err.name}`);
+          return null;
+        },
+      );
+      if (!account) {
+        return error(
+          "No legacy account available — check that the user is signed in",
+        );
+      }
+
+      log(
+        `Legacy account: ${account.name ?? "(unnamed)"} ${toHex(account.publicKey).slice(0, 18)}...`,
+      );
+
+      // getLegacyAccountSigner signs via the host's address-based legacy
+      // path (signPayloadWithLegacyAccount), as opposed to the product-account
+      // signer used by the "Create Transaction" test above.
+      const signer = accountsProvider.getLegacyAccountSigner(account);
+
+      const client = await getClient(chain.genesis);
+      const api = client.getUnsafeApi();
+
+      const message =
+        args?.message ?? "Create Transaction from a legacy account";
+      const tx = api.tx.System.remark({ remark: Binary.fromText(message) });
+
+      log("Signing transaction with legacy account signer...");
+      const signedBytes = await tx.sign(signer);
+      const signedHex = toHex(signedBytes);
+      return success(`Transaction signed (${signedBytes.length} bytes)`, {
+        account: account.name,
+        preview: `${signedHex.slice(0, 80)}...`,
+        length: signedBytes.length,
+      });
+    },
+  },
+  {
     id: "create-transaction",
-    name: "Create Transaction",
+    name: "Create Transaction with Product Account",
     description:
       "Signs a transaction offline via the product account signer (mode = createTransaction). Returns the signed bytes without broadcasting.",
     api: 'tx.sign(accountsProvider.getProductAccountSigner(account, "createTransaction"))',
