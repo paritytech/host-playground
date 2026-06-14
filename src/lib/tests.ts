@@ -149,6 +149,20 @@ const READ_ORIGIN = "12dCP8UFhSktvmSgJcP93tNPdgVQMdBQqJNcFrZTnDoiBE9Y";
 
 const SELF_DOTNS = getSelfDotNs();
 
+// People chain genesis per Asset Hub network. Username -> AccountId resolution
+// runs on the People chain paired with the selected hub:
+//   Paseo Hub      -> wss://paseo-people-next-system-rpc.polkadot.io
+//   Previewnet Hub -> wss://previewnet.substrate.dev/people
+const PASEO_PEOPLE_GENESIS =
+  "0xc5af1826b31493f08b7e2a823842f98575b806a784126f28da9608c68665afa5";
+const PREVIEWNET_PEOPLE_GENESIS =
+  "0x3389bc9179d3be32568c67278bd080d05631ac71982d28a3fe545421147b311e";
+const PEOPLE_GENESIS_BY_HUB: Record<string, `0x${string}`> = {
+  [CHAINS.PASEO_ASSET_HUB.genesis]: PASEO_PEOPLE_GENESIS,
+  [CHAINS.PASEO_NEXT_V2_ASSET_HUB.genesis]: PASEO_PEOPLE_GENESIS,
+  [CHAINS.PREVIEWNET_ASSET_HUB.genesis]: PREVIEWNET_PEOPLE_GENESIS,
+};
+
 function success(message: string, details?: unknown): TestResult {
   return { success: true, message, details };
 }
@@ -274,6 +288,49 @@ function createExpiryFromDuration(
 
 /** Default statement TTL — long enough for a slow proof-then-submit round-trip. */
 const STATEMENT_TTL_SECS = 300;
+
+/**
+ * Resolve the logged-in user's legacy account. getUserId() yields the primary
+ * username, which Resources.UsernameOwnerOf on the People chain paired with the
+ * selected hub maps to the owning AccountId. Returns a { publicKey, name }
+ * account ready for getLegacyAccountSigner, or null with a logged reason.
+ */
+async function resolveUserId(
+  chain: ChainConfig,
+  log: (msg: string) => void,
+): Promise<{ publicKey: Uint8Array; name: string } | null> {
+  const peopleGenesis = PEOPLE_GENESIS_BY_HUB[chain.genesis];
+  if (!peopleGenesis) {
+    log(`No People chain configured for ${chain.name}`);
+    return null;
+  }
+
+  const accountsProvider = await accounts();
+
+  log("Fetching user identity...");
+  const username = (await accountsProvider.getUserId()).match(
+    (id) => id.primaryUsername,
+    (err) => {
+      log(`getUserId failed: ${err.name}`);
+      return null;
+    },
+  );
+  if (!username) return null;
+
+  log(`Resolving "${username}" on the People chain...`);
+  const peopleApi = (await getClient(peopleGenesis)).getUnsafeApi();
+  // Resources.UsernameOwnerOf maps username (Vec<u8>) -> owner AccountId.
+  const ownerAddress = (await peopleApi.query.Resources.UsernameOwnerOf.getValue(
+    Binary.fromText(username),
+  )) as string | undefined;
+  if (!ownerAddress) {
+    log(`No People-chain account owns username "${username}"`);
+    return null;
+  }
+
+  log(`Legacy account: ${username} (${ownerAddress.slice(0, 10)}...)`);
+  return { publicKey: AccountId().enc(ownerAddress), name: username };
+}
 
 // Account Tests
 export const accountTests: TestDefinition[] = [
@@ -475,31 +532,18 @@ export const signingTests: TestDefinition[] = [
       },
     ],
     category: "signing",
-    async run(_chain, logger, args) {
+    async run(chain, logger, args) {
       const log = logger || (() => {});
-      const accountsProvider = await accounts();
 
-      log("Fetching legacy accounts...");
-      const account = (await accountsProvider.getLegacyAccounts()).match(
-        (list) => list[0] ?? null,
-        (err) => {
-          log(`getLegacyAccounts failed: ${err.name}`);
-          return null;
-        },
-      );
+      const account = await resolveUserId(chain, log);
       if (!account) {
-        return error(
-          "No legacy account available — check that the user is signed in",
-        );
+        return error("Could not resolve legacy account from user identity");
       }
-
-      log(
-        `Legacy account: ${account.name ?? "(unnamed)"} ${toHex(account.publicKey).slice(0, 18)}...`,
-      );
 
       // signBytes routes through the host's address-based legacy raw path
       // (signRawWithLegacyAccount), as opposed to the product-account signRaw
       // used by the "Sign Raw Message" test above.
+      const accountsProvider = await accounts();
       const signer = accountsProvider.getLegacyAccountSigner(account);
       const message = args?.message ?? "Hello from a legacy account!";
       const messageBytes = new TextEncoder().encode(message);
@@ -528,29 +572,16 @@ export const signingTests: TestDefinition[] = [
     category: "signing",
     async run(chain, logger, args) {
       const log = logger || (() => {});
-      const accountsProvider = await accounts();
 
-      log("Fetching legacy accounts...");
-      const account = (await accountsProvider.getLegacyAccounts()).match(
-        (list) => list[0] ?? null,
-        (err) => {
-          log(`getLegacyAccounts failed: ${err.name}`);
-          return null;
-        },
-      );
+      const account = await resolveUserId(chain, log);
       if (!account) {
-        return error(
-          "No legacy account available — check that the user is signed in",
-        );
+        return error("Could not resolve legacy account from user identity");
       }
-
-      log(
-        `Legacy account: ${account.name ?? "(unnamed)"} ${toHex(account.publicKey).slice(0, 18)}...`,
-      );
 
       // getLegacyAccountSigner signs via the host's address-based legacy
       // path (signPayloadWithLegacyAccount), as opposed to the product-account
       // signer used by the "Create Transaction" test above.
+      const accountsProvider = await accounts();
       const signer = accountsProvider.getLegacyAccountSigner(account);
 
       const client = await getClient(chain.genesis);
