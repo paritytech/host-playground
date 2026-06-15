@@ -1,4 +1,10 @@
 import {
+  createApp,
+  type App,
+  type SignMessageWithDotNsIdentityArgs,
+} from "@parity/product-sdk";
+import { paseo_individuality } from "@parity/product-sdk-descriptors/paseo-individuality";
+import {
   getTruApi,
   getHostProvider,
   getAccountsProvider,
@@ -151,6 +157,8 @@ const HOSTAPI_DEMO_ADDRESS = deployment.hostApiDemo;
 const READ_ORIGIN = "12dCP8UFhSktvmSgJcP93tNPdgVQMdBQqJNcFrZTnDoiBE9Y";
 
 const SELF_DOTNS = getSelfDotNs();
+const PASEO_INDIVIDUALITY_DESCRIPTOR =
+  paseo_individuality as SignMessageWithDotNsIdentityArgs["peopleChain"];
 
 // People chain genesis per Asset Hub network. Username -> AccountId resolution
 // runs on the People chain paired with the selected hub:
@@ -165,6 +173,16 @@ const PEOPLE_GENESIS_BY_HUB: Record<string, `0x${string}`> = {
   [CHAINS.PASEO_NEXT_V2_ASSET_HUB.genesis]: PASEO_PEOPLE_GENESIS,
   [CHAINS.PREVIEWNET_ASSET_HUB.genesis]: PREVIEWNET_PEOPLE_GENESIS,
 };
+
+let cachedProductSdkApp: Promise<App> | null = null;
+function productSdkApp(): Promise<App> {
+  if (cachedProductSdkApp) return cachedProductSdkApp;
+  cachedProductSdkApp = createApp({
+    name: "host-playground",
+    cloudStorage: false,
+  });
+  return cachedProductSdkApp;
+}
 
 function success(message: string, details?: unknown): TestResult {
   return { success: true, message, details };
@@ -840,6 +858,56 @@ export const signingTests: TestDefinition[] = [
           },
           error: reject,
         });
+      });
+    },
+  },
+];
+
+// DotNS Identity Tests
+export const identityTests: TestDefinition[] = [
+  {
+    id: "dotns-identity-sign",
+    name: "Sign With DotNS Identity",
+    description:
+      "Signs a message with the wallet account that owns a DotNS username",
+    api: "app.wallet.signMessageWithDotNsIdentity({ peopleChain, username, message })",
+    args: [
+      {
+        name: "username",
+        label: "Username",
+        defaultValue: "",
+      },
+      {
+        name: "message",
+        label: "Message",
+        defaultValue: "Hello from Host Playground DotNS identity!",
+      },
+    ],
+    category: "identity",
+    async run(_chain, logger, args) {
+      const log = logger || (() => {});
+      const app = await productSdkApp();
+      const username = args?.username.trim() || undefined;
+      const message =
+        args?.message ?? "Hello from Host Playground DotNS identity!";
+
+      log(
+        username
+          ? `Resolving DotNS username "${username}" on paseo_individuality...`
+          : "Resolving primary DotNS username from host identity...",
+      );
+
+      const signature = await app.wallet.signMessageWithDotNsIdentity({
+        peopleChain: PASEO_INDIVIDUALITY_DESCRIPTOR,
+        username,
+        message,
+      });
+
+      return success(`Message signed as ${signature.username}`, {
+        username: signature.username,
+        accountId: signature.accountId,
+        signature: toHex(signature.signature),
+        signatureLength: signature.signature.length,
       });
     },
   },
@@ -2680,6 +2748,7 @@ export const allowancesTests: TestDefinition[] = [
 export const testsByCategory = {
   accounts: accountTests,
   signing: signingTests,
+  identity: identityTests,
   extension: extensionTests,
   storage: storageTests,
   permissions: permissionTests,

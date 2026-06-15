@@ -21,6 +21,7 @@ export type TestCategory =
   | "extension"
   | "accounts"
   | "signing"
+  | "identity"
   | "storage"
   | "permissions"
   | "statements"
