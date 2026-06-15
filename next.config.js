@@ -18,16 +18,6 @@ const nextConfig = {
     ignoreBuildErrors: false,
   },
   transpilePackages: ['@polkadot-api/descriptors'],
-  webpack: (config) => {
-    config.resolve.alias = {
-      ...(config.resolve.alias ?? {}),
-      '@parity/product-sdk': path.join(
-        __dirname,
-        'node_modules/@parity/product-sdk-sdk',
-      ),
-    }
-    return config
-  },
 }
 
 export default nextConfig

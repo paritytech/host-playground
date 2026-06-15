@@ -22,9 +22,6 @@
       }
     ],
     "paths": {
-      "@parity/product-sdk": [
-        "./node_modules/@parity/product-sdk-sdk"
-      ],
       "@/*": [
         "./*"
       ]
