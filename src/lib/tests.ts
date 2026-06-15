@@ -389,6 +389,74 @@ function legacyCreateTransactionSigner(publicKey: Uint8Array): PolkadotSigner {
   };
 }
 
+/**
+ * Resolve the logged-in user's account, then build and SUBMIT a HostApiDemo
+ * storeValue() contract call signed by that account via
+ * createTransactionWithLegacyAccount. Resolves once the tx is in a best block.
+ *
+ * A raw signature (signRawWithLegacyAccount) can't be broadcast, so submitting
+ * requires the createTransaction path — both legacy tests share this.
+ */
+async function submitLegacyStoreValue(
+  chain: ChainConfig,
+  log: (msg: string) => void,
+  value: bigint,
+): Promise<TestResult> {
+  const account = await resolveUserId(chain, log);
+  if (!account) {
+    return error("Could not resolve account from user identity");
+  }
+
+  const signer = legacyCreateTransactionSigner(account.publicKey);
+  const origin = AccountId().dec(account.publicKey);
+
+  // Contract writes on this chain go through the PGAS fee route (AsPgas), so
+  // ensure the account has a SmartContractAllowance before submitting.
+  const allowanceError = await ensureSmartContractAllowance(log, chain, {
+    publicKey: account.publicKey,
+    derivationIndex: 0,
+  });
+  if (allowanceError) return allowanceError;
+
+  const client = await getClient(chain.genesis);
+  const sdk = createInkSdk(client);
+  const contract = sdk.getContract(contracts.hostApiDemo, HOSTAPI_DEMO_ADDRESS);
+
+  log(`Dry-running storeValue(${value}) for ${account.name}...`);
+  const dryRun = await contract.query("storeValue", {
+    origin,
+    data: { _value: value },
+  });
+  if (!dryRun.success) return error("Dry-run failed", dryRun.value);
+
+  log("Signing (createTransactionWithLegacyAccount) and submitting...");
+  let txHash: string | undefined;
+  await new Promise<void>((resolve, reject) => {
+    dryRun.value
+      .send()
+      .signSubmitAndWatch(signer)
+      .subscribe({
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        next: (ev: any) => {
+          log(`Event: ${ev.type}`);
+          if (ev.type === "txBestBlocksState" && ev.found) {
+            txHash = ev.txHash;
+            resolve();
+          }
+          if (ev.type === "finalized" && !ev.ok) reject(new Error("Tx failed"));
+        },
+        error: reject,
+      });
+  });
+
+  return success(`Stored value ${value} as ${account.name}`, {
+    account: account.name,
+    value: String(value),
+    contract: HOSTAPI_DEMO_ADDRESS,
+    txHash,
+  });
+}
+
 // Account Tests
 export const accountTests: TestDefinition[] = [
   {
@@ -577,85 +645,40 @@ export const signingTests: TestDefinition[] = [
   },
   {
     id: "sign-raw-legacy",
-    name: "Sign Raw with Legacy Account",
+    name: "Sign & Submit Contract (Legacy Account)",
     description:
-      "Signs a raw message with a legacy account via getLegacyAccountSigner.signBytes.",
-    api: "accountsProvider.getLegacyAccountSigner(account).signBytes(bytes)",
+      "Submits a storeValue() contract call on the HostApiDemo contract, signed by the logged-in user's account (resolved via getUserId + People chain) through createTransactionWithLegacyAccount.",
+    api: "contract.send('storeValue', { origin, data }).signSubmitAndWatch(legacySigner)",
     args: [
       {
-        name: "message",
-        label: "Message",
-        defaultValue: "Hello from a legacy account!",
+        name: "value",
+        label: "Value (uint256)",
+        defaultValue: "7",
       },
     ],
     category: "signing",
     async run(chain, logger, args) {
       const log = logger || (() => {});
-
-      const account = await resolveUserId(chain, log);
-      if (!account) {
-        return error("Could not resolve legacy account from user identity");
-      }
-
-      // signBytes routes through the host's address-based legacy raw path
-      // (signRawWithLegacyAccount), as opposed to the product-account signRaw
-      // used by the "Sign Raw Message" test above.
-      const accountsProvider = await accounts();
-      const signer = accountsProvider.getLegacyAccountSigner(account);
-      const message = args?.message ?? "Hello from a legacy account!";
-      const messageBytes = new TextEncoder().encode(message);
-
-      log("Signing raw bytes with legacy account signer...");
-      const signature = await signer.signBytes(messageBytes);
-      return success("Message signed with legacy account", {
-        account: account.name,
-        signature: toHex(signature),
-      });
+      return submitLegacyStoreValue(chain, log, BigInt(args?.value ?? "7"));
     },
   },
   {
     id: "create-transaction-legacy",
-    name: "Create Transaction with Legacy Account",
+    name: "Create & Submit Transaction (Legacy Account)",
     description:
-      "Signs a transaction offline as the logged-in user's account (resolved via getUserId + People chain) by calling hostApi.createTransactionWithLegacyAccount directly — bypassing getLegacyAccountSigner's PJS signPayload path. Returns the signed bytes without broadcasting.",
-    api: "truApi().createTransactionWithLegacyAccount({ signer, genesisHash, callData, extensions, txExtVersion })",
+      "Submits a storeValue() contract call on the HostApiDemo contract, signed by the logged-in user's account (resolved via getUserId + People chain) by calling hostApi.createTransactionWithLegacyAccount directly — the host builds the extrinsic, so this chain's custom signed extensions (e.g. AuthorizeValueTransfer) are supported.",
+    api: "contract.send('storeValue', { origin, data }).signSubmitAndWatch(legacySigner)",
     args: [
       {
-        name: "message",
-        label: "Remark",
-        defaultValue: "Create Transaction from a legacy account",
+        name: "value",
+        label: "Value (uint256)",
+        defaultValue: "42",
       },
     ],
     category: "signing",
     async run(chain, logger, args) {
       const log = logger || (() => {});
-
-      const account = await resolveUserId(chain, log);
-      if (!account) {
-        return error("Could not resolve account from user identity");
-      }
-
-      // Sign by calling hostApi.createTransactionWithLegacyAccount directly
-      // (host builds the extrinsic), bypassing getLegacyAccountSigner's PJS
-      // signPayload path so this chain's custom signed extensions (e.g.
-      // AuthorizeValueTransfer) are supported.
-      const signer = legacyCreateTransactionSigner(account.publicKey);
-
-      const client = await getClient(chain.genesis);
-      const api = client.getUnsafeApi();
-
-      const message =
-        args?.message ?? "Create Transaction from a legacy account";
-      const tx = api.tx.System.remark({ remark: Binary.fromText(message) });
-
-      log("Signing (createTransactionWithLegacyAccount)...");
-      const signedBytes = await tx.sign(signer);
-      const signedHex = toHex(signedBytes);
-      return success(`Transaction signed (${signedBytes.length} bytes)`, {
-        account: account.name,
-        preview: `${signedHex.slice(0, 80)}...`,
-        length: signedBytes.length,
-      });
+      return submitLegacyStoreValue(chain, log, BigInt(args?.value ?? "42"));
     },
   },
   {
