@@ -1,8 +1,4 @@
-import {
-  createApp,
-  type App,
-  type SignMessageWithDotNsIdentityArgs,
-} from "@parity/product-sdk";
+import { createApp } from "@parity/product-sdk";
 import { paseo_individuality } from "@parity/product-sdk-descriptors/paseo-individuality";
 import {
   getTruApi,
@@ -157,8 +153,7 @@ const HOSTAPI_DEMO_ADDRESS = deployment.hostApiDemo;
 const READ_ORIGIN = "12dCP8UFhSktvmSgJcP93tNPdgVQMdBQqJNcFrZTnDoiBE9Y";
 
 const SELF_DOTNS = getSelfDotNs();
-const PASEO_INDIVIDUALITY_DESCRIPTOR =
-  paseo_individuality as SignMessageWithDotNsIdentityArgs["peopleChain"];
+const PASEO_INDIVIDUALITY_DESCRIPTOR = paseo_individuality;
 
 // People chain genesis per Asset Hub network. Username -> AccountId resolution
 // runs on the People chain paired with the selected hub:
@@ -174,8 +169,8 @@ const PEOPLE_GENESIS_BY_HUB: Record<string, `0x${string}`> = {
   [CHAINS.PREVIEWNET_ASSET_HUB.genesis]: PREVIEWNET_PEOPLE_GENESIS,
 };
 
-let cachedProductSdkApp: Promise<App> | null = null;
-function productSdkApp(): Promise<App> {
+let cachedProductSdkApp: ReturnType<typeof createApp> | null = null;
+function productSdkApp(): ReturnType<typeof createApp> {
   if (cachedProductSdkApp) return cachedProductSdkApp;
   cachedProductSdkApp = createApp({
     name: "host-playground",
