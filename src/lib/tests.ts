@@ -153,7 +153,6 @@ const HOSTAPI_DEMO_ADDRESS = deployment.hostApiDemo;
 const READ_ORIGIN = "12dCP8UFhSktvmSgJcP93tNPdgVQMdBQqJNcFrZTnDoiBE9Y";
 
 const SELF_DOTNS = getSelfDotNs();
-const PASEO_INDIVIDUALITY_DESCRIPTOR = paseo_individuality;
 
 // People chain genesis per Asset Hub network. Username -> AccountId resolution
 // runs on the People chain paired with the selected hub:
@@ -610,7 +609,7 @@ export const signingTests: TestDefinition[] = [
       const signature = await (
         await productSdkApp()
       ).wallet.signMessageWithDotNsIdentity({
-        peopleChain: PASEO_INDIVIDUALITY_DESCRIPTOR,
+        peopleChain: paseo_individuality,
         message,
       });
 
