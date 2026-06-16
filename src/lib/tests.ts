@@ -250,6 +250,18 @@ function bytesEqual(a: Uint8Array, b: Uint8Array): boolean {
   return true;
 }
 
+// Statement Store topics are a chain primitive Hash and must be exactly
+// 32 bytes. Earlier code passed `new TextEncoder().encode(s)` directly,
+// which produced 23-byte arrays for the default labels and the host
+// rejected with `Statement topic must be 32 bytes`. SHA-256 of the
+// UTF-8 encoding gives a deterministic 32-byte digest that can be
+// matched on subscribe and re-derived elsewhere.
+async function hashTopic(s: string): Promise<Uint8Array> {
+  const bytes = new TextEncoder().encode(s);
+  const digest = await crypto.subtle.digest("SHA-256", bytes);
+  return new Uint8Array(digest);
+}
+
 /**
  * Statement-Store expiry as the chain expects it:
  *   high 32 bits: unix timestamp (seconds) at which the statement expires
@@ -1269,9 +1281,11 @@ export const statementTests: TestDefinition[] = [
     category: "statements",
     async run(_chain, _logger, args) {
       const statementStore = (await statements());
-      const encoder = new TextEncoder();
-      const topicA = encoder.encode(args?.topicA ?? "host-playground:topic-a");
-      const topicB = encoder.encode(args?.topicB ?? "host-playground:topic-b");
+      // Statement Store topics are a chain primitive Hash — they must
+      // be exactly 32 bytes. Hash the user-supplied string so any
+      // length input maps to a valid topic.
+      const topicA = await hashTopic(args?.topicA ?? "host-playground:topic-a");
+      const topicB = await hashTopic(args?.topicB ?? "host-playground:topic-b");
 
       return new Promise((resolve) => {
         const received: unknown[] = [];
