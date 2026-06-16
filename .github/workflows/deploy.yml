@@ -122,7 +122,11 @@ jobs:
             export IPFS_CID='${{ steps.cached-deploy.outputs.cid }}'
             export NODE_OPTIONS='--max-old-space-size=8192'
             export MANIFEST_DOMAIN='${{ steps.domain-input.outputs.dotns }}'
-            bulletin-deploy --env ${{ matrix.env }} --publish 'out' '${{ steps.domain-input.outputs.dotns }}'
+            PUBLISH_FLAG=''
+            if [ "${{ github.event_name }}" = "push" ]; then
+              PUBLISH_FLAG='--publish'
+            fi
+            bulletin-deploy --env ${{ matrix.env }} $PUBLISH_FLAG 'out' '${{ steps.domain-input.outputs.dotns }}'
 
       - name: Validate deployment outputs
         if: steps.cache.outputs.cache-hit != 'true'
