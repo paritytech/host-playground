@@ -590,38 +590,35 @@ export const signingTests: TestDefinition[] = [
   },
   {
     id: "sign-raw-legacy",
-    name: "Sign and submit Raw with Legacy Account",
+    name: "Sign Raw with DotNS Identity",
     description:
-      "Signs a raw message with the logged-in user's account (resolved via getUserId + People chain) through getLegacyAccountSigner.signBytes (signRawWithLegacyAccount).",
-    api: "accountsProvider.getLegacyAccountSigner(account).signBytes(bytes)",
+      "Signs a raw message with the account that owns the logged-in user's DotNS identity.",
+    api: "app.wallet.signMessageWithDotNsIdentity({ peopleChain, message })",
     args: [
       {
         name: "message",
         label: "Message",
-        defaultValue: "Hello from a legacy account!",
+        defaultValue: "Hello from a DotNS identity!",
       },
     ],
     category: "signing",
-    async run(chain, logger, args) {
+    async run(_chain, logger, args) {
       const log = logger || (() => {});
+      const message = args?.message ?? "Hello from a DotNS identity!";
 
-      const account = await resolveUserId(chain, log);
-      if (!account) {
-        return error("Could not resolve account from user identity");
-      }
+      log("Resolving primary DotNS username from host identity...");
+      const signature = await (
+        await productSdkApp()
+      ).wallet.signMessageWithDotNsIdentity({
+        peopleChain: PASEO_INDIVIDUALITY_DESCRIPTOR,
+        message,
+      });
 
-      // Raw message signing routes through signRawWithLegacyAccount — no
-      // transaction, no contract, no signed extensions involved.
-      const accountsProvider = await accounts();
-      const signer = accountsProvider.getLegacyAccountSigner(account);
-      const message = args?.message ?? "Hello from a legacy account!";
-      const messageBytes = new TextEncoder().encode(message);
-
-      log("Signing raw message with legacy account signer...");
-      const signature = await signer.signBytes(messageBytes);
-      return success("Message signed with legacy account", {
-        account: account.name,
-        signature: toHex(signature),
+      return success(`Message signed as ${signature.username}`, {
+        username: signature.username,
+        accountId: signature.accountId,
+        signature: toHex(signature.signature),
+        signatureLength: signature.signature.length,
       });
     },
   },
@@ -853,56 +850,6 @@ export const signingTests: TestDefinition[] = [
           },
           error: reject,
         });
-      });
-    },
-  },
-];
-
-// DotNS Identity Tests
-export const identityTests: TestDefinition[] = [
-  {
-    id: "dotns-identity-sign",
-    name: "Sign With DotNS Identity",
-    description:
-      "Signs a message with the wallet account that owns a DotNS username",
-    api: "app.wallet.signMessageWithDotNsIdentity({ peopleChain, username, message })",
-    args: [
-      {
-        name: "username",
-        label: "Username",
-        defaultValue: "",
-      },
-      {
-        name: "message",
-        label: "Message",
-        defaultValue: "Hello from Host Playground DotNS identity!",
-      },
-    ],
-    category: "identity",
-    async run(_chain, logger, args) {
-      const log = logger || (() => {});
-      const app = await productSdkApp();
-      const username = args?.username.trim() || undefined;
-      const message =
-        args?.message ?? "Hello from Host Playground DotNS identity!";
-
-      log(
-        username
-          ? `Resolving DotNS username "${username}" on paseo_individuality...`
-          : "Resolving primary DotNS username from host identity...",
-      );
-
-      const signature = await app.wallet.signMessageWithDotNsIdentity({
-        peopleChain: PASEO_INDIVIDUALITY_DESCRIPTOR,
-        username,
-        message,
-      });
-
-      return success(`Message signed as ${signature.username}`, {
-        username: signature.username,
-        accountId: signature.accountId,
-        signature: toHex(signature.signature),
-        signatureLength: signature.signature.length,
       });
     },
   },
@@ -2743,7 +2690,6 @@ export const allowancesTests: TestDefinition[] = [
 export const testsByCategory = {
   accounts: accountTests,
   signing: signingTests,
-  identity: identityTests,
   extension: extensionTests,
   storage: storageTests,
   permissions: permissionTests,

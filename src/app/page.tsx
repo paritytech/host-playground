@@ -28,7 +28,6 @@ const categoryIcons: Record<TestCategory, string> = {
   extension: "🔌",
   accounts: "👤",
   signing: "✍️",
-  identity: "🪪",
   storage: "💾",
   permissions: "🔐",
   statements: "📜",
@@ -59,10 +58,6 @@ const categoryInfo: Record<
   signing: {
     title: "Signing",
     description: "Sign messages and transaction payloads",
-  },
-  identity: {
-    title: "DotNS Identity",
-    description: "Sign messages with a People-chain DotNS identity",
   },
   storage: {
     title: "Storage",
