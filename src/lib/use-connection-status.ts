@@ -1,19 +1,29 @@
 import { useEffect, useState } from "react";
-import type { SignerState } from "@parity/product-sdk-signer";
-import { signerManager, ensureSignerConnected } from "./signer";
+import { connectApp } from "./app";
 
 type ConnectionStatus = "connecting" | "connected" | "disconnected";
 
 export const useConnectionStatus = () => {
-  const [state, setState] = useState<SignerState | null>(null);
+  // null before mount (matches the previous pre-subscription state); after mount
+  // the value is derived from the shared connectApp() lifecycle on the single
+  // app.wallet. A failed connect maps to "disconnected", preserving the three
+  // statuses this hook has always surfaced.
+  const [status, setStatus] = useState<ConnectionStatus | null>(null);
 
   useEffect(() => {
-    setState(signerManager.getState());
-    const unsubscribe = signerManager.subscribe(setState);
-    void ensureSignerConnected();
-    return unsubscribe;
+    let cancelled = false;
+    setStatus("connecting");
+    void connectApp()
+      .then(() => {
+        if (!cancelled) setStatus("connected");
+      })
+      .catch(() => {
+        if (!cancelled) setStatus("disconnected");
+      });
+    return () => {
+      cancelled = true;
+    };
   }, []);
 
-  if (!state) return null;
-  return state.status as ConnectionStatus;
+  return status;
 };
