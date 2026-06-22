@@ -392,6 +392,97 @@ export const accountTests: TestDefinition[] = [
       });
     },
   },
+  {
+    id: "accounts-create-ring-vrf-proof",
+    name: "Create Ring VRF Proof",
+    description:
+      "Reads the first ring root published in `Members.Root` on paseo-individuality (via the host's PAPI conduit), then asks the host to generate a Ring VRF proof of the given message against it. Returns the proof bytes on success, or `RingNotFound` / `Rejected` when the product account isn't onboarded into that ring.",
+    api: "accountsProvider.createRingVRFProof(dotNs, idx, location, message)",
+    args: [
+      {
+        name: "message",
+        label: "Message to prove (utf-8)",
+        defaultValue: "hello ring vrf",
+      },
+    ],
+    category: "accounts",
+    async run(_chain, logger, args) {
+      const log = logger || (() => {});
+
+      // paseo-individuality runs the Members pallet whose `Root` storage holds
+      // the per-ring KZG commitment the Ring VRF proves against. The host
+      // routes our papi client to it via getHostProvider(genesis) regardless
+      // of which asset hub the playground is currently pointed at.
+      const PASEO_INDIVIDUALITY_GENESIS =
+        "0xc5af1826b31493f08b7e2a823842f98575b806a784126f28da9608c68665afa5" as const;
+
+      log("Opening papi client for paseo-individuality via host provider...");
+      const client = await getClient(PASEO_INDIVIDUALITY_GENESIS);
+      const chainApi = client.getUnsafeApi();
+
+      log("Reading Members.Root entries...");
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const entries: any[] = await chainApi.query.Members.Root.getEntries();
+      if (entries.length === 0) {
+        return error(
+          "No ring roots published on paseo-individuality yet (Members.Root is empty)",
+        );
+      }
+      log(`Found ${entries.length} ring root(s)`);
+
+      const first = entries[0];
+      const [collectionId, ringIndex] = first.keyArgs as [string, number];
+      const ringRootHash = first.value?.root as `0x${string}` | undefined;
+      if (!ringRootHash) {
+        return error("Members.Root entry has no `root` field", { entry: first });
+      }
+      log(
+        `Picked ring: collection=${collectionId.slice(0, 18)}…, ringIndex=${ringIndex}, root=${ringRootHash.slice(0, 18)}… (${(ringRootHash.length - 2) / 2} bytes)`,
+      );
+
+      const messageStr = args?.message ?? "hello ring vrf";
+      const message = new TextEncoder().encode(messageStr);
+
+      log(
+        `Requesting Ring VRF proof for "${messageStr}" (${message.length} bytes)...`,
+      );
+      const accountsProvider = await accounts();
+      const result = await accountsProvider.createRingVRFProof(
+        SELF_DOTNS,
+        0,
+        {
+          genesisHash: PASEO_INDIVIDUALITY_GENESIS,
+          ringRootHash,
+          hints: undefined,
+        },
+        message,
+      );
+
+      return result.match(
+        (proof) =>
+          success(`Ring VRF proof generated (${proof.length} bytes)`, {
+            proofPreview: toHex(proof).slice(0, 80) + "…",
+            proofLength: proof.length,
+            message: messageStr,
+            ring: {
+              genesisHash: PASEO_INDIVIDUALITY_GENESIS,
+              collectionId,
+              ringIndex,
+              ringRootHashPreview: ringRootHash.slice(0, 18) + "…",
+            },
+          }),
+        (err) =>
+          error(err.name, {
+            reason: err,
+            ring: {
+              genesisHash: PASEO_INDIVIDUALITY_GENESIS,
+              collectionId,
+              ringIndex,
+            },
+          }),
+      );
+    },
+  },
 ];
 
 // Signing Tests
