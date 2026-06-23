@@ -402,7 +402,7 @@ export const accountTests: TestDefinition[] = [
       {
         name: "collection",
         label: "Collection prefix (utf-8 substring of collectionId, leave blank for the first ring)",
-        defaultValue: "lite-people",
+        defaultValue: "people-lite",
       },
       {
         name: "ringIndex",
