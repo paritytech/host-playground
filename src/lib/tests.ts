@@ -396,9 +396,19 @@ export const accountTests: TestDefinition[] = [
     id: "accounts-create-ring-vrf-proof",
     name: "Create Ring VRF Proof",
     description:
-      "Reads the first ring root published in `Members.Root` on paseo-individuality (via the host's PAPI conduit), then asks the host to generate a Ring VRF proof of the given message against it. Returns the proof bytes on success, or `RingNotFound` / `Rejected` when the product account isn't onboarded into that ring.",
+      "Lists ring roots published in `Members.Root` on paseo-individuality (via the host's PAPI conduit), picks the one whose `collectionId` ASCII prefix matches `Collection`, then asks the host to generate a Ring VRF proof of `Message` against it. Returns the proof bytes on success, or `RingNotFound` / `Rejected` / `Unknown` when the host can't prove for that ring.",
     api: "accountsProvider.createRingVRFProof(dotNs, idx, location, message)",
     args: [
+      {
+        name: "collection",
+        label: "Collection prefix (utf-8 substring of collectionId, leave blank for the first ring)",
+        defaultValue: "lite-people",
+      },
+      {
+        name: "ringIndex",
+        label: "Ring index (leave blank for the lowest available)",
+        defaultValue: "",
+      },
       {
         name: "message",
         label: "Message to prove (utf-8)",
@@ -428,16 +438,73 @@ export const accountTests: TestDefinition[] = [
           "No ring roots published on paseo-individuality yet (Members.Root is empty)",
         );
       }
-      log(`Found ${entries.length} ring root(s)`);
 
-      const first = entries[0];
-      const [collectionId, ringIndex] = first.keyArgs as [string, number];
-      const ringRootHash = first.value?.root as `0x${string}` | undefined;
+      // Collection ids are 32-byte values; the convention is a UTF-8 name
+      // (e.g. "lite-people", "coinage/recycler") padded with trailing 0x00.
+      // Decode the prefix so we can match against a user-friendly substring.
+      const decodeCollectionName = (hex: string): string => {
+        const bytes = fromHex(hex as `0x${string}`);
+        let end = bytes.length;
+        while (end > 0 && bytes[end - 1] === 0) end--;
+        return new TextDecoder("utf-8", { fatal: false }).decode(
+          bytes.slice(0, end),
+        );
+      };
+
+      const catalog = entries.map((e) => {
+        const [collectionId, ringIndex] = e.keyArgs as [string, number];
+        return {
+          collectionId,
+          collectionName: decodeCollectionName(collectionId),
+          ringIndex,
+          ringRootHash: e.value?.root as `0x${string}` | undefined,
+        };
+      });
+
+      log(
+        `Found ${catalog.length} ring root(s): ${catalog
+          .map((c) => `${c.collectionName || c.collectionId.slice(0, 10)}#${c.ringIndex}`)
+          .join(", ")}`,
+      );
+
+      const collectionFilter = (args?.collection ?? "").trim().toLowerCase();
+      const ringIndexFilter = (args?.ringIndex ?? "").trim();
+      const parsedRingIndex =
+        ringIndexFilter === "" ? null : Number(ringIndexFilter);
+      if (parsedRingIndex !== null && Number.isNaN(parsedRingIndex)) {
+        return error(`Ring index must be a number (got "${ringIndexFilter}")`);
+      }
+
+      const candidates = catalog
+        .filter((c) =>
+          collectionFilter === ""
+            ? true
+            : c.collectionName.toLowerCase().includes(collectionFilter),
+        )
+        .filter((c) =>
+          parsedRingIndex === null ? true : c.ringIndex === parsedRingIndex,
+        )
+        .sort((a, b) => a.ringIndex - b.ringIndex);
+
+      if (candidates.length === 0) {
+        return error(
+          `No ring matches collection="${args?.collection ?? ""}", ringIndex="${args?.ringIndex ?? ""}"`,
+          {
+            available: catalog.map((c) => ({
+              collection: c.collectionName,
+              ringIndex: c.ringIndex,
+            })),
+          },
+        );
+      }
+
+      const picked = candidates[0];
+      const ringRootHash = picked.ringRootHash;
       if (!ringRootHash) {
-        return error("Members.Root entry has no `root` field", { entry: first });
+        return error("Picked Members.Root entry has no `root` field", { picked });
       }
       log(
-        `Picked ring: collection=${collectionId.slice(0, 18)}…, ringIndex=${ringIndex}, root=${ringRootHash.slice(0, 18)}… (${(ringRootHash.length - 2) / 2} bytes)`,
+        `Picked ring: collection="${picked.collectionName}", ringIndex=${picked.ringIndex}, root=${ringRootHash.slice(0, 18)}… (${(ringRootHash.length - 2) / 2} bytes)`,
       );
 
       const messageStr = args?.message ?? "hello ring vrf";
@@ -466,8 +533,9 @@ export const accountTests: TestDefinition[] = [
             message: messageStr,
             ring: {
               genesisHash: PASEO_INDIVIDUALITY_GENESIS,
-              collectionId,
-              ringIndex,
+              collection: picked.collectionName,
+              collectionId: picked.collectionId,
+              ringIndex: picked.ringIndex,
               ringRootHashPreview: ringRootHash.slice(0, 18) + "…",
             },
           }),
@@ -476,8 +544,9 @@ export const accountTests: TestDefinition[] = [
             reason: err,
             ring: {
               genesisHash: PASEO_INDIVIDUALITY_GENESIS,
-              collectionId,
-              ringIndex,
+              collection: picked.collectionName,
+              collectionId: picked.collectionId,
+              ringIndex: picked.ringIndex,
             },
           }),
       );
