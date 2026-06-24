@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { AlertTriangle } from "lucide-react";
-import { isInsideContainer, isInsideContainerSync } from "@parity/product-sdk-host";
+import { isInsideContainer, isInsideContainerSync } from "@parity/product-sdk";
 import { Card, CardContent } from "@/src/components/card";
 import { LogViewer } from "@/src/components/log-viewer";
 import { TestCategoryCard } from "@/src/components/test-category";
@@ -22,7 +22,7 @@ import { useAccounts } from "@/src/lib/use-accounts";
 import { stringify } from "@/src/lib/utils";
 import pkg from "@/package.json";
 
-const SDK_VERSION_LABEL = `@parity/product-sdk-host ${pkg.dependencies["@parity/product-sdk-host"]}`;
+const SDK_VERSION_LABEL = `@parity/product-sdk ${pkg.dependencies["@parity/product-sdk"].replace(/^[\^~]/, "")}`;
 
 const categoryIcons: Record<TestCategory, string> = {
   extension: "🔌",
@@ -153,7 +153,7 @@ export default function SdkTestPage() {
   useAccounts();
 
   // Synchronous heuristic first, then confirm asynchronously through
-  // @parity/product-sdk-host so we converge on the SDK-backed answer.
+  // @parity/product-sdk so we converge on the SDK-backed answer.
   // Detection runs in the effect (not the initial-state lambda) to keep the
   // SSR/CSR initial render identical and avoid hydration mismatch.
   const [isInWebview, setIsInWebview] = useState<boolean | null>(null);

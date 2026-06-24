@@ -1,5 +1,4 @@
 import {
-  getTruApi,
   getHostProvider,
   getAccountsProvider,
   getHostLocalStorage,
@@ -9,33 +8,40 @@ import {
   createHostPreimageManager,
   getThemeProvider,
   getPaymentManager,
+  getNotificationManager,
   deriveEntropy,
-  type TruApi,
+  requestPermission,
+  requestDevicePermission,
+  requestResourceAllocation,
+  createProofAuthorized,
+  navigateTo,
+  isChainSupported,
+  getChainSpec,
+  broadcastTransaction,
+  stopTransaction,
   type AccountsProvider,
   type HostLocalStorage,
   type HostStatementStore,
   type PreimageManager,
   type ThemeProvider,
   type RemotePermissionItem,
-} from "@parity/product-sdk-host";
-import { WellKnownChain } from "@parity/product-sdk-chain-client";
+} from "@parity/product-sdk/host";
+import { WellKnownChain } from "@parity/product-sdk/chain";
+import {
+  calculateCid,
+  cidToPreimageKey,
+  queryBytes,
+} from "@parity/product-sdk/cloud-storage";
+import { paseo_individuality } from "@parity/product-sdk-descriptors/paseo-individuality";
 import {
   AccountId,
   Binary,
   createClient,
   type PolkadotClient,
-  type PolkadotSigner,
 } from "polkadot-api";
 import { toHex, fromHex } from "polkadot-api/utils";
-import { decAnyMetadata, unifyMetadata } from "@polkadot-api/substrate-bindings";
-import { assertEnumVariant, enumValue } from "@novasamatech/host-api";
 import { createInkSdk } from "@polkadot-api/sdk-ink";
 import { contracts } from "@polkadot-api/descriptors";
-import {
-  calculateCid,
-  cidToPreimageKey,
-  queryBytes,
-} from "@parity/product-sdk-cloud-storage";
 import { CHAINS } from "./types";
 import deployment from "../../programs/deployment.json";
 import {
@@ -45,6 +51,7 @@ import {
   type TestResult,
 } from "./types";
 import { getSelfDotNs } from "./dotns";
+import { getApp } from "./app";
 
 // Cache papi clients per genesis — avoids in-flight chainHead events from a
 // destroyed client corrupting a new client's block tree (undefined.children).
@@ -52,6 +59,21 @@ const clientCache = new Map<string, PolkadotClient>();
 async function getClient(genesis: `0x${string}`): Promise<PolkadotClient> {
   let client = clientCache.get(genesis);
   if (!client) {
+    // Probe host support first so a host that doesn't serve this chain fails
+    // fast with a clear message instead of papi's cryptic "undefined.children".
+    let supported = false;
+    try {
+      supported = await isChainSupported(genesis);
+    } catch {
+      // treat probe failure as unsupported and fall through to the throw
+    }
+    if (!supported) {
+      throw new Error(
+        `Host does not serve chain ${genesis}. The desktop/mobile host is ` +
+          `provisioned for a different network than this app requests — point ` +
+          `the host at the matching network (or change the app's target chain).`,
+      );
+    }
     const provider = await getHostProvider(genesis);
     if (!provider) {
       throw new Error(
@@ -67,16 +89,6 @@ async function getClient(genesis: `0x${string}`): Promise<PolkadotClient> {
 // Lazy non-null accessors for each Parity host wrapper. Each throws a
 // descriptive error when called outside a host container so call sites can
 // remain straight-line code instead of repeating the null check.
-let cachedTruApi: TruApi | null = null;
-async function truApi(): Promise<TruApi> {
-  if (cachedTruApi) return cachedTruApi;
-  const api = await getTruApi();
-  if (!api)
-    throw new Error("getTruApi returned null - not inside a host container");
-  cachedTruApi = api;
-  return cachedTruApi;
-}
-
 let cachedAccounts: AccountsProvider | null = null;
 async function accounts(): Promise<AccountsProvider> {
   if (cachedAccounts) return cachedAccounts;
@@ -138,32 +150,21 @@ async function theme(): Promise<ThemeProvider> {
 }
 
 const HOSTAPI_DEMO_ADDRESS = deployment.hostApiDemo;
-// SS58 used as the `origin` for pallet-revive contract view dry-runs. Must be
-// a substrate account that already has an H160 mapping in Revive.OriginalAccount —
-// otherwise the chain returns AccountUnmapped even on read-only calls.
-//
-// This is the bulletin-deploy / CI deployer's H160 (0x47d761b4…) padded to a
-// 32-byte AccountId32 with 12×0xEE per pallet-revive's mapping convention,
-// then SS58-encoded with the chain's prefix 0. The deployer auto-maps the
-// first time it signs a tx (which it does on every `bulletin-deploy` run),
-// so this address is reliably mapped on every env we target. Public; only
-// the matching MNEMONIC needs to stay in secrets.
+// `origin` for pallet-revive view dry-runs: needs an existing H160 mapping or
+// the chain returns AccountUnmapped. The CI deployer's H160 padded with 12×0xEE
+// and SS58-encoded (prefix 0); auto-mapped on every bulletin-deploy. Public.
 const READ_ORIGIN = "12dCP8UFhSktvmSgJcP93tNPdgVQMdBQqJNcFrZTnDoiBE9Y";
 
 const SELF_DOTNS = getSelfDotNs();
 
-// People chain genesis per Asset Hub network. Username -> AccountId resolution
-// runs on the People chain paired with the selected hub:
-//   Paseo Hub      -> wss://paseo-people-next-system-rpc.polkadot.io
-//   Previewnet Hub -> wss://previewnet.substrate.dev/people
-const PASEO_PEOPLE_GENESIS =
-  "0xc5af1826b31493f08b7e2a823842f98575b806a784126f28da9608c68665afa5";
-const PREVIEWNET_PEOPLE_GENESIS =
-  "0x3389bc9179d3be32568c67278bd080d05631ac71982d28a3fe545421147b311e";
-const PEOPLE_GENESIS_BY_HUB: Record<string, `0x${string}`> = {
-  [CHAINS.PASEO_ASSET_HUB.genesis]: PASEO_PEOPLE_GENESIS,
-  [CHAINS.PASEO_NEXT_V2_ASSET_HUB.genesis]: PASEO_PEOPLE_GENESIS,
-  [CHAINS.PREVIEWNET_ASSET_HUB.genesis]: PREVIEWNET_PEOPLE_GENESIS,
+// People/Individuality chain descriptor per Asset Hub, for DotNS-identity
+// signing (app.wallet.signMessageWithDotNsIdentity). Both Paseo hubs pair with
+// paseo_individuality; Previewnet has no published individuality descriptor, so
+// it's intentionally absent — the card reports that rather than signing on the
+// wrong chain.
+const PEOPLE_CHAIN_BY_HUB: Record<string, typeof paseo_individuality> = {
+  [CHAINS.PASEO_ASSET_HUB.genesis]: paseo_individuality,
+  [CHAINS.PASEO_NEXT_V2_ASSET_HUB.genesis]: paseo_individuality,
 };
 
 function success(message: string, details?: unknown): TestResult {
@@ -189,30 +190,21 @@ async function ensureDevicePermission(
     | "Biometrics",
 ): Promise<TestResult | null> {
   log(`Requesting device permission: ${permission}...`);
-  const result = await (await truApi()).devicePermission({
-    tag: "v1",
-    value: permission,
-  });
-  return result.match(
-    (res) =>
-      res.value
-        ? null
-        : error(`Device permission not granted: ${permission}`, res),
-    (err) => error(`Device permission denied (${permission})`, err.value),
-  );
+  try {
+    const granted = await requestDevicePermission(permission);
+    return granted
+      ? null
+      : error(`Device permission not granted: ${permission}`, { granted });
+  } catch (err) {
+    return error(`Device permission denied (${permission})`, err);
+  }
 }
 
 /**
- * Before a smart-contract write: ensure the product account has a
- * SmartContractAllowance slot (RFC-0010). The host bookkeeps PGAS quota
- * per (product, derivationIndex) and funds the substrate AccountId with the
- * PGAS asset on first allocation, so a non-zero
- * `Assets.Account(Pgas::PgasAssetId, addr).balance` is a reliable
- * "already provisioned" signal. We skip the host round-trip in that case
- * — avoids the mobile re-prompt and wallet-flow queue contention. The
- * asset id is read from the chain's `Pgas.PgasAssetId` constant rather
- * than hardcoded, so a runtime renumber stays transparent.
- * Otherwise we request the allocation and propagate the host's outcome.
+ * Ensure the product account has a SmartContractAllowance slot before a
+ * contract write (RFC-0010). A non-zero PGAS asset balance means already
+ * provisioned, so we skip the host round-trip (avoids the mobile re-prompt);
+ * otherwise request the allocation. Asset id read from Pgas.PgasAssetId.
  */
 async function ensureSmartContractAllowance(
   log: (msg: string) => void,
@@ -241,24 +233,23 @@ async function ensureSmartContractAllowance(
   }
 
   log(`Requesting SmartContractAllowance(${derivationIndex})...`);
-  const result = await (await truApi()).requestResourceAllocation({
-    tag: "v1",
-    value: [{ tag: "SmartContractAllowance", value: derivationIndex }],
-  });
-  return result.match(
-    (res) => {
-      const outcome = res.value[0]?.tag;
-      if (outcome === "Allocated") {
-        log(`SmartContractAllowance(${derivationIndex}) allocated`);
-        return null;
-      }
-      if (outcome === "Rejected") {
-        return error("User rejected SmartContractAllowance");
-      }
-      return error(`SmartContractAllowance unavailable: ${outcome}`);
-    },
-    (err) => error(err.value.name, err.value),
-  );
+  try {
+    const outcomes = await requestResourceAllocation([
+      { tag: "SmartContractAllowance", value: derivationIndex },
+    ]);
+    const outcome = outcomes[0]?.tag;
+    if (outcome === "Allocated") {
+      log(`SmartContractAllowance(${derivationIndex}) allocated`);
+      return null;
+    }
+    if (outcome === "Rejected") {
+      return error("User rejected SmartContractAllowance");
+    }
+    return error(`SmartContractAllowance unavailable: ${outcome}`);
+  } catch (err) {
+    const e = err as { name?: string };
+    return error(e.name ?? String(err), err);
+  }
 }
 
 function bytesEqual(a: Uint8Array, b: Uint8Array): boolean {
@@ -280,23 +271,15 @@ async function hashTopic(s: string): Promise<Uint8Array> {
 }
 
 /**
- * Statement-Store expiry as the chain expects it:
- *   high 32 bits: unix timestamp (seconds) at which the statement expires
- *   low  32 bits: sequence number (per-sender, breaks ties at the same ts)
- *
- * The chain rejects statements with a missing/zero expiry as
- * `Submit failed, statement already expired` — the runtime treats the
- * field as a hard cutoff and `undefined` is encoded as zero (epoch).
- * Matches `@novasamatech/sdk-statement`'s `createExpiry` /
- * `createExpiryFromDuration`; we inline it instead of pulling the SDK
- * in just for two lines of arithmetic.
+ * Statement-Store expiry: high 32 bits = unix expiry (s), low 32 = sequence
+ * number. A missing/zero expiry is encoded as epoch and rejected as already
+ * expired, so it must be set. Matches @novasamatech/sdk-statement, inlined.
  */
 function createExpiryFromDuration(
   durationSecs: number,
   sequenceNumber = 0,
 ): bigint {
-  // BigInt literal syntax (`32n`) needs ES2020+; tsconfig targets ES2017
-  // so we use the BigInt() constructor instead.
+  // tsconfig targets ES2017, so use BigInt() instead of `32n` literals.
   const timestamp = Math.floor(Date.now() / 1000) + durationSecs;
   return (BigInt(timestamp) << BigInt(32)) | BigInt(sequenceNumber);
 }
@@ -304,109 +287,12 @@ function createExpiryFromDuration(
 /** Default statement TTL — long enough for a slow proof-then-submit round-trip. */
 const STATEMENT_TTL_SECS = 300;
 
-/**
- * Resolve the logged-in user's legacy account. getUserId() yields the primary
- * username, which Resources.UsernameOwnerOf on the People chain paired with the
- * selected hub maps to the owning AccountId. Returns a { publicKey, name }
- * account ready for getLegacyAccountSigner, or null with a logged reason.
- */
-async function resolveUserId(
-  chain: ChainConfig,
-  log: (msg: string) => void,
-): Promise<{ publicKey: Uint8Array; name: string } | null> {
-  const peopleGenesis = PEOPLE_GENESIS_BY_HUB[chain.genesis];
-  if (!peopleGenesis) {
-    log(`No People chain configured for ${chain.name}`);
-    return null;
-  }
-
-  const accountsProvider = await accounts();
-
-  log("Fetching user identity...");
-  const username = (await accountsProvider.getUserId()).match(
-    (id) => id.primaryUsername,
-    (err) => {
-      log(`getUserId failed: ${err.name}`);
-      return null;
-    },
-  );
-  if (!username) return null;
-
-  log(`Resolving "${username}" on the People chain...`);
-  const peopleApi = (await getClient(peopleGenesis)).getUnsafeApi();
-  // Resources.UsernameOwnerOf maps username (Vec<u8>) -> owner AccountId.
-  const ownerAddress = (await peopleApi.query.Resources.UsernameOwnerOf.getValue(
-    Binary.fromText(username),
-  )) as string | undefined;
-  if (!ownerAddress) {
-    log(`No People-chain account owns username "${username}"`);
-    return null;
-  }
-
-  log(`Legacy account: ${username} (${ownerAddress.slice(0, 10)}...)`);
-  return { publicKey: AccountId().enc(ownerAddress), name: username };
-}
-
-/**
- * A PolkadotSigner for a legacy (address-based) account whose signTx goes
- * through the host's createTransaction path — hostApi.createTransactionWithLegacyAccount
- * (RFC legacy createTransaction; session.createTransactionLegacy on the host).
- * The host builds the extrinsic from raw callData + extensions, so — unlike the
- * PJS signPayloadWithLegacyAccount path that getLegacyAccountSigner uses — it
- * supports this chain's custom signed extensions (e.g. AuthorizeValueTransfer).
- */
-function legacyCreateTransactionSigner(publicKey: Uint8Array): PolkadotSigner {
-  return {
-    publicKey,
-    async signTx(callData, signedExtensions, metadata) {
-      const decMeta = unifyMetadata(decAnyMetadata(metadata));
-      const versions = decMeta.extrinsic.version;
-      const latestVersion = versions.reduce((acc, v) => Math.max(acc, v), 0);
-      const txExtVersion = latestVersion === 4 ? 0 : latestVersion;
-
-      const checkGenesis = signedExtensions["CheckGenesis"];
-      if (!checkGenesis) throw new Error("Can't find genesis hash on transaction");
-
-      const txPayload = {
-        signer: publicKey,
-        genesisHash: checkGenesis.additionalSigned,
-        callData,
-        extensions: Object.values(signedExtensions).map(
-          ({ identifier, value, additionalSigned }) => ({
-            id: identifier,
-            extra: value,
-            additionalSigned,
-          }),
-        ),
-        txExtVersion,
-      };
-
-      const response = await (
-        await truApi()
-      ).createTransactionWithLegacyAccount(enumValue("v1", txPayload));
-      return response.match(
-        (res) => {
-          assertEnumVariant(res, "v1", "Unsupported message version");
-          return res.value;
-        },
-        (err) => {
-          assertEnumVariant(err, "v1", "Unsupported message version");
-          throw err.value;
-        },
-      );
-    },
-    async signBytes() {
-      throw new Error("signBytes not supported by the legacy createTransaction signer");
-    },
-  };
-}
-
 // Account Tests
 export const accountTests: TestDefinition[] = [
   {
     id: "accounts-provider-product",
     name: "Get Product Account",
-    description: "Gets a product account via createAccountsProvider",
+    description: "Gets a product account via getAccountsProvider",
     api: "accountsProvider.getProductAccount(dotNsIdentifier)",
     args: [
       {
@@ -433,7 +319,7 @@ export const accountTests: TestDefinition[] = [
   {
     id: "accounts-provider-alias",
     name: "Get Product Account Alias",
-    description: "Gets a product account alias via createAccountsProvider",
+    description: "Gets a product account alias via getAccountsProvider",
     api: "accountsProvider.getProductAccountAlias(dotNsIdentifier)",
     args: [
       {
@@ -463,7 +349,7 @@ export const accountTests: TestDefinition[] = [
     id: "accounts-provider-product-signer",
     name: "Product Account Signer",
     description: "Creates a PolkadotSigner for a product account",
-    api: "accountsProvider.getProductAccountSigner(account)",
+    api: 'accountsProvider.getProductAccountSigner(account, "createTransaction")',
     args: [
       {
         name: "dotNsIdentifier",
@@ -523,181 +409,73 @@ export const accountTests: TestDefinition[] = [
 // Signing Tests
 export const signingTests: TestDefinition[] = [
   {
-    id: "sign-raw",
+    id: "wallet-sign-message",
     name: "Sign Raw Message",
-    description: "Signs a raw message with a product account",
-    api: "truApi().signRaw({ tag, value: { address, data } })",
+    description:
+      "Signs an arbitrary raw message through the product-sdk umbrella's app.wallet — connects on demand if no accounts are present, then app.wallet.signMessage. This is the Tier-1 createApp wallet path: raw-message signing with the connected product account (replaces the old getProductAccountSigner().signBytes card).",
+    api: "app.wallet.connect() / app.wallet.signMessage(message)",
     args: [
-      {
-        name: "dotNsIdentifier",
-        label: "DotNS ID",
-        defaultValue: SELF_DOTNS,
-      },
       {
         name: "message",
         label: "Message",
-        defaultValue: "Hello from Host Playground!",
+        defaultValue: "Hello from app.wallet!",
       },
     ],
     category: "signing",
     async run(_chain, logger, args) {
       const log = logger || (() => {});
-      const dotNsIdentifier = args?.dotNsIdentifier ?? SELF_DOTNS;
-
-
-      log(`Fetching product account for ${dotNsIdentifier}...`);
-      const accountsProvider = (await accounts());
-      const accountResult =
-        await accountsProvider.getProductAccount(dotNsIdentifier);
-
-      const publicKey = accountResult.match(
-        (account) => account.publicKey,
-        (err) => {
-          log(
-            `getProductAccount failed: ${err.name}. Is the user signed in and is "${dotNsIdentifier}" a valid DotNS domain?`,
-          );
-          return null;
-        },
-      );
-
-      if (!publicKey) {
-        return error(
-          `No product account for "${dotNsIdentifier}" — check that the user is signed in and the DotNS ID is valid`,
-        );
-      }
-
-      log(`Account found: ${toHex(publicKey).slice(0, 18)}...`);
-
-      const message =
-        args?.message ??
-        `Hello from Host Playground! ${new Date().toLocaleString()}`;
+      const message = args?.message ?? "Hello from app.wallet!";
       const messageBytes = new TextEncoder().encode(message);
 
-      const result = await (await truApi()).signRaw({
-        tag: "v1",
-        value: {
-          account: [dotNsIdentifier, 0],
-          payload: { tag: "Bytes", value: messageBytes },
-        },
-      });
+      const app = await getApp();
+      if (app.wallet.getAccounts().length === 0) {
+        log("No wallet accounts yet — connecting...");
+        await app.wallet.connect();
+      }
+      log("Signing message via app.wallet.signMessage...");
+      const sig = await app.wallet.signMessage(messageBytes);
 
-      return result.match(
-        (res) => success("Message signed", res.value),
-        (err) => error(err.value.name, err.value),
-      );
+      return success("Message signed via app.wallet", { signature: toHex(sig) });
     },
   },
   {
     id: "sign-raw-legacy",
-    name: "Sign and submit Raw with Legacy Account",
+    name: "Sign Raw with DotNS Identity",
     description:
-      "Signs a raw message with the logged-in user's account (resolved via getUserId + People chain) through getLegacyAccountSigner.signBytes (signRawWithLegacyAccount).",
-    api: "accountsProvider.getLegacyAccountSigner(account).signBytes(bytes)",
+      "Signs a raw message with the account that owns the logged-in user's DotNS identity, via app.wallet.signMessageWithDotNsIdentity — the SDK resolves the primary username on the paired People/Individuality chain and signs with its owner.",
+    api: "app.wallet.signMessageWithDotNsIdentity({ peopleChain, message })",
     args: [
       {
         name: "message",
         label: "Message",
-        defaultValue: "Hello from a legacy account!",
+        defaultValue: "Hello from a DotNS identity!",
       },
     ],
     category: "signing",
     async run(chain, logger, args) {
       const log = logger || (() => {});
+      const message = args?.message ?? "Hello from a DotNS identity!";
 
-      const account = await resolveUserId(chain, log);
-      if (!account) {
-        return error("Could not resolve account from user identity");
+      // Pick the People chain from the selected hub — no hardcoded descriptor.
+      const peopleChain = PEOPLE_CHAIN_BY_HUB[chain.genesis];
+      if (!peopleChain) {
+        return error(
+          `No People-chain descriptor for ${chain.name} — DotNS identity signing is available on the Paseo hubs.`,
+        );
       }
 
-      // Raw message signing routes through signRawWithLegacyAccount — no
-      // transaction, no contract, no signed extensions involved.
-      const accountsProvider = await accounts();
-      const signer = accountsProvider.getLegacyAccountSigner(account);
-      const message = args?.message ?? "Hello from a legacy account!";
-      const messageBytes = new TextEncoder().encode(message);
-
-      log("Signing raw message with legacy account signer...");
-      const signature = await signer.signBytes(messageBytes);
-      return success("Message signed with legacy account", {
-        account: account.name,
-        signature: toHex(signature),
-      });
-    },
-  },
-  {
-    id: "create-transaction-legacy",
-    name: "Create And Submit Transaction with Legacy Account",
-    description:
-      "Submits a storeValue() contract call on the HostApiDemo contract, signed by the logged-in user's account (resolved via getUserId + People chain) by calling hostApi.createTransactionWithLegacyAccount directly — the host builds the extrinsic, so this chain's custom signed extensions (e.g. AuthorizeValueTransfer) are supported.",
-    api: "contract.send('storeValue', { origin, data }).signSubmitAndWatch(legacySigner)",
-    args: [
-      {
-        name: "value",
-        label: "Value (uint256)",
-        defaultValue: "42",
-      },
-    ],
-    category: "signing",
-    async run(chain, logger, args) {
-      const log = logger || (() => {});
-      const value = BigInt(args?.value ?? "42");
-
-      const account = await resolveUserId(chain, log);
-      if (!account) {
-        return error("Could not resolve account from user identity");
-      }
-
-      const signer = legacyCreateTransactionSigner(account.publicKey);
-      const origin = AccountId().dec(account.publicKey);
-
-      // Contract writes on this chain go through the PGAS fee route (AsPgas),
-      // so ensure the account has a SmartContractAllowance before submitting.
-      const allowanceError = await ensureSmartContractAllowance(log, chain, {
-        publicKey: account.publicKey,
-        derivationIndex: 0,
-      });
-      if (allowanceError) return allowanceError;
-
-      const client = await getClient(chain.genesis);
-      const sdk = createInkSdk(client);
-      const contract = sdk.getContract(
-        contracts.hostApiDemo,
-        HOSTAPI_DEMO_ADDRESS,
-      );
-
-      log(`Dry-running storeValue(${value}) for ${account.name}...`);
-      const dryRun = await contract.query("storeValue", {
-        origin,
-        data: { _value: value },
-      });
-      if (!dryRun.success) return error("Dry-run failed", dryRun.value);
-
-      log("Signing (createTransactionWithLegacyAccount) and submitting...");
-      let txHash: string | undefined;
-      await new Promise<void>((resolve, reject) => {
-        dryRun.value
-          .send()
-          .signSubmitAndWatch(signer)
-          .subscribe({
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
-            next: (ev: any) => {
-              log(`Event: ${ev.type}`);
-              if (ev.type === "txBestBlocksState" && ev.found) {
-                txHash = ev.txHash;
-                resolve();
-              }
-              if (ev.type === "finalized" && !ev.ok)
-                reject(new Error("Tx failed"));
-            },
-            error: reject,
-          });
+      const app = await getApp();
+      log("Resolving primary DotNS username + signing on the People chain...");
+      const signed = await app.wallet.signMessageWithDotNsIdentity({
+        peopleChain,
+        message,
       });
 
-      return success(`Stored value ${value} as ${account.name}`, {
-        account: account.name,
-        value: String(value),
-        contract: HOSTAPI_DEMO_ADDRESS,
-        txHash,
+      return success(`Message signed as ${signed.username}`, {
+        username: signed.username,
+        accountId: signed.accountId,
+        signature: toHex(signed.signature),
+        signatureLength: signed.signature.length,
       });
     },
   },
@@ -724,7 +502,6 @@ export const signingTests: TestDefinition[] = [
       const log = logger || (() => {});
       const dotNsIdentifier = args?.dotNsIdentifier ?? SELF_DOTNS;
 
-
       log(`Fetching product account for ${dotNsIdentifier}...`);
       const accountsProvider = (await accounts());
       const accountResult = await accountsProvider.getProductAccount(
@@ -744,9 +521,8 @@ export const signingTests: TestDefinition[] = [
         );
       }
 
-      // mode="createTransaction" routes signing through the host's
-      // createTransaction path on the paired mobile app, instead of the
-      // default signPayload path used by signSubmitAndWatch.
+      // mode="createTransaction" routes via the host's createTransaction path
+      // instead of the default signPayload used by signSubmitAndWatch.
       const signer = accountsProvider.getProductAccountSigner(
         account,
         "createTransaction",
@@ -778,7 +554,6 @@ export const signingTests: TestDefinition[] = [
     async run(chain: ChainConfig, logger?: TestLogger) {
       const log = logger || (() => {});
 
-
       log("Fetching product account...");
       const accountsProvider = (await accounts());
       const accountResult = await accountsProvider.getProductAccount(
@@ -801,7 +576,6 @@ export const signingTests: TestDefinition[] = [
       );
       if (allowanceError) return allowanceError;
 
-
       const client = await getClient(chain.genesis);
       const api = client.getUnsafeApi();
       const sdk = createInkSdk(client);
@@ -812,9 +586,8 @@ export const signingTests: TestDefinition[] = [
 
       log("Building 2 contract calls...");
 
-      // Dry-run each contract call through sdk-ink to get weight+storage.
-      // The Promise<decodedCall> on the wrapped tx lets us extract the inner
-      // pallet-revive call without broadcasting.
+      // Dry-run each call to get weight+storage, then extract the inner
+      // pallet-revive call via decodedCall without broadcasting.
       const dryRun1 = await contract.query("storeValue", {
         origin,
         data: { _value: BigInt(42) },
@@ -883,8 +656,8 @@ export const storageTests: TestDefinition[] = [
   {
     id: "storage-string-write-read",
     name: "String Write & Read",
-    description: "Writes and reads a string via hostLocalStorage",
-    api: "hostStorage().writeString(key, value) / readString(key)",
+    description: "Writes and reads a string via app.localStorage (Tier-1 createApp storage)",
+    api: "app.localStorage.set(key, value) / app.localStorage.get(key)",
     args: [
       { name: "key", label: "Key", defaultValue: "host_playground_string" },
     ],
@@ -893,8 +666,9 @@ export const storageTests: TestDefinition[] = [
       const key = args?.key ?? "host_playground_string";
       const value = `test_value_${Date.now()}`;
 
-      await (await hostStorage()).writeString(key, value);
-      const readValue = await (await hostStorage()).readString(key);
+      const app = await getApp();
+      await app.localStorage.set(key, value);
+      const readValue = await app.localStorage.get(key);
 
       return readValue === value
         ? success(`Write: "${value}"\nRead: "${readValue}"`)
@@ -910,6 +684,7 @@ export const storageTests: TestDefinition[] = [
       { name: "key", label: "Key", defaultValue: "host_playground_bytes" },
     ],
     category: "storage",
+    // Stays on getHostLocalStorage: app.localStorage has no bytes surface.
     async run(_chain, _logger, args) {
       const key = args?.key ?? "host_playground_bytes";
       const value = new TextEncoder().encode(`bytes_${Date.now()}`);
@@ -936,8 +711,8 @@ export const storageTests: TestDefinition[] = [
   {
     id: "storage-json-write-read",
     name: "JSON Write & Read",
-    description: "Writes and reads JSON via hostLocalStorage",
-    api: "hostStorage().writeJSON(key, value) / readJSON(key)",
+    description: "Writes and reads JSON via app.localStorage (Tier-1 createApp storage)",
+    api: "app.localStorage.setJSON(key, value) / app.localStorage.getJSON(key)",
     args: [{ name: "key", label: "Key", defaultValue: "host_playground_json" }],
     category: "storage",
     async run(_chain, _logger, args) {
@@ -947,8 +722,9 @@ export const storageTests: TestDefinition[] = [
         nested: { foo: "bar", nums: [1, 2, 3] },
       };
 
-      await (await hostStorage()).writeJSON(key, value);
-      const readValue = await (await hostStorage()).readJSON(key);
+      const app = await getApp();
+      await app.localStorage.setJSON(key, value);
+      const readValue = await app.localStorage.getJSON(key);
 
       const match = JSON.stringify(value) === JSON.stringify(readValue);
       return match
@@ -959,8 +735,8 @@ export const storageTests: TestDefinition[] = [
   {
     id: "storage-clear",
     name: "Storage Clear",
-    description: "Clears a storage key via hostLocalStorage",
-    api: "hostStorage().clear(key)",
+    description: "Removes a single storage key via app.localStorage.remove (Tier-1). Note: app.localStorage.clear() wipes ALL keys, so remove(key) is the per-key equivalent.",
+    api: "app.localStorage.remove(key)",
     args: [
       { name: "key", label: "Key", defaultValue: "host_playground_string" },
     ],
@@ -968,11 +744,12 @@ export const storageTests: TestDefinition[] = [
     async run(_chain, _logger, args) {
       const key = args?.key ?? "host_playground_string";
 
-      // Write a value first to ensure the key exists
-      await (await hostStorage()).writeString(key, "to_be_cleared");
-      await (await hostStorage()).clear(key);
+      // Write then remove just this key — clear() would wipe ALL keys.
+      const app = await getApp();
+      await app.localStorage.set(key, "to_be_cleared");
+      await app.localStorage.remove(key);
 
-      const readValue = await (await hostStorage()).readString(key);
+      const readValue = await app.localStorage.get(key);
       return !readValue || readValue === ""
         ? success("Storage key cleared successfully")
         : error(`Key still has value after clear: "${readValue}"`);
@@ -982,8 +759,8 @@ export const storageTests: TestDefinition[] = [
     id: "storage-factory",
     name: "Storage Factory",
     description:
-      "Creates a custom localStorage instance via createLocalStorage",
-    api: "createLocalStorage()",
+      "Creates a custom HostLocalStorage instance via createHostLocalStorage (Tier-2; app.localStorage has no factory equivalent)",
+    api: "createHostLocalStorage()",
     args: [
       { name: "key", label: "Key", defaultValue: "host_playground_factory" },
     ],
@@ -1014,197 +791,179 @@ export const permissionTests: TestDefinition[] = [
     id: "feature-check",
     name: "Feature Check",
     description: "Checks if the selected chain is supported",
-    api: "truApi().featureSupported({ tag, value: { tag: 'Chain', value } })",
+    api: "isChainSupported(genesisHash)",
     category: "permissions",
     async run(chain: ChainConfig) {
-      const result = await (await truApi()).featureSupported({
-        tag: "v1",
-        value: { tag: "Chain", value: chain.genesis },
-      });
-
-      return result.match(
-        (res) => success(`${chain.name} supported: ${res.value}`),
-        (err) => error(err.value.name, err.value),
-      );
+      try {
+        const supported = await isChainSupported(chain.genesis);
+        return success(`${chain.name} supported: ${supported}`);
+      } catch (err) {
+        const e = err as { name?: string };
+        return error(e.name ?? String(err), err);
+      }
     },
   },
   {
     id: "device-permission-camera",
     name: "Device Permission: Camera",
     description: "Requests camera access from the host",
-    api: "truApi().devicePermission({ tag: 'v1', value: 'Camera' })",
+    api: "requestDevicePermission('Camera')",
     category: "permissions",
     async run() {
-      const result = await (await truApi()).devicePermission({
-        tag: "v1",
-        value: "Camera",
-      });
-
-      return result.match(
-        (res) =>
-          success(`Camera permission: ${res.value ? "granted" : "denied"}`),
-        (err) => error(err.value.name, err.value),
-      );
+      try {
+        const granted = await requestDevicePermission("Camera");
+        return success(`Camera permission: ${granted ? "granted" : "denied"}`);
+      } catch (err) {
+        const e = err as { name?: string };
+        return error(e.name ?? String(err), err);
+      }
     },
   },
   {
     id: "device-permission-microphone",
     name: "Device Permission: Microphone",
     description: "Requests microphone access from the host",
-    api: "truApi().devicePermission({ tag: 'v1', value: 'Microphone' })",
+    api: "requestDevicePermission('Microphone')",
     category: "permissions",
     async run() {
-      const result = await (await truApi()).devicePermission({
-        tag: "v1",
-        value: "Microphone",
-      });
-
-      return result.match(
-        (res) =>
-          success(`Microphone permission: ${res.value ? "granted" : "denied"}`),
-        (err) => error(err.value.name, err.value),
-      );
+      try {
+        const granted = await requestDevicePermission("Microphone");
+        return success(
+          `Microphone permission: ${granted ? "granted" : "denied"}`,
+        );
+      } catch (err) {
+        const e = err as { name?: string };
+        return error(e.name ?? String(err), err);
+      }
     },
   },
   {
     id: "device-permission-location",
     name: "Device Permission: Location",
     description: "Requests location access from the host",
-    api: "truApi().devicePermission({ tag: 'v1', value: 'Location' })",
+    api: "requestDevicePermission('Location')",
     category: "permissions",
     async run() {
-      const result = await (await truApi()).devicePermission({
-        tag: "v1",
-        value: "Location",
-      });
-
-      return result.match(
-        (res) =>
-          success(`Location permission: ${res.value ? "granted" : "denied"}`),
-        (err) => error(err.value.name, err.value),
-      );
+      try {
+        const granted = await requestDevicePermission("Location");
+        return success(
+          `Location permission: ${granted ? "granted" : "denied"}`,
+        );
+      } catch (err) {
+        const e = err as { name?: string };
+        return error(e.name ?? String(err), err);
+      }
     },
   },
   {
     id: "device-permission-bluetooth",
     name: "Device Permission: Bluetooth",
     description: "Requests bluetooth access from the host",
-    api: "truApi().devicePermission({ tag: 'v1', value: 'Bluetooth' })",
+    api: "requestDevicePermission('Bluetooth')",
     category: "permissions",
     async run() {
-      const result = await (await truApi()).devicePermission({
-        tag: "v1",
-        value: "Bluetooth",
-      });
-
-      return result.match(
-        (res) =>
-          success(`Bluetooth permission: ${res.value ? "granted" : "denied"}`),
-        (err) => error(err.value.name, err.value),
-      );
+      try {
+        const granted = await requestDevicePermission("Bluetooth");
+        return success(
+          `Bluetooth permission: ${granted ? "granted" : "denied"}`,
+        );
+      } catch (err) {
+        const e = err as { name?: string };
+        return error(e.name ?? String(err), err);
+      }
     },
   },
   {
     id: "device-permission-notifications",
     name: "Device Permission: Notifications",
     description: "Requests notifications access from the host",
-    api: "truApi().devicePermission({ tag: 'v1', value: 'Notifications' })",
+    api: "requestDevicePermission('Notifications')",
     category: "permissions",
     async run() {
-      const result = await (await truApi()).devicePermission({
-        tag: "v1",
-        value: "Notifications",
-      });
-
-      return result.match(
-        (res) =>
-          success(
-            `Notifications permission: ${res.value ? "granted" : "denied"}`,
-          ),
-        (err) => error(err.value.name, err.value),
-      );
+      try {
+        const granted = await requestDevicePermission("Notifications");
+        return success(
+          `Notifications permission: ${granted ? "granted" : "denied"}`,
+        );
+      } catch (err) {
+        const e = err as { name?: string };
+        return error(e.name ?? String(err), err);
+      }
     },
   },
   {
     id: "device-permission-nfc",
     name: "Device Permission: NFC",
     description: "Requests NFC access from the host",
-    api: "truApi().devicePermission({ tag: 'v1', value: 'NFC' })",
+    api: "requestDevicePermission('NFC')",
     category: "permissions",
     async run() {
-      const result = await (await truApi()).devicePermission({
-        tag: "v1",
-        value: "NFC",
-      });
-
-      return result.match(
-        (res) => success(`NFC permission: ${res.value ? "granted" : "denied"}`),
-        (err) => error(err.value.name, err.value),
-      );
+      try {
+        const granted = await requestDevicePermission("NFC");
+        return success(`NFC permission: ${granted ? "granted" : "denied"}`);
+      } catch (err) {
+        const e = err as { name?: string };
+        return error(e.name ?? String(err), err);
+      }
     },
   },
   {
     id: "device-permission-clipboard",
     name: "Device Permission: Clipboard",
     description: "Requests clipboard access from the host",
-    api: "truApi().devicePermission({ tag: 'v1', value: 'Clipboard' })",
+    api: "requestDevicePermission('Clipboard')",
     category: "permissions",
     async run() {
-      const result = await (await truApi()).devicePermission({
-        tag: "v1",
-        value: "Clipboard",
-      });
-
-      return result.match(
-        (res) =>
-          success(`Clipboard permission: ${res.value ? "granted" : "denied"}`),
-        (err) => error(err.value.name, err.value),
-      );
+      try {
+        const granted = await requestDevicePermission("Clipboard");
+        return success(
+          `Clipboard permission: ${granted ? "granted" : "denied"}`,
+        );
+      } catch (err) {
+        const e = err as { name?: string };
+        return error(e.name ?? String(err), err);
+      }
     },
   },
   {
     id: "device-permission-open-url",
     name: "Device Permission: Open URL",
     description: "Requests permission to open external URLs",
-    api: "truApi().devicePermission({ tag: 'v1', value: 'OpenUrl' })",
+    api: "requestDevicePermission('OpenUrl')",
     category: "permissions",
     async run() {
-      const result = await (await truApi()).devicePermission({
-        tag: "v1",
-        value: "OpenUrl",
-      });
-
-      return result.match(
-        (res) =>
-          success(`OpenUrl permission: ${res.value ? "granted" : "denied"}`),
-        (err) => error(err.value.name, err.value),
-      );
+      try {
+        const granted = await requestDevicePermission("OpenUrl");
+        return success(`OpenUrl permission: ${granted ? "granted" : "denied"}`);
+      } catch (err) {
+        const e = err as { name?: string };
+        return error(e.name ?? String(err), err);
+      }
     },
   },
   {
     id: "device-permission-biometrics",
     name: "Device Permission: Biometrics",
     description: "Requests biometrics access from the host",
-    api: "truApi().devicePermission({ tag: 'v1', value: 'Biometrics' })",
+    api: "requestDevicePermission('Biometrics')",
     category: "permissions",
     async run() {
-      const result = await (await truApi()).devicePermission({
-        tag: "v1",
-        value: "Biometrics",
-      });
-
-      return result.match(
-        (res) =>
-          success(`Biometrics permission: ${res.value ? "granted" : "denied"}`),
-        (err) => error(err.value.name, err.value),
-      );
+      try {
+        const granted = await requestDevicePermission("Biometrics");
+        return success(
+          `Biometrics permission: ${granted ? "granted" : "denied"}`,
+        );
+      } catch (err) {
+        const e = err as { name?: string };
+        return error(e.name ?? String(err), err);
+      }
     },
   },
   {
     id: "remote-permission-remote",
     name: "Remote Permission: Remote (HTTP/WS)",
     description: "Requests permission to connect to remote domains",
-    api: "truApi().permission({ tag: 'v1', value: { tag: 'Remote', value: [url] } })",
+    api: "requestPermission({ tag: 'Remote', value: [url] })",
     args: [
       {
         name: "url",
@@ -1215,98 +974,98 @@ export const permissionTests: TestDefinition[] = [
     category: "permissions",
     async run(_chain, _logger, args) {
       const url = args?.url ?? "https://example.com";
-      const result = await (await truApi()).permission({
-        tag: "v1",
-        value: { tag: "Remote", value: [url] },
-      });
-
-      return result.match(
-        (res) =>
-          success(`Remote permission: ${res.value ? "granted" : "denied"}`),
-        (err) => error(err.value.name, err.value),
-      );
+      try {
+        const granted = await requestPermission({
+          tag: "Remote",
+          value: [url],
+        });
+        return success(`Remote permission: ${granted ? "granted" : "denied"}`);
+      } catch (err) {
+        const e = err as { name?: string };
+        return error(e.name ?? String(err), err);
+      }
     },
   },
   {
     id: "remote-permission-webrtc",
     name: "Remote Permission: WebRTC",
     description: "Requests permission to use WebRTC",
-    api: "truApi().permission({ tag: 'v1', value: { tag: 'WebRtc', value: undefined } })",
+    api: "requestPermission({ tag: 'WebRtc', value: undefined })",
     category: "permissions",
     async run() {
-      const result = await (await truApi()).permission({
-        tag: "v1",
-        value: { tag: "WebRtc", value: undefined },
-      });
-
-      return result.match(
-        (res) =>
-          success(`WebRTC permission: ${res.value ? "granted" : "denied"}`),
-        (err) => error(err.value.name, err.value),
-      );
+      try {
+        const granted = await requestPermission({
+          tag: "WebRtc",
+          value: undefined,
+        });
+        return success(`WebRTC permission: ${granted ? "granted" : "denied"}`);
+      } catch (err) {
+        const e = err as { name?: string };
+        return error(e.name ?? String(err), err);
+      }
     },
   },
   {
     id: "remote-permission-chain-submit",
     name: "Remote Permission: Chain Submit",
     description: "Requests permission to submit transactions on a chain",
-    api: "truApi().permission({ tag: 'v1', value: { tag: 'ChainSubmit', value: undefined } })",
+    api: "requestPermission({ tag: 'ChainSubmit', value: undefined })",
     category: "permissions",
     async run(chain) {
-      const result = await (await truApi()).permission({
-        tag: "v1",
-        value: { tag: "ChainSubmit", value: undefined },
-      });
-
-      return result.match(
-        (res) =>
-          success(
-            `Chain submit permission for ${chain.name}: ${res.value ? "granted" : "denied"}`,
-          ),
-        (err) => error(err.value.name, err.value),
-      );
+      try {
+        const granted = await requestPermission({
+          tag: "ChainSubmit",
+          value: undefined,
+        });
+        return success(
+          `Chain submit permission for ${chain.name}: ${granted ? "granted" : "denied"}`,
+        );
+      } catch (err) {
+        const e = err as { name?: string };
+        return error(e.name ?? String(err), err);
+      }
     },
   },
   {
     id: "remote-permission-preimage-submit",
     name: "Remote Permission: Preimage Submit",
     description: "Requests permission to submit preimages via the host",
-    api: "truApi().permission({ tag: 'v1', value: { tag: 'PreimageSubmit', value: undefined } })",
+    api: "requestPermission({ tag: 'PreimageSubmit', value: undefined })",
     category: "permissions",
     async run(chain) {
-      const result = await (await truApi()).permission({
-        tag: "v1",
-        value: { tag: "PreimageSubmit", value: undefined },
-      });
-
-      return result.match(
-        (res) =>
-          success(
-            `Preimage submit permission for ${chain.name}: ${res.value ? "granted" : "denied"}`,
-          ),
-        (err) => error(err.value.name, err.value),
-      );
+      try {
+        const granted = await requestPermission({
+          tag: "PreimageSubmit",
+          value: undefined,
+        });
+        return success(
+          `Preimage submit permission for ${chain.name}: ${granted ? "granted" : "denied"}`,
+        );
+      } catch (err) {
+        const e = err as { name?: string };
+        return error(e.name ?? String(err), err);
+      }
     },
   },
   {
     id: "remote-permission-statement-submit",
     name: "Remote Permission: Statement Submit",
     description: "Requests permission to submit statement-store statements",
-    api: "truApi().permission({ tag: 'v1', value: { tag: 'StatementSubmit', value: undefined } })",
+    api: "requestPermission({ tag: 'StatementSubmit', value: undefined })",
     category: "permissions",
     async run(chain) {
-      const result = await (await truApi()).permission({
-        tag: "v1",
-        value: { tag: "StatementSubmit", value: undefined },
-      });
-
-      return result.match(
-        (res) =>
-          success(
-            `Statement submit permission for ${chain.name}: ${res.value ? "granted" : "denied"}`,
-          ),
-        (err) => error(err.value.name, err.value),
-      );
+      try {
+        const granted = await requestPermission({
+          tag: "StatementSubmit",
+          value: undefined,
+        });
+        return success(
+          `Statement submit permission for ${chain.name}: ${granted ? "granted" : "denied"}`,
+        );
+      } catch (err) {
+        const e = err as { name?: string };
+        return error(e.name ?? String(err), err);
+      }
     },
   },
 ];
@@ -1316,7 +1075,7 @@ export const statementTests: TestDefinition[] = [
   {
     id: "statement-store-create-proof",
     name: "Create Proof",
-    description: "Creates a statement store proof via createStatementStore",
+    description: "Creates a statement store proof via getStatementStore",
     api: "statementStore.createProof(accountId, statement)",
     args: [
       {
@@ -1327,9 +1086,7 @@ export const statementTests: TestDefinition[] = [
     ],
     category: "statements",
     async run(_chain, logger, args) {
-      const log = logger || (() => {});
       const dotNsIdentifier = args?.dotNsIdentifier ?? SELF_DOTNS;
-
 
       const statementStore = (await statements());
       const messageBytes = new TextEncoder().encode(`Statement: ${Date.now()}`);
@@ -1364,39 +1121,31 @@ export const statementTests: TestDefinition[] = [
     id: "statement-store-create-proof-authorized",
     name: "Create Proof Authorized",
     description: "Creates a statement store proof via authorized account",
-    api: "host.statementStoreCreateProofAuthorized",
+    api: "createProofAuthorized(statement)",
     category: "statements",
     async run(_chain, logger) {
-      const log = logger || (() => {});
-
-
       const messageBytes = new TextEncoder().encode(`Statement: ${Date.now()}`);
-      const proof = await (await truApi()).statementStoreCreateProofAuthorized({
-        tag: "v1",
-        value: {
+      try {
+        const proof = await createProofAuthorized({
           proof: undefined,
           decryptionKey: undefined,
           expiry: createExpiryFromDuration(STATEMENT_TTL_SECS),
           channel: undefined,
           topics: [],
           data: messageBytes,
-        },
-      });
+        });
 
-      return proof.match(
-        (proof) => {
-          const proofValue = proof.value.value;
-          const signature =
-            "signature" in proofValue
-              ? toHex(proofValue.signature).slice(0, 20)
-              : "onchain";
+        const proofValue = proof.value;
+        const signature =
+          "signature" in proofValue
+            ? toHex(proofValue.signature).slice(0, 20)
+            : "onchain";
 
-          return success(`Proof type: ${proof.tag}, sig: ${signature}...`);
-        },
-        (err) => {
-          return error(err.value.toString(), err.value.payload);
-        },
-      );
+        return success(`Proof type: ${proof.tag}, sig: ${signature}...`);
+      } catch (err) {
+        const e = err as { payload?: unknown };
+        return error(String(err), e.payload);
+      }
     },
   },
   {
@@ -1415,7 +1164,6 @@ export const statementTests: TestDefinition[] = [
     async run(_chain, logger, args) {
       const log = logger || (() => {});
       const dotNsIdentifier = args?.dotNsIdentifier ?? SELF_DOTNS;
-
 
       const statementStore = (await statements());
       const messageBytes = new TextEncoder().encode(`Statement: ${Date.now()}`);
@@ -1544,11 +1292,9 @@ export const preimageTests: TestDefinition[] = [
     id: "preimage-submit",
     name: "Submit Preimage",
     description: "Submits a preimage and gets its hash back",
-    api: "pm().submit(data)",
+    api: "getPreimageManager().submit(data)",
     category: "preimage",
     async run(_chain, logger) {
-      const log = logger || (() => {});
-
       const data = new TextEncoder().encode(`preimage_${Date.now()}`);
       const hash = await (await pm()).submit(data);
 
@@ -1562,7 +1308,7 @@ export const preimageTests: TestDefinition[] = [
     id: "preimage-lookup",
     name: "Lookup Preimage",
     description: "Looks up a preimage by hash (5s)",
-    api: "pm().lookup(hash, callback)",
+    api: "getPreimageManager().lookup(hash, callback)",
     args: [
       {
         name: "hash",
@@ -1616,12 +1362,10 @@ export const preimageTests: TestDefinition[] = [
   {
     id: "preimage-factory",
     name: "Preimage Factory",
-    description: "Creates a preimage manager via createPreimageManager",
-    api: "createPreimageManager()",
+    description: "Creates a preimage manager via createHostPreimageManager",
+    api: "createHostPreimageManager()",
     category: "preimage",
     async run(_chain, logger) {
-      const log = logger || (() => {});
-
       const manager = await createHostPreimageManager();
       if (!manager)
         return error(
@@ -1642,23 +1386,21 @@ export const preimageTests: TestDefinition[] = [
     id: "bulletin-upload-and-verify",
     name: "Upload File to Bulletin & Fetch by CID",
     description:
-      "Submits a timestamped text file through the host, derives its canonical CID, and fetches it back by CID via the host's preimage lookup (no public IPFS gateway). Asserts byte equality.",
-    api: "pm().submit + calculateCid + queryBytes(cid)",
+      "Submits a timestamped text file through the host's preimage submit, derives its canonical CID, and fetches it back by CID via the host's preimage lookup (no public IPFS gateway). Asserts byte equality.",
+    api: "getPreimageManager().submit + calculateCid + queryBytes(cid)",
     category: "preimage",
     async run(chain, logger) {
       const log = logger || (() => {});
 
-      // Allowance + permission setup (mirrors e2e/allowance-flows.spec.ts)
       log("Requesting BulletinAllowance...");
-      const allocRes = await (await truApi()).requestResourceAllocation({
-        tag: "v1",
-        value: [{ tag: "BulletinAllowance", value: undefined }],
-      });
-      if (allocRes.isErr()) {
-        return error("Bulletin allowance request failed", allocRes.error);
+      try {
+        await requestResourceAllocation([
+          { tag: "BulletinAllowance", value: undefined },
+        ]);
+      } catch (allocErr) {
+        return error("Bulletin allowance request failed", allocErr);
       }
 
-      // 1. Generate timestamped file
       const ts = new Date().toISOString();
       const filename = `host-playground-upload-${Date.now()}.txt`;
       const content =
@@ -1669,28 +1411,20 @@ export const preimageTests: TestDefinition[] = [
       const payload = new TextEncoder().encode(content);
       log(`Generated ${payload.length} bytes (${filename})`);
 
-      // 2. Upload via the host's preimage submit. This is the decentralized
-      //    conduit — the host routes it to the bulletin chain; the product
-      //    never opens an RPC or sets up its own PAPI.
+      // Upload via the host's preimage submit (wrapped) — the host routes it to
+      // the bulletin chain; the product never opens an RPC or its own PAPI.
       log("Submitting via (await pm()).submit...");
       const hash = await (await pm()).submit(payload);
       log(`Host returned preimage key: ${hash}`);
 
-      // 3. Derive the canonical CID from the bytes. calculateCid uses the
-      //    same codec + hashing the bulletin runtime does (raw 0x55 +
-      //    blake2b-256), so there's no manual multihash guessing and the CID
-      //    matches what was stored. Assumes a single raw-codec preimage —
-      //    chunked uploads produce a DAG-PB manifest CID and would need the
-      //    reassembly route; this diagnostic payload is tiny, so it never
-      //    chunks.
+      // calculateCid uses the bulletin runtime's codec+hashing (raw 0x55 +
+      // blake2b-256), so the CID matches what was stored (tiny payload → no
+      // chunking / DAG-PB manifest).
       const cid = (await calculateCid(payload)).toString();
       log(`Canonical CID: ${cid}`);
 
-      // Fast-fail invariant: the whole approach rests on the CID-derived
-      // preimage key matching the key the host returned from submit. If a
-      // network deviates from the blake2b-256 default these diverge, and
-      // queryBytes would otherwise burn the full lookup timeout before a
-      // generic failure. Assert it up front for a crisp, instant error.
+      // Fast-fail: the CID-derived preimage key must equal the host's submit
+      // key, else queryBytes burns the full lookup timeout before failing.
       const derivedKey = cidToPreimageKey(cid);
       if (derivedKey.toLowerCase() !== hash.toLowerCase()) {
         return error("CID-derived preimage key ≠ host submit key", {
@@ -1700,12 +1434,8 @@ export const preimageTests: TestDefinition[] = [
         });
       }
 
-      // 4. Fetch back BY CID through the host's preimage lookup. The host
-      //    manages IPFS polling + caching internally — no public-gateway
-      //    fetch, no manual byte/hash work on our side.
-      log(
-        "Fetching by CID via queryBytes (host preimage lookup, up to 60s)...",
-      );
+      // Fetch back BY CID through the host's preimage lookup.
+      log("Fetching by CID via queryBytes (host preimage lookup, up to 60s)...");
       let fetched: Uint8Array;
       try {
         fetched = await queryBytes(cid, { lookupTimeoutMs: 60_000 });
@@ -1718,7 +1448,6 @@ export const preimageTests: TestDefinition[] = [
         });
       }
 
-      // 5. Assert the round-trip bytes match.
       const equal = bytesEqual(payload, fetched);
       log(`Fetched ${fetched.length} bytes by CID, equal=${equal}`);
       if (!equal) {
@@ -1753,7 +1482,7 @@ export const notificationTests: TestDefinition[] = [
     name: "Push Notification",
     description:
       "Send a push notification to the host. Leave 'Schedule in' empty to fire immediately, or set seconds in the future to schedule it.",
-    api: "truApi().pushNotification({ tag: 'v1', value: { text, deeplink, scheduledAt } })",
+    api: "getNotificationManager().push({ text, deeplink, scheduledAt })",
     args: [
       { name: "text", label: "Text", defaultValue: "Hello from demo product!" },
       { name: "deeplink", label: "Deeplink (optional)", defaultValue: "" },
@@ -1769,11 +1498,9 @@ export const notificationTests: TestDefinition[] = [
       const text = args?.text ?? "Hello from demo product!";
       const deeplink = args?.deeplink?.trim() || undefined;
 
-      // Relative seconds → absolute epoch-ms bigint. Empty / non-positive
-      // means immediate (scheduledAt undefined), matching the host contract
-      // where a null or past timestamp fires now.
+      // Relative seconds → absolute epoch-ms; empty means immediate.
       const rawSeconds = args?.scheduleInSeconds?.trim() ?? "";
-      let scheduledAt: bigint | undefined;
+      let scheduledAt: number | undefined;
       if (rawSeconds !== "") {
         const seconds = Number(rawSeconds);
         if (!Number.isFinite(seconds) || seconds <= 0) {
@@ -1782,29 +1509,32 @@ export const notificationTests: TestDefinition[] = [
             `"Schedule in" must be a positive number of seconds, got "${rawSeconds}"`,
           );
         }
-        scheduledAt = BigInt(Date.now() + Math.round(seconds * 1000));
+        scheduledAt = Date.now() + Math.round(seconds * 1000);
       }
 
       const permErr = await ensureDevicePermission(log, "Notifications");
       if (permErr) return permErr;
 
-      const result = await (await truApi()).pushNotification({
-        tag: "v1",
-        value: { text, deeplink, scheduledAt },
-      });
+      const nm = await getNotificationManager();
+      if (!nm)
+        return error(
+          "getNotificationManager returned null - not inside a host container",
+        );
 
       const when =
         scheduledAt === undefined
           ? "now"
           : `at ${new Date(Number(scheduledAt)).toLocaleTimeString()}`;
 
-      return result.match(
-        (res) =>
-          success(
-            `Notification (#${String(res.value)}) scheduled ${when}: "${text}"${deeplink ? ` → ${deeplink}` : ""}`,
-          ),
-        (err) => error(err.value.name, err.value),
-      );
+      try {
+        const id = await nm.push({ text, deeplink, scheduledAt });
+        return success(
+          `Notification (#${String(id)}) scheduled ${when}: "${text}"${deeplink ? ` → ${deeplink}` : ""}`,
+        );
+      } catch (err) {
+        const e = err as { name?: string };
+        return error(e.name ?? String(err), err);
+      }
     },
   },
   {
@@ -1812,7 +1542,7 @@ export const notificationTests: TestDefinition[] = [
     name: "Cancel Notification",
     description:
       "Cancel a previously scheduled notification by its id (the number returned by Push Notification). Cancelling is idempotent: an unknown or already-fired id is a no-op.",
-    api: "truApi().pushNotificationCancel({ tag: 'v1', value: id })",
+    api: "getNotificationManager().cancel(id)",
     args: [{ name: "id", label: "Notification id", defaultValue: "" }],
     category: "notifications",
     async run(_chain, logger, args) {
@@ -1829,15 +1559,19 @@ export const notificationTests: TestDefinition[] = [
       const permErr = await ensureDevicePermission(log, "Notifications");
       if (permErr) return permErr;
 
-      const result = await (await truApi()).pushNotificationCancel({
-        tag: "v1",
-        value: id,
-      });
+      const nm = await getNotificationManager();
+      if (!nm)
+        return error(
+          "getNotificationManager returned null - not inside a host container",
+        );
 
-      return result.match(
-        () => success(`Cancel requested for notification #${String(id)}`),
-        (err) => error(err.value.name, err.value),
-      );
+      try {
+        await nm.cancel(id);
+        return success(`Cancel requested for notification #${String(id)}`);
+      } catch (err) {
+        const e = err as { name?: string };
+        return error(e.name ?? String(err), err);
+      }
     },
   },
 ];
@@ -1849,7 +1583,7 @@ export const navigationTests: TestDefinition[] = [
     name: "Navigate In-App",
     description:
       "Navigates within the app to /page/ with query params and fragment",
-    api: "window.location.href = url",
+    api: "router.push(path) (Next.js client navigation)",
     category: "navigation",
     async run(_chain, _logger, _args, navigate) {
       const path = "/page/?id=hello#fragment=something";
@@ -1861,34 +1595,36 @@ export const navigationTests: TestDefinition[] = [
     id: "navigate-polkadot",
     name: "Navigate to Polkadot URL",
     description: "Navigates to a host-compatible URL via hostApi",
-    api: "truApi().navigateTo({ tag: 'v1', value: url })",
+    api: "navigateTo(url)",
     args: [{ name: "url", label: "URL", defaultValue: "https://search.dot" }],
     category: "navigation",
     async run(_chain, logger, args) {
-      const log = logger || (() => {});
       const url = args?.url ?? "https://search.dot";
-      const result = await (await truApi()).navigateTo({ tag: "v1", value: url });
-      return result.match(
-        () => success(`Navigated to ${url}`),
-        (err) => error(err.value.name, err.value),
-      );
+      try {
+        await navigateTo(url);
+        return success(`Navigated to ${url}`);
+      } catch (err) {
+        const e = err as { name?: string };
+        return error(e.name ?? String(err), err);
+      }
     },
   },
   {
     id: "navigate-http",
     name: "Navigate to HTTP URL",
     description: "Navigates to an external HTTP/S URL via hostApi",
-    api: "truApi().navigateTo({ tag: 'v1', value: url })",
+    api: "navigateTo(url)",
     args: [{ name: "url", label: "URL", defaultValue: "https://polkadot.com" }],
     category: "navigation",
     async run(_chain, logger, args) {
-      const log = logger || (() => {});
       const url = args?.url ?? "https://polkadot.com";
-      const result = await (await truApi()).navigateTo({ tag: "v1", value: url });
-      return result.match(
-        () => success(`Navigated to ${url}`),
-        (err) => error(err.value.name, err.value),
-      );
+      try {
+        await navigateTo(url);
+        return success(`Navigated to ${url}`);
+      } catch (err) {
+        const e = err as { name?: string };
+        return error(e.name ?? String(err), err);
+      }
     },
   },
 ];
@@ -1900,36 +1636,32 @@ export const chainTests: TestDefinition[] = [
     name: "Chain Spec: Genesis Hash",
     description:
       "Gets the genesis hash for a chain via the typed chain interaction protocol",
-    api: "truApi().chainSpecGenesisHash({ tag: 'v1', value: genesisHash })",
+    api: "getChainSpec(genesisHash).genesisHash",
     category: "chain",
     async run(chain: ChainConfig) {
-      const result = await (await truApi()).chainSpecGenesisHash({
-        tag: "v1",
-        value: chain.genesis,
-      });
-
-      return result.match(
-        (res) => success(`Genesis hash: ${res.value}`),
-        (err) => error(err.value.name, err.value),
-      );
+      try {
+        const spec = await getChainSpec(chain.genesis);
+        return success(`Genesis hash: ${spec?.genesisHash}`);
+      } catch (err) {
+        const e = err as { name?: string };
+        return error(e.name ?? String(err), err);
+      }
     },
   },
   {
     id: "chain-spec-chain-name",
     name: "Chain Spec: Chain Name",
     description: "Gets the chain name via the typed chain interaction protocol",
-    api: "truApi().chainSpecChainName({ tag: 'v1', value: genesisHash })",
+    api: "getChainSpec(genesisHash).name",
     category: "chain",
     async run(chain: ChainConfig) {
-      const result = await (await truApi()).chainSpecChainName({
-        tag: "v1",
-        value: chain.genesis,
-      });
-
-      return result.match(
-        (res) => success(`Chain name: ${res.value}`),
-        (err) => error(err.value.name, err.value),
-      );
+      try {
+        const spec = await getChainSpec(chain.genesis);
+        return success(`Chain name: ${spec?.name}`);
+      } catch (err) {
+        const e = err as { name?: string };
+        return error(e.name ?? String(err), err);
+      }
     },
   },
   {
@@ -1937,84 +1669,72 @@ export const chainTests: TestDefinition[] = [
     name: "Chain Spec: Properties",
     description:
       "Gets chain properties (token symbol, decimals, etc.) via the typed protocol",
-    api: "truApi().chainSpecProperties({ tag: 'v1', value: genesisHash })",
+    api: "getChainSpec(genesisHash).propertiesRaw",
     category: "chain",
     async run(chain: ChainConfig) {
-      const result = await (await truApi()).chainSpecProperties({
-        tag: "v1",
-        value: chain.genesis,
-      });
-
-      return result.match(
-        (res) => success(`Properties: ${res.value}`),
-        (err) => error(err.value.name, err.value),
-      );
+      try {
+        const spec = await getChainSpec(chain.genesis);
+        return success(`Properties: ${spec?.propertiesRaw}`);
+      } catch (err) {
+        const e = err as { name?: string };
+        return error(e.name ?? String(err), err);
+      }
     },
   },
   {
     id: "chain-transaction-broadcast",
     name: "Transaction: Broadcast",
     description: "Broadcasts a dummy transaction (expected to fail validation)",
-    api: "truApi().chainTransactionBroadcast({ tag: 'v1', value: { genesisHash, transaction } })",
+    api: "broadcastTransaction(genesisHash, transaction)",
     warning: "Will fail with invalid transaction",
     category: "chain",
     async run(chain: ChainConfig) {
-      const result = await (await truApi()).chainTransactionBroadcast({
-        tag: "v1",
-        value: {
-          genesisHash: chain.genesis,
-          transaction: "0x00" as `0x${string}`,
-        },
-      });
-
-      return result.match(
-        (res) =>
-          res.value
-            ? success(`Broadcast started, operationId: ${res.value}`)
-            : success("Broadcast accepted (no operationId)"),
-        (err) => error(err.value.name, err.value),
-      );
+      try {
+        const operationId = await broadcastTransaction(
+          chain.genesis,
+          "0x00" as `0x${string}`,
+        );
+        return operationId
+          ? success(`Broadcast started, operationId: ${operationId}`)
+          : success("Broadcast accepted (no operationId)");
+      } catch (err) {
+        const e = err as { name?: string };
+        return error(e.name ?? String(err), err);
+      }
     },
   },
   {
     id: "chain-transaction-stop",
     name: "Transaction: Stop",
     description: "Broadcasts a transaction then immediately stops it",
-    api: "truApi().chainTransactionStop({ tag: 'v1', value: { genesisHash, operationId } })",
+    api: "broadcastTransaction(...) then stopTransaction(genesisHash, operationId)",
     category: "chain",
     async run(chain: ChainConfig, logger) {
       const log = logger || (() => {});
       log("Broadcasting dummy transaction...");
 
-      const broadcastResult = await (await truApi()).chainTransactionBroadcast({
-        tag: "v1",
-        value: {
-          genesisHash: chain.genesis,
-          transaction: "0x00" as `0x${string}`,
-        },
-      });
+      let operationId: string | null;
+      try {
+        operationId = await broadcastTransaction(
+          chain.genesis,
+          "0x00" as `0x${string}`,
+        );
+      } catch (err) {
+        const e = err as { name?: string };
+        return error(e.name ?? String(err), err);
+      }
 
-      return broadcastResult.match(
-        async (res) => {
-          const operationId = res.value;
-          if (!operationId)
-            return success(
-              "Broadcast returned no operationId — nothing to stop",
-            );
+      if (!operationId)
+        return success("Broadcast returned no operationId — nothing to stop");
 
-          log(`Stopping broadcast ${operationId}...`);
-          const stopResult = await (await truApi()).chainTransactionStop({
-            tag: "v1",
-            value: { genesisHash: chain.genesis, operationId },
-          });
-
-          return stopResult.match(
-            () => success(`Stopped broadcast ${operationId}`),
-            (err) => error(err.value.name, err.value),
-          );
-        },
-        (err) => error(err.value.name, err.value),
-      );
+      log(`Stopping broadcast ${operationId}...`);
+      try {
+        await stopTransaction(chain.genesis, operationId);
+        return success(`Stopped broadcast ${operationId}`);
+      } catch (err) {
+        const e = err as { name?: string };
+        return error(e.name ?? String(err), err);
+      }
     },
   },
   {
@@ -2022,15 +1742,14 @@ export const chainTests: TestDefinition[] = [
     name: "Query Balance",
     description:
       "Queries System.Account balance. Defaults to this product's account; the field can be edited to query anyone.",
-    api: "createPapiProvider(genesis) → client.getUnsafeApi().query.System.Account.getValue(address)",
+    api: "getClient(genesis) → client.getUnsafeApi().query.System.Account.getValue(address)",
     args: [
       {
         name: "address",
         label: "Address (SS58)",
         defaultValue: async () => {
-          // ss58 prefix 0 is used by all Paseo Hub chains we target; the
-          // run() call still re-encodes with the active chain's prefix if it
-          // differs. We pre-fill so the user can see and edit it.
+          // Prefill with ss58 prefix 0 (all Paseo hubs); run() re-encodes with
+          // the active chain's prefix if it differs.
           const accountsProvider = (await accounts());
           const result = await accountsProvider.getProductAccount(
             SELF_DOTNS,
@@ -2063,6 +1782,8 @@ export const chainTests: TestDefinition[] = [
         address = AccountId(chain.ss58Prefix).dec(account.publicKey);
         log(`Resolved product account ${SELF_DOTNS}/0 → ${address}`);
       }
+      // Stays on getClient (genesis-keyed): app.chain is descriptor-based and
+      // ChainConfig carries no PAPI descriptor, so there's no clean mapping.
       const client = await getClient(chain.genesis);
       try {
         const api = client.getUnsafeApi();
@@ -2126,7 +1847,6 @@ export const contractTests: TestDefinition[] = [
     async run(chain: ChainConfig, logger?: TestLogger, args?) {
       const log = logger || (() => {});
 
-
       log("Fetching account...");
       const accountsProvider = (await accounts());
       const accountResult = await accountsProvider.getProductAccount(
@@ -2152,7 +1872,6 @@ export const contractTests: TestDefinition[] = [
       );
       if (allowanceError) return allowanceError;
 
-
       const client = await getClient(chain.genesis);
       const sdk = createInkSdk(client);
       const contract = sdk.getContract(
@@ -2170,6 +1889,7 @@ export const contractTests: TestDefinition[] = [
       if (!dryRun.success) return error("Dry-run failed", dryRun.value);
 
       log("Signing and submitting...");
+      let settled = false;
       await new Promise<void>((resolve, reject) => {
         dryRun.value
           .send()
@@ -2178,11 +1898,23 @@ export const contractTests: TestDefinition[] = [
             // eslint-disable-next-line @typescript-eslint/no-explicit-any
             next: (ev: any) => {
               log(`Event: ${ev.type}`);
-              if (ev.type === "txBestBlocksState" && ev.found) resolve();
-              if (ev.type === "finalized" && !ev.ok)
+              if (ev.type === "txBestBlocksState" && ev.found) {
+                settled = true;
+                resolve();
+              }
+              if (ev.type === "finalized" && !ev.ok) {
+                settled = true;
                 reject(new Error("Tx failed"));
+              }
             },
-            error: reject,
+            error: (err: unknown) => {
+              settled = true;
+              reject(err);
+            },
+            complete: () => {
+              if (!settled)
+                reject(new Error("tx stream completed before settling"));
+            },
           });
       });
 
@@ -2271,7 +2003,6 @@ export const contractTests: TestDefinition[] = [
     async run(chain: ChainConfig, logger?: TestLogger, args?) {
       const log = logger || (() => {});
 
-
       log("Fetching account...");
       const accountsProvider = (await accounts());
       const accountResult = await accountsProvider.getProductAccount(
@@ -2297,7 +2028,6 @@ export const contractTests: TestDefinition[] = [
       );
       if (allowanceError) return allowanceError;
 
-
       const client = await getClient(chain.genesis);
       const sdk = createInkSdk(client);
       const contract = sdk.getContract(
@@ -2316,6 +2046,7 @@ export const contractTests: TestDefinition[] = [
       if (!dryRun.success) return error("Dry-run failed", dryRun.value);
 
       log("Signing and submitting...");
+      let settled = false;
       await new Promise<void>((resolve, reject) => {
         dryRun.value
           .send()
@@ -2324,11 +2055,23 @@ export const contractTests: TestDefinition[] = [
             // eslint-disable-next-line @typescript-eslint/no-explicit-any
             next: (ev: any) => {
               log(`Event: ${ev.type}`);
-              if (ev.type === "txBestBlocksState" && ev.found) resolve();
-              if (ev.type === "finalized" && !ev.ok)
+              if (ev.type === "txBestBlocksState" && ev.found) {
+                settled = true;
+                resolve();
+              }
+              if (ev.type === "finalized" && !ev.ok) {
+                settled = true;
                 reject(new Error("Tx failed"));
+              }
             },
-            error: reject,
+            error: (err: unknown) => {
+              settled = true;
+              reject(err);
+            },
+            complete: () => {
+              if (!settled)
+                reject(new Error("tx stream completed before settling"));
+            },
           });
       });
 
@@ -2355,7 +2098,6 @@ export const contractTests: TestDefinition[] = [
     async run(chain: ChainConfig, logger?: TestLogger, args?) {
       const log = logger || (() => {});
 
-
       log("Fetching account...");
       const accountsProvider = (await accounts());
       const accountResult = await accountsProvider.getProductAccount(
@@ -2381,7 +2123,6 @@ export const contractTests: TestDefinition[] = [
       );
       if (allowanceError) return allowanceError;
 
-
       const client = await getClient(chain.genesis);
       const sdk = createInkSdk(client);
       const contract = sdk.getContract(
@@ -2404,6 +2145,7 @@ export const contractTests: TestDefinition[] = [
       if (!dryRun.success) return error("Dry-run failed", dryRun.value);
 
       log("Signing and submitting...");
+      let settled = false;
       await new Promise<void>((resolve, reject) => {
         dryRun.value
           .send()
@@ -2412,11 +2154,23 @@ export const contractTests: TestDefinition[] = [
             // eslint-disable-next-line @typescript-eslint/no-explicit-any
             next: (ev: any) => {
               log(`Event: ${ev.type}`);
-              if (ev.type === "txBestBlocksState" && ev.found) resolve();
-              if (ev.type === "finalized" && !ev.ok)
+              if (ev.type === "txBestBlocksState" && ev.found) {
+                settled = true;
+                resolve();
+              }
+              if (ev.type === "finalized" && !ev.ok) {
+                settled = true;
                 reject(new Error("Tx failed"));
+              }
             },
-            error: reject,
+            error: (err: unknown) => {
+              settled = true;
+              reject(err);
+            },
+            complete: () => {
+              if (!settled)
+                reject(new Error("tx stream completed before settling"));
+            },
           });
       });
 
@@ -2571,8 +2325,6 @@ export const paymentTests: TestDefinition[] = [
     api: "paymentManager.subscribeBalance(callback)",
     category: "payments",
     async run(_chain, logger) {
-      const log = logger || (() => {});
-
       const paymentManager = await getPaymentManager();
       if (!paymentManager)
         return error(
@@ -2602,21 +2354,17 @@ type AllocatableResource =
   | { tag: "SmartContractAllowance"; value: number };
 
 async function runResourceAllocation(resources: AllocatableResource[]) {
-  const result = await (await truApi()).requestResourceAllocation({
-    tag: "v1",
-    value: resources,
-  });
-
-  return result.match(
-    (res) => {
-      const outcomes = res.value.map((o, i) => ({
-        resource: resources[i].tag,
-        outcome: o.tag,
-      }));
-      return success(`Received ${outcomes.length} outcome(s)`, outcomes);
-    },
-    (err) => error(err.value.name, err.value),
-  );
+  try {
+    const result = await requestResourceAllocation(resources);
+    const outcomes = result.map((o, i) => ({
+      resource: resources[i].tag,
+      outcome: o.tag,
+    }));
+    return success(`Received ${outcomes.length} outcome(s)`, outcomes);
+  } catch (err) {
+    const e = err as { name?: string };
+    return error(e.name ?? String(err), err);
+  }
 }
 
 export const allowancesTests: TestDefinition[] = [
@@ -2625,7 +2373,7 @@ export const allowancesTests: TestDefinition[] = [
     name: "Allocate StatementStore Allowance",
     description:
       "Requests a statement-store allowance from the host (RFC-0010)",
-    api: 'truApi().requestResourceAllocation({ tag: "v1", value: [{ tag: "StatementStoreAllowance" }] })',
+    api: 'requestResourceAllocation([{ tag: "StatementStoreAllowance" }])',
     category: "allowances",
     async run() {
       return runResourceAllocation([
@@ -2637,7 +2385,7 @@ export const allowancesTests: TestDefinition[] = [
     id: "allowances-bulletin",
     name: "Allocate Bulletin Allowance",
     description: "Requests a bulletin allowance from the host (RFC-0010)",
-    api: 'truApi().requestResourceAllocation({ tag: "v1", value: [{ tag: "BulletinAllowance" }] })',
+    api: 'requestResourceAllocation([{ tag: "BulletinAllowance" }])',
     category: "allowances",
     async run() {
       return runResourceAllocation([
@@ -2650,7 +2398,7 @@ export const allowancesTests: TestDefinition[] = [
     name: "Allocate SmartContract Allowance",
     description:
       "Requests a smart-contract allowance for a derivation index (RFC-0010)",
-    api: 'truApi().requestResourceAllocation({ tag: "v1", value: [{ tag: "SmartContractAllowance", value: derivationIndex }] })',
+    api: 'requestResourceAllocation([{ tag: "SmartContractAllowance", value: derivationIndex }])',
     args: [
       {
         name: "derivationIndex",
@@ -2671,7 +2419,7 @@ export const allowancesTests: TestDefinition[] = [
     name: "Allocate All Resources",
     description:
       "Requests every supported resource in a single call; outcomes are reported per resource",
-    api: 'truApi().requestResourceAllocation({ tag: "v1", value: [...] })',
+    api: "requestResourceAllocation([...])",
     args: [
       {
         name: "derivationIndex",

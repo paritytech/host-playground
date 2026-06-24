@@ -1,45 +1,76 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
+import { AccountId } from "polkadot-api";
 import { toHex } from "polkadot-api/utils";
-import type { SignerState } from "@parity/product-sdk-signer";
-import { signerManager, ensureSignerConnected } from "./signer";
+import { type Account } from "@parity/product-sdk";
+import { getApp, connectApp } from "./app";
 
 export interface SdkAccount {
   publicKey: string; // hex-encoded
   name: string | undefined;
 }
 
-function mapAccounts(state: SignerState): SdkAccount[] | null {
-  if (state.status !== "connected") return null;
-  return state.accounts.map((a) => ({
-    publicKey: toHex(a.publicKey),
+// app.wallet's Account carries an SS58 `address`; consumers expect a hex public
+// key, so decode the SS58 back to its 32 bytes (AccountId().enc) and hex-encode.
+const ss58ToHexPublicKey = AccountId();
+function mapAccounts(accounts: Account[]): SdkAccount[] {
+  return accounts.map((a) => ({
+    publicKey: toHex(ss58ToHexPublicKey.enc(a.address)),
     name: a.name ?? undefined,
   }));
 }
 
-export const useAccounts = () => {
-  const [state, setState] = useState<SignerState>(() => signerManager.getState());
+type ConnectState = "connecting" | "connected" | "error";
 
-  useEffect(() => {
-    setState(signerManager.getState());
-    const unsubscribe = signerManager.subscribe(setState);
-    void ensureSignerConnected();
-    return unsubscribe;
+export const useAccounts = () => {
+  const [accounts, setAccounts] = useState<SdkAccount[] | null>(null);
+  const [status, setStatus] = useState<ConnectState>("connecting");
+  const [error, setError] = useState<Error | null>(null);
+  const mountedRef = useRef(true);
+  const unsubscribeRef = useRef<(() => void) | undefined>(undefined);
+
+  // Stateful connect for the mount effect and the returned retry handle;
+  // connectApp() clears its cache on failure so a retry genuinely re-attempts.
+  const connect = useCallback(async () => {
+    if (mountedRef.current) setStatus("connecting");
+    try {
+      await connectApp();
+      const app = await getApp();
+      if (!mountedRef.current) return;
+      const refresh = () => {
+        if (mountedRef.current)
+          setAccounts(mapAccounts(app.wallet.getAccounts()));
+      };
+      refresh();
+      setStatus("connected");
+      setError(null);
+      // Re-read on account change; drop any prior sub so retries don't stack.
+      unsubscribeRef.current?.();
+      unsubscribeRef.current = app.wallet.onAccountChange(refresh);
+    } catch (err) {
+      if (mountedRef.current) {
+        setStatus("error");
+        setError(toError(err));
+      }
+    }
   }, []);
 
-  const accounts = mapAccounts(state);
-  const isLoading = state.status === "connecting";
-  // isReady mirrors the previous injectSpektrExtension() boolean: true once a
-  // host connection is established, false once the host has explicitly failed,
-  // null while we are still attempting the first connect.
-  const isReady: boolean | null =
-    state.status === "connected"
-      ? true
-      : state.error
-        ? false
-        : null;
-  const error = state.error ? toError(state.error) : null;
+  useEffect(() => {
+    mountedRef.current = true;
+    void connect();
+    return () => {
+      mountedRef.current = false;
+      unsubscribeRef.current?.();
+      unsubscribeRef.current = undefined;
+    };
+  }, [connect]);
 
-  return { accounts, isLoading, isReady, error, connect: ensureSignerConnected };
+  const isLoading = status === "connecting";
+  // isReady mirrors the previous tri-state: true once connected, false once the
+  // connect attempt has explicitly failed, null while still connecting.
+  const isReady: boolean | null =
+    status === "connected" ? true : status === "error" ? false : null;
+
+  return { accounts, isLoading, isReady, error, connect };
 };
 
 function toError(err: unknown): Error {

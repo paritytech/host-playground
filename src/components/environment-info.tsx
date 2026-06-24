@@ -7,7 +7,7 @@ import {
   Loader2,
   User,
 } from "lucide-react";
-import { isInsideContainerSync } from "@parity/product-sdk-host";
+import { isInsideContainerSync } from "@parity/product-sdk";
 import { Badge } from "@/src/components/badge";
 import {
   Card,
