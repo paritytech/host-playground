@@ -317,6 +317,27 @@ export const accountTests: TestDefinition[] = [
     },
   },
   {
+    id: "accounts-provider-legacy",
+    name: "Get Legacy Accounts",
+    description: "Gets legacy accounts via getAccountsProvider",
+    api: "accountsProvider.getLegacyAccounts()",
+    args: [],
+    category: "accounts",
+    async run(_chain, _logger) {
+      const accountsProvider = (await accounts());
+      const result = await accountsProvider.getLegacyAccounts();
+
+      return result.match(
+        (accounts) =>
+          success("Legacy accounts:", accounts.map(account => ({
+            name: account.name,
+            publicKey: toHex(account.publicKey)
+          }))),
+        (err) => error(`${err.name}`, err),
+      );
+    },
+  },
+  {
     id: "accounts-provider-alias",
     name: "Get Product Account Alias",
     description: "Gets a product account alias via getAccountsProvider",
