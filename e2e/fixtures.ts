@@ -10,7 +10,7 @@ const PRODUCT_URL = 'http://localhost:5199';
 const bobFixture = createTestHostFixture({
   productUrl: PRODUCT_URL,
   accounts: ['bob'],
-  chain: PASEO_ASSET_HUB,
+  networks: [PASEO_ASSET_HUB],
   // App derives its DotNS identifier from window.location.host, so under
   // Playwright that's 'localhost:5199'. Map both to bob so the same Bob
   // signer is used whether the app is opened under the local host or a

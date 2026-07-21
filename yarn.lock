@@ -533,21 +533,21 @@
   resolved "https://registry.npmjs.org/@nolyfill/is-core-module/-/is-core-module-1.0.39.tgz"
   integrity sha512-nn5ozdjYQpUCZlWGuxcJY/KpxkWQs4DcbMCmKojjyrYDEAGy4Ce19NN4v5MduafTwJlbKc99UA8YhSVqq9yPZA==
 
-"@novasamatech/host-api@^0.8.0":
-  version "0.8.6"
-  resolved "https://registry.yarnpkg.com/@novasamatech/host-api/-/host-api-0.8.6.tgz#3f9d6a8d768a0ce0780c1034d2379256ed038cc0"
-  integrity sha512-DayCRwOncCcYO/Hc+pYQaBXsTYOn8h/2dl/hAFy1yVgG/LEBLcZrUmhUpotUFEhgWvfc0/KQa59P7T11H49AWA==
+"@novasamatech/host-api@^0.8.8":
+  version "0.8.11"
+  resolved "https://registry.yarnpkg.com/@novasamatech/host-api/-/host-api-0.8.11.tgz#de42e33541e372c54c608b86f41e0534043634a6"
+  integrity sha512-KCtM64As23VFmHQCK51rxtvxeR/7+XNol/JE3HYVRldubdlH8qxcFQg2vg2nPjNj5nRJGGy4bE47bkJLE62RRA==
   dependencies:
-    "@novasamatech/scale" "0.8.6"
+    "@novasamatech/scale" "0.8.11"
     nanoevents "9.1.0"
     nanoid "5.1.11"
     neverthrow "^8.2.0"
     scale-ts "1.6.1"
 
-"@novasamatech/scale@0.8.6":
-  version "0.8.6"
-  resolved "https://registry.yarnpkg.com/@novasamatech/scale/-/scale-0.8.6.tgz#f2e2e34eac88be25af00e526a1bb8972bc7dff8f"
-  integrity sha512-XsiNMntDVUmwQYieowid2s5t1THk/Asb4JohmWOrIFetj5ZdaD8mjLCt42WTWxaZaJyYyCjjGBssnUbcLyTWFw==
+"@novasamatech/scale@0.8.11":
+  version "0.8.11"
+  resolved "https://registry.yarnpkg.com/@novasamatech/scale/-/scale-0.8.11.tgz#cd3001968b3f036f7eb67846191dcd5764fcc733"
+  integrity sha512-S9HpF77E4cUXvVpiGsBpCRB/HleIraInRrY1/RhUgsf61nLQNjMBqeBHENp0k82XZmnUVlaWhVx765UeHMqJGA==
   dependencies:
     "@polkadot-api/utils" "^0.4.0"
     scale-ts "1.6.1"
@@ -567,12 +567,12 @@
     "@polkadot-labs/hdkd-helpers" "^0.0.29"
     ipfs-unixfs "^12.0.0"
 
-"@parity/host-api-test-sdk@^0.9.0":
-  version "0.9.0"
-  resolved "https://registry.yarnpkg.com/@parity/host-api-test-sdk/-/host-api-test-sdk-0.9.0.tgz#04b9bf03290d642eebd1a79fe6e64d9958f5d262"
-  integrity sha512-DP7Qu3HhCjfLrFSdtS+VDQzcTO0BVA/ffpPe0cq8KfjbHDHlxbJ2AXNNnl+I7cxq2r9Y53aSYuqzSKLgfAQ+iw==
+"@parity/host-api-test-sdk@^0.11.0":
+  version "0.11.0"
+  resolved "https://registry.yarnpkg.com/@parity/host-api-test-sdk/-/host-api-test-sdk-0.11.0.tgz#a1f13ddfa5ec493ab07e527e662043330b1869e0"
+  integrity sha512-yefxCF7yuyCRZRAvVjPvBFnkA7HvYo3l1mlqyv2jhLwRLQ7LqkHpB1TnkH14LCW2qT7e23TzC3XKAL2ATvS3MA==
   dependencies:
-    "@novasamatech/host-api" "^0.8.0"
+    "@novasamatech/host-api" "^0.8.8"
 
 "@parity/product-sdk-address@0.1.1":
   version "0.1.1"
