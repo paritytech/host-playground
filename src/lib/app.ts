@@ -31,8 +31,8 @@ let connectPromise:
   | ReturnType<App["wallet"]["connect"]>
   | undefined;
 export function connectApp(): ReturnType<App["wallet"]["connect"]> {
-  // Same don't-cache-rejection contract as getApp() so a failed connect doesn't
-  // make the useAccounts retry handle a permanent no-op.
+  // Same don't-cache-rejection contract as getApp() so a failed connect can
+  // be retried instead of caching the rejection forever.
   if (!connectPromise) {
     connectPromise = getApp().then((app) => app.wallet.connect());
     connectPromise.catch(() => {

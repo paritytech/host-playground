@@ -18,7 +18,6 @@ import {
   type TestCategory,
 } from "@/src/lib/types";
 import { useLogs } from "@/src/lib/use-logs";
-import { useAccounts } from "@/src/lib/use-accounts";
 import { stringify } from "@/src/lib/utils";
 import pkg from "@/package.json";
 
@@ -149,8 +148,6 @@ export default function SdkTestPage() {
     useState<ChainId>("PASEO_NEXT_V2_ASSET_HUB");
 
   const currentChain: ChainConfig = CHAINS[selectedChain];
-
-  useAccounts();
 
   // Synchronous heuristic first, then confirm asynchronously through
   // @parity/product-sdk so we converge on the SDK-backed answer.
