@@ -738,9 +738,9 @@
   integrity sha512-QCrhYPeVVaPIjnlsfBIk5GHPRqfuCjy6MjqKkoCP4kwS1LIo5YtJCSFeB5mGtvMG7hiaRNl4lHQcd5YqDfJ1tQ==
 
 "@parity/truapi@^0.5.0":
-  version "0.5.0"
-  resolved "https://registry.yarnpkg.com/@parity/truapi/-/truapi-0.5.0.tgz#a4c782e38c2779ef1cd4c92bc660edca68e2b17f"
-  integrity sha512-qXalfGa2JuQF0uH41y2gR4zqdSR4droYWMZIY6qEwvvUu0H4OJRSIHJirLhjLnsvSPSWXQUKeV/iu6KORLSg5w==
+  version "0.5.1"
+  resolved "https://registry.yarnpkg.com/@parity/truapi/-/truapi-0.5.1.tgz#74d55e0bb34ba8b535cb9fb1bf76cd7d899f2c22"
+  integrity sha512-5AV6YoqnUKXj2wJ/qt/J2i3jpFawhEVkY165V5fSDccGkgK2oVHxlSfLwscXpZp4DxwFTL1FmvkhwhuqPDIdtA==
   dependencies:
     "@noble/hashes" "^2.2.0"
     neverthrow "^8.2.0"
