@@ -83,16 +83,6 @@ un-allowlistable and forces a prompt. Keep commands plain:
 | Bulletin deploy config | [bulletin-deploy.config.ts](bulletin-deploy.config.ts) |
 | E2E specs and conventions | [e2e/](e2e/), [CONTRIBUTING.md](CONTRIBUTING.md) |
 
-## Skills
-
-This app is built on `@parity/product-sdk`. When a question matches one of its skills, invoke it via the `Skill` tool rather than reimplementing the answer from source:
-
-- `product-sdk-app-builder` — scaffolding a new product app.
-- `product-sdk-chain-connection` — connecting to a chain.
-- `product-sdk-transactions` — signing and submitting transactions.
-- `product-sdk-contracts` — contract calls (queries, txs).
-- `product-sdk-cloud-storage` — cloud-storage chain client.
-- `product-sdk-statement-store` — statement store.
-- `product-sdk-utilities` — address, crypto, logger, local-storage, utils.
+## Documentation style
 
 Documentation style, including the Given/When/Then E2E convention, lives in [CONTRIBUTING.md](CONTRIBUTING.md).

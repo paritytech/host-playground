@@ -24,7 +24,9 @@ if (!chatManager) {
       if (status === "New") {
         return chatManager.sendMessage(ROOM_ID, {
           tag: "Text",
-          value: { text: `Echo bot is online! Send "${TRIGGER} <message>" to get a reply.` },
+          value: {
+            text: `Echo bot is online! Send "${TRIGGER} <message>" to get a reply.`,
+          },
         });
       }
     })
@@ -41,7 +43,9 @@ if (!chatManager) {
     console.log("[echo-bot worker] echoing:", body);
     await chatManager.sendMessage(ROOM_ID, {
       tag: "Text",
-      value: { text: body.length > 0 ? `Echo: ${body}` : "Usage: !echo <message>" },
+      value: {
+        text: body.length > 0 ? `Echo: ${body}` : "Usage: !echo <message>",
+      },
     });
   });
 }

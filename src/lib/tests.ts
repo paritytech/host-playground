@@ -19,17 +19,15 @@ import {
   getChainSpec,
   broadcastTransaction,
   stopTransaction,
-  toHex,
-  fromHex,
+  formatHostError,
   type AccountsProvider,
   type HostLocalStorage,
   type HostStatementStore,
   type PreimageManager,
+  type RingLocation,
   type ThemeProvider,
-  type RemotePermissionItem,
 } from "@parity/product-sdk/host";
 import { WellKnownChain } from "@parity/product-sdk/chain";
-import { deriveH160 } from "@parity/product-sdk/address";
 import {
   calculateCid,
   cidToPreimageKey,
@@ -42,8 +40,10 @@ import {
   createClient,
   type PolkadotClient,
 } from "polkadot-api";
+import { toHex, fromHex } from "polkadot-api/utils";
 import { createInkSdk } from "@polkadot-api/sdk-ink";
 import { contracts } from "@polkadot-api/descriptors";
+import { deriveH160 } from "@parity/product-sdk/address";
 import { CHAINS } from "./types";
 import deployment from "../../evm/deployment.json";
 import {
@@ -55,16 +55,6 @@ import {
 import { getSelfDotNs } from "./dotns";
 import { getApp } from "./app";
 
-// The host + cloud-storage wrappers now return Result<T, E> instead of throwing.
-// unwrap returns the value or throws the error, so the existing try/catch
-// reporting in each test still applies.
-function unwrap<T>(
-  result: { ok: true; value: T } | { ok: false; error: unknown },
-): T {
-  if (result.ok) return result.value;
-  throw result.error;
-}
-
 // Cache papi clients per genesis — avoids in-flight chainHead events from a
 // destroyed client corrupting a new client's block tree (undefined.children).
 const clientCache = new Map<string, PolkadotClient>();
@@ -73,15 +63,14 @@ async function getClient(genesis: `0x${string}`): Promise<PolkadotClient> {
   if (!client) {
     // Probe host support first so a host that doesn't serve this chain fails
     // fast with a clear message instead of papi's cryptic "undefined.children".
-    let supported = false;
-    try {
-      supported = unwrap(await isChainSupported(genesis));
-    } catch {
-      // treat probe failure as unsupported and fall through to the throw
-    }
+    const supportResult = await isChainSupported(genesis);
+    const supported = supportResult.ok && supportResult.value;
     if (!supported) {
+      const probeDetail = supportResult.ok
+        ? ""
+        : ` (probe failed: ${sdkErrorMessage(supportResult.error)})`;
       throw new Error(
-        `Host does not serve chain ${genesis}. The desktop/mobile host is ` +
+        `Host does not serve chain ${genesis}${probeDetail}. The desktop/mobile host is ` +
           `provisioned for a different network than this app requests — point ` +
           `the host at the matching network (or change the app's target chain).`,
       );
@@ -169,6 +158,20 @@ const READ_ORIGIN = "12dCP8UFhSktvmSgJcP93tNPdgVQMdBQqJNcFrZTnDoiBE9Y";
 
 const SELF_DOTNS = getSelfDotNs();
 
+const PRODUCT_ALIAS_CONTEXT_SUFFIX = "0x00" as const;
+const PRODUCT_ALIAS_RING_LOCATION: RingLocation = {
+  chainId:
+    "0xc5af1826b31493f08b7e2a823842f98575b806a784126f28da9608c68665afa5",
+  junctions: [
+    { tag: "PalletInstance", value: 67 },
+    {
+      tag: "CollectionId",
+      value:
+        "0x706f703a706f6c6b61646f742e6e6574776f726b2f70656f706c652d6c697465",
+    },
+  ],
+};
+
 // People/Individuality chain descriptor per Asset Hub, for DotNS-identity
 // signing (app.wallet.signMessageWithDotNsIdentity). Both Paseo hubs pair with
 // paseo_individuality; Previewnet has no published individuality descriptor, so
@@ -187,6 +190,19 @@ function error(message: string, details?: unknown): TestResult {
   return { success: false, message, details };
 }
 
+// formatHostError with versioned-envelope unwrapping: neverthrow accounts APIs
+// surface errors as `{ tag: "V1", value: ... }`, which formatHostError would
+// render as just "V1".
+function sdkErrorMessage(value: unknown): string {
+  if (typeof value === "object" && value !== null && "tag" in value) {
+    const tagged = value as { tag: unknown; value?: unknown };
+    if (/^V\d+$/.test(String(tagged.tag)) && tagged.value !== undefined) {
+      return sdkErrorMessage(tagged.value);
+    }
+  }
+  return formatHostError(value);
+}
+
 /** Request a device permission with a friendly error if denied. */
 async function ensureDevicePermission(
   log: (msg: string) => void,
@@ -203,12 +219,45 @@ async function ensureDevicePermission(
 ): Promise<TestResult | null> {
   log(`Requesting device permission: ${permission}...`);
   try {
-    const granted = unwrap(await requestDevicePermission(permission));
-    return granted
+    const result = await requestDevicePermission(permission);
+    if (!result.ok) {
+      return error(sdkErrorMessage(result.error), result.error);
+    }
+    return result.value
       ? null
-      : error(`Device permission not granted: ${permission}`, { granted });
+      : error(`Device permission not granted: ${permission}`, {
+          granted: false,
+        });
   } catch (err) {
     return error(`Device permission denied (${permission})`, err);
+  }
+}
+
+async function runDevicePermissionTest(
+  permission: Parameters<typeof requestDevicePermission>[0],
+  label: string,
+): Promise<TestResult> {
+  try {
+    const result = await requestDevicePermission(permission);
+    return result.ok
+      ? success(`${label} permission: ${result.value ? "granted" : "denied"}`)
+      : error(sdkErrorMessage(result.error), result.error);
+  } catch (err) {
+    return error(sdkErrorMessage(err), err);
+  }
+}
+
+async function runRemotePermissionTest(
+  permission: Parameters<typeof requestPermission>[0],
+  label: string,
+): Promise<TestResult> {
+  try {
+    const result = await requestPermission(permission);
+    return result.ok
+      ? success(`${label}: ${result.value ? "granted" : "denied"}`)
+      : error(sdkErrorMessage(result.error), result.error);
+  } catch (err) {
+    return error(sdkErrorMessage(err), err);
   }
 }
 
@@ -246,11 +295,11 @@ async function ensureSmartContractAllowance(
 
   log(`Requesting SmartContractAllowance(${derivationIndex})...`);
   try {
-    const outcomes = unwrap(
-      await requestResourceAllocation([
-        { tag: "SmartContractAllowance", value: derivationIndex },
-      ]),
-    );
+    const result = await requestResourceAllocation([
+      { tag: "SmartContractAllowance", value: derivationIndex },
+    ]);
+    if (!result.ok) return error(sdkErrorMessage(result.error), result.error);
+    const outcomes = result.value;
     const outcome = outcomes[0];
     if (outcome === "Allocated") {
       log(`SmartContractAllowance(${derivationIndex}) allocated`);
@@ -272,6 +321,10 @@ function bytesEqual(a: Uint8Array, b: Uint8Array): boolean {
   return true;
 }
 
+function toHexString(value: Uint8Array): `0x${string}` {
+  return toHex(value) as `0x${string}`;
+}
+
 // Statement Store topics are a chain primitive Hash and must be exactly
 // 32 bytes. Earlier code passed `new TextEncoder().encode(s)` directly,
 // which produced 23-byte arrays for the default labels and the host
@@ -281,7 +334,7 @@ function bytesEqual(a: Uint8Array, b: Uint8Array): boolean {
 async function hashTopic(s: string): Promise<`0x${string}`> {
   const bytes = new TextEncoder().encode(s);
   const digest = await crypto.subtle.digest("SHA-256", bytes);
-  return toHex(new Uint8Array(digest));
+  return toHexString(new Uint8Array(digest));
 }
 
 /**
@@ -326,7 +379,7 @@ export const accountTests: TestDefinition[] = [
           success("Product account:", {
             publicKey: toHex(account.publicKey),
           }),
-        (err) => error(`${err.tag}`, err),
+        (err) => error(sdkErrorMessage(err), err),
       );
     },
   },
@@ -347,28 +400,24 @@ export const accountTests: TestDefinition[] = [
             name: account.name,
             publicKey: toHex(account.publicKey)
           }))),
-        (err) => error(`${err.tag}`, err),
+        (err) => error(sdkErrorMessage(err), err),
       );
     },
   },
   {
     id: "accounts-provider-alias",
     name: "Get Product Account Alias",
-    description: "Gets a product account alias via getAccountsProvider",
-    api: "accountsProvider.getProductAccountAlias(dotNsIdentifier)",
-    args: [
-      {
-        name: "dotNsIdentifier",
-        label: "DotNS ID",
-        defaultValue: SELF_DOTNS,
-      },
-    ],
+    description:
+      "Gets this product's contextual account alias from the Paseo Next v2 People Lite ring",
+    api: "accountsProvider.getProductAccountAlias(context, ringLocation)",
+    args: [],
     category: "accounts",
-    async run(_chain, _logger, args) {
-      const dotNsIdentifier = args?.dotNsIdentifier ?? SELF_DOTNS;
+    async run() {
       const accountsProvider = (await accounts());
-      const result =
-        await accountsProvider.getProductAccountAlias(dotNsIdentifier);
+      const result = await accountsProvider.getProductAccountAlias(
+        { productId: SELF_DOTNS, suffix: PRODUCT_ALIAS_CONTEXT_SUFFIX },
+        PRODUCT_ALIAS_RING_LOCATION,
+      );
 
       return result.match(
         (alias) =>
@@ -376,7 +425,7 @@ export const accountTests: TestDefinition[] = [
             context: toHex(alias.context),
             alias: toHex(alias.alias),
           }),
-        (err) => error(`${err.tag}`, err),
+        (err) => error(sdkErrorMessage(err), err),
       );
     },
   },
@@ -384,7 +433,7 @@ export const accountTests: TestDefinition[] = [
     id: "accounts-provider-product-signer",
     name: "Product Account Signer",
     description: "Creates a PolkadotSigner for a product account",
-    api: 'accountsProvider.getProductAccountSigner(account, "createTransaction")',
+    api: "accountsProvider.getProductAccountSigner(account)",
     args: [
       {
         name: "dotNsIdentifier",
@@ -406,7 +455,7 @@ export const accountTests: TestDefinition[] = [
             publicKey: toHex(signer.publicKey),
           });
         },
-        (err) => error(`${err.tag}`, err),
+        (err) => error(sdkErrorMessage(err), err),
       );
     },
   },
@@ -516,7 +565,7 @@ export const signingTests: TestDefinition[] = [
     name: "Create Transaction with Product Account",
     description:
       "Signs a transaction offline via the product account signer (mode = createTransaction). Returns the signed bytes without broadcasting.",
-    api: 'tx.sign(accountsProvider.getProductAccountSigner(account, "createTransaction"))',
+    api: "tx.sign(accountsProvider.getProductAccountSigner(account))",
     args: [
       {
         name: "dotNsIdentifier",
@@ -543,7 +592,7 @@ export const signingTests: TestDefinition[] = [
       const account = accountResult.match(
         (a) => a,
         (err) => {
-          log(`getProductAccount failed: ${err.tag}`);
+          log(`getProductAccount failed: ${sdkErrorMessage(err)}`);
           return null;
         },
       );
@@ -553,8 +602,7 @@ export const signingTests: TestDefinition[] = [
         );
       }
 
-      // mode="createTransaction" routes via the host's createTransaction path
-      // instead of the default signPayload used by signSubmitAndWatch.
+      // Product account signers route through the host's createTransaction path.
       const signer = accountsProvider.getProductAccountSigner(account);
 
       const client = await getClient(chain.genesis);
@@ -824,11 +872,12 @@ export const permissionTests: TestDefinition[] = [
     category: "permissions",
     async run(chain: ChainConfig) {
       try {
-        const supported = unwrap(await isChainSupported(chain.genesis));
-        return success(`${chain.name} supported: ${supported}`);
+        const result = await isChainSupported(chain.genesis);
+        return result.ok
+          ? success(`${chain.name} supported: ${result.value}`)
+          : error(sdkErrorMessage(result.error), result.error);
       } catch (err) {
-        const e = err as { name?: string };
-        return error(e.name ?? String(err), err);
+        return error(sdkErrorMessage(err), err);
       }
     },
   },
@@ -839,13 +888,7 @@ export const permissionTests: TestDefinition[] = [
     api: "requestDevicePermission('Camera')",
     category: "permissions",
     async run() {
-      try {
-        const granted = unwrap(await requestDevicePermission("Camera"));
-        return success(`Camera permission: ${granted ? "granted" : "denied"}`);
-      } catch (err) {
-        const e = err as { name?: string };
-        return error(e.name ?? String(err), err);
-      }
+      return runDevicePermissionTest("Camera", "Camera");
     },
   },
   {
@@ -855,15 +898,7 @@ export const permissionTests: TestDefinition[] = [
     api: "requestDevicePermission('Microphone')",
     category: "permissions",
     async run() {
-      try {
-        const granted = unwrap(await requestDevicePermission("Microphone"));
-        return success(
-          `Microphone permission: ${granted ? "granted" : "denied"}`,
-        );
-      } catch (err) {
-        const e = err as { name?: string };
-        return error(e.name ?? String(err), err);
-      }
+      return runDevicePermissionTest("Microphone", "Microphone");
     },
   },
   {
@@ -873,15 +908,7 @@ export const permissionTests: TestDefinition[] = [
     api: "requestDevicePermission('Location')",
     category: "permissions",
     async run() {
-      try {
-        const granted = unwrap(await requestDevicePermission("Location"));
-        return success(
-          `Location permission: ${granted ? "granted" : "denied"}`,
-        );
-      } catch (err) {
-        const e = err as { name?: string };
-        return error(e.name ?? String(err), err);
-      }
+      return runDevicePermissionTest("Location", "Location");
     },
   },
   {
@@ -891,15 +918,7 @@ export const permissionTests: TestDefinition[] = [
     api: "requestDevicePermission('Bluetooth')",
     category: "permissions",
     async run() {
-      try {
-        const granted = unwrap(await requestDevicePermission("Bluetooth"));
-        return success(
-          `Bluetooth permission: ${granted ? "granted" : "denied"}`,
-        );
-      } catch (err) {
-        const e = err as { name?: string };
-        return error(e.name ?? String(err), err);
-      }
+      return runDevicePermissionTest("Bluetooth", "Bluetooth");
     },
   },
   {
@@ -909,15 +928,7 @@ export const permissionTests: TestDefinition[] = [
     api: "requestDevicePermission('Notifications')",
     category: "permissions",
     async run() {
-      try {
-        const granted = unwrap(await requestDevicePermission("Notifications"));
-        return success(
-          `Notifications permission: ${granted ? "granted" : "denied"}`,
-        );
-      } catch (err) {
-        const e = err as { name?: string };
-        return error(e.name ?? String(err), err);
-      }
+      return runDevicePermissionTest("Notifications", "Notifications");
     },
   },
   {
@@ -927,13 +938,7 @@ export const permissionTests: TestDefinition[] = [
     api: "requestDevicePermission('NFC')",
     category: "permissions",
     async run() {
-      try {
-        const granted = unwrap(await requestDevicePermission("NFC"));
-        return success(`NFC permission: ${granted ? "granted" : "denied"}`);
-      } catch (err) {
-        const e = err as { name?: string };
-        return error(e.name ?? String(err), err);
-      }
+      return runDevicePermissionTest("NFC", "NFC");
     },
   },
   {
@@ -943,15 +948,7 @@ export const permissionTests: TestDefinition[] = [
     api: "requestDevicePermission('Clipboard')",
     category: "permissions",
     async run() {
-      try {
-        const granted = unwrap(await requestDevicePermission("Clipboard"));
-        return success(
-          `Clipboard permission: ${granted ? "granted" : "denied"}`,
-        );
-      } catch (err) {
-        const e = err as { name?: string };
-        return error(e.name ?? String(err), err);
-      }
+      return runDevicePermissionTest("Clipboard", "Clipboard");
     },
   },
   {
@@ -961,13 +958,7 @@ export const permissionTests: TestDefinition[] = [
     api: "requestDevicePermission('OpenUrl')",
     category: "permissions",
     async run() {
-      try {
-        const granted = unwrap(await requestDevicePermission("OpenUrl"));
-        return success(`OpenUrl permission: ${granted ? "granted" : "denied"}`);
-      } catch (err) {
-        const e = err as { name?: string };
-        return error(e.name ?? String(err), err);
-      }
+      return runDevicePermissionTest("OpenUrl", "OpenUrl");
     },
   },
   {
@@ -977,22 +968,14 @@ export const permissionTests: TestDefinition[] = [
     api: "requestDevicePermission('Biometrics')",
     category: "permissions",
     async run() {
-      try {
-        const granted = unwrap(await requestDevicePermission("Biometrics"));
-        return success(
-          `Biometrics permission: ${granted ? "granted" : "denied"}`,
-        );
-      } catch (err) {
-        const e = err as { name?: string };
-        return error(e.name ?? String(err), err);
-      }
+      return runDevicePermissionTest("Biometrics", "Biometrics");
     },
   },
   {
     id: "remote-permission-remote",
     name: "Remote Permission: Remote (HTTP/WS)",
     description: "Requests permission to connect to remote domains",
-    api: "requestPermission({ tag: 'Remote', value: [url] })",
+    api: "requestPermission({ tag: 'Remote', value: { domains: [url] } })",
     args: [
       {
         name: "url",
@@ -1003,18 +986,10 @@ export const permissionTests: TestDefinition[] = [
     category: "permissions",
     async run(_chain, _logger, args) {
       const url = args?.url ?? "https://example.com";
-      try {
-        const granted = unwrap(
-          await requestPermission({
-            tag: "Remote",
-            value: { domains: [url] },
-          }),
-        );
-        return success(`Remote permission: ${granted ? "granted" : "denied"}`);
-      } catch (err) {
-        const e = err as { name?: string };
-        return error(e.name ?? String(err), err);
-      }
+      return runRemotePermissionTest(
+        { tag: "Remote", value: { domains: [url] } },
+        "Remote permission",
+      );
     },
   },
   {
@@ -1024,18 +999,10 @@ export const permissionTests: TestDefinition[] = [
     api: "requestPermission({ tag: 'WebRtc', value: undefined })",
     category: "permissions",
     async run() {
-      try {
-        const granted = unwrap(
-          await requestPermission({
-            tag: "WebRtc",
-            value: undefined,
-          }),
-        );
-        return success(`WebRTC permission: ${granted ? "granted" : "denied"}`);
-      } catch (err) {
-        const e = err as { name?: string };
-        return error(e.name ?? String(err), err);
-      }
+      return runRemotePermissionTest(
+        { tag: "WebRtc", value: undefined },
+        "WebRTC permission",
+      );
     },
   },
   {
@@ -1045,20 +1012,10 @@ export const permissionTests: TestDefinition[] = [
     api: "requestPermission({ tag: 'ChainSubmit', value: undefined })",
     category: "permissions",
     async run(chain) {
-      try {
-        const granted = unwrap(
-          await requestPermission({
-            tag: "ChainSubmit",
-            value: undefined,
-          }),
-        );
-        return success(
-          `Chain submit permission for ${chain.name}: ${granted ? "granted" : "denied"}`,
-        );
-      } catch (err) {
-        const e = err as { name?: string };
-        return error(e.name ?? String(err), err);
-      }
+      return runRemotePermissionTest(
+        { tag: "ChainSubmit", value: undefined },
+        `Chain submit permission for ${chain.name}`,
+      );
     },
   },
   {
@@ -1068,20 +1025,10 @@ export const permissionTests: TestDefinition[] = [
     api: "requestPermission({ tag: 'PreimageSubmit', value: undefined })",
     category: "permissions",
     async run(chain) {
-      try {
-        const granted = unwrap(
-          await requestPermission({
-            tag: "PreimageSubmit",
-            value: undefined,
-          }),
-        );
-        return success(
-          `Preimage submit permission for ${chain.name}: ${granted ? "granted" : "denied"}`,
-        );
-      } catch (err) {
-        const e = err as { name?: string };
-        return error(e.name ?? String(err), err);
-      }
+      return runRemotePermissionTest(
+        { tag: "PreimageSubmit", value: undefined },
+        `Preimage submit permission for ${chain.name}`,
+      );
     },
   },
   {
@@ -1091,20 +1038,10 @@ export const permissionTests: TestDefinition[] = [
     api: "requestPermission({ tag: 'StatementSubmit', value: undefined })",
     category: "permissions",
     async run(chain) {
-      try {
-        const granted = unwrap(
-          await requestPermission({
-            tag: "StatementSubmit",
-            value: undefined,
-          }),
-        );
-        return success(
-          `Statement submit permission for ${chain.name}: ${granted ? "granted" : "denied"}`,
-        );
-      } catch (err) {
-        const e = err as { name?: string };
-        return error(e.name ?? String(err), err);
-      }
+      return runRemotePermissionTest(
+        { tag: "StatementSubmit", value: undefined },
+        `Statement submit permission for ${chain.name}`,
+      );
     },
   },
 ];
@@ -1114,17 +1051,11 @@ export const statementTests: TestDefinition[] = [
   {
     id: "statement-store-create-proof",
     name: "Create Proof",
-    description: "Creates a statement store proof via getStatementStore",
-    api: "statementStore.createProof(accountId, statement)",
-    args: [
-      {
-        name: "dotNsIdentifier",
-        label: "DotNS ID",
-        defaultValue: SELF_DOTNS,
-      },
-    ],
+    description: "Creates an authorized statement proof via getStatementStore",
+    api: "statementStore.createProofAuthorized(statement)",
+    args: [],
     category: "statements",
-    async run(_chain, _logger, _args) {
+    async run() {
       const statementStore = (await statements());
       const messageBytes = new TextEncoder().encode(`Statement: ${Date.now()}`);
 
@@ -1135,7 +1066,7 @@ export const statementTests: TestDefinition[] = [
           expiry: createExpiryFromDuration(STATEMENT_TTL_SECS),
           channel: undefined,
           topics: [],
-          data: toHex(messageBytes),
+          data: toHexString(messageBytes),
         });
 
         const proofValue = proof.value;
@@ -1160,19 +1091,19 @@ export const statementTests: TestDefinition[] = [
     description: "Creates a statement store proof via authorized account",
     api: "createProofAuthorized(statement)",
     category: "statements",
-    async run(_chain, logger) {
+    async run() {
       const messageBytes = new TextEncoder().encode(`Statement: ${Date.now()}`);
       try {
-        const proof = unwrap(
-          await createProofAuthorized({
-            proof: undefined,
-            decryptionKey: undefined,
-            expiry: createExpiryFromDuration(STATEMENT_TTL_SECS),
-            channel: undefined,
-            topics: [],
-            data: toHex(messageBytes),
-          }),
-        );
+        const result = await createProofAuthorized({
+          proof: undefined,
+          decryptionKey: undefined,
+          expiry: createExpiryFromDuration(STATEMENT_TTL_SECS),
+          channel: undefined,
+          topics: [],
+          data: toHexString(messageBytes),
+        });
+        if (!result.ok) return error(sdkErrorMessage(result.error), result.error);
+        const proof = result.value;
 
         const proofValue = proof.value;
         const signature =
@@ -1192,15 +1123,9 @@ export const statementTests: TestDefinition[] = [
     name: "Submit Statement",
     description: "Creates a proof then submits the signed statement",
     api: "statementStore.submit(signedStatement)",
-    args: [
-      {
-        name: "dotNsIdentifier",
-        label: "DotNS ID",
-        defaultValue: SELF_DOTNS,
-      },
-    ],
+    args: [],
     category: "statements",
-    async run(_chain, logger, _args) {
+    async run(_chain, logger) {
       const log = logger || (() => {});
 
       const statementStore = (await statements());
@@ -1212,7 +1137,7 @@ export const statementTests: TestDefinition[] = [
         expiry: createExpiryFromDuration(STATEMENT_TTL_SECS),
         channel: undefined,
         topics: [],
-        data: toHex(messageBytes),
+        data: toHexString(messageBytes),
       };
 
       try {
@@ -1226,7 +1151,7 @@ export const statementTests: TestDefinition[] = [
           expiry: createExpiryFromDuration(STATEMENT_TTL_SECS),
           channel: undefined,
           topics: [],
-          data: toHex(messageBytes),
+          data: toHexString(messageBytes),
         };
         log("Submitting signed statement...");
         await statementStore.submit(signedStatement);
@@ -1429,11 +1354,12 @@ export const preimageTests: TestDefinition[] = [
 
       log("Requesting BulletinAllowance...");
       try {
-        unwrap(
-          await requestResourceAllocation([
-            { tag: "BulletinAllowance", value: undefined },
-          ]),
-        );
+        const allocation = await requestResourceAllocation([
+          { tag: "BulletinAllowance", value: undefined },
+        ]);
+        if (!allocation.ok) {
+          return error(sdkErrorMessage(allocation.error), allocation.error);
+        }
       } catch (allocErr) {
         return error("Bulletin allowance request failed", allocErr);
       }
@@ -1475,7 +1401,16 @@ export const preimageTests: TestDefinition[] = [
       log("Fetching by CID via queryBytes (host preimage lookup, up to 60s)...");
       let fetched: Uint8Array;
       try {
-        fetched = unwrap(await queryBytes(cid, { lookupTimeoutMs: 60_000 }));
+        const fetchResult = await queryBytes(cid, { lookupTimeoutMs: 60_000 });
+        if (!fetchResult.ok) {
+          return error("Fetch by CID via host failed", {
+            cid,
+            hash,
+            submitted: toHex(payload),
+            reason: sdkErrorMessage(fetchResult.error),
+          });
+        }
+        fetched = fetchResult.value;
       } catch (e) {
         return error("Fetch by CID via host failed", {
           cid,
@@ -1638,7 +1573,7 @@ export const navigationTests: TestDefinition[] = [
     async run(_chain, logger, args) {
       const url = args?.url ?? "https://search.dot";
       try {
-        unwrap(await navigateTo(url));
+        await navigateTo(url);
         return success(`Navigated to ${url}`);
       } catch (err) {
         const e = err as { name?: string };
@@ -1656,7 +1591,7 @@ export const navigationTests: TestDefinition[] = [
     async run(_chain, logger, args) {
       const url = args?.url ?? "https://polkadot.com";
       try {
-        unwrap(await navigateTo(url));
+        await navigateTo(url);
         return success(`Navigated to ${url}`);
       } catch (err) {
         const e = err as { name?: string };
@@ -1677,8 +1612,9 @@ export const chainTests: TestDefinition[] = [
     category: "chain",
     async run(chain: ChainConfig) {
       try {
-        const spec = unwrap(await getChainSpec(chain.genesis));
-        return success(`Genesis hash: ${spec?.genesisHash}`);
+        const result = await getChainSpec(chain.genesis);
+        if (!result.ok) return error(sdkErrorMessage(result.error), result.error);
+        return success(`Genesis hash: ${result.value?.genesisHash}`);
       } catch (err) {
         const e = err as { name?: string };
         return error(e.name ?? String(err), err);
@@ -1693,8 +1629,9 @@ export const chainTests: TestDefinition[] = [
     category: "chain",
     async run(chain: ChainConfig) {
       try {
-        const spec = unwrap(await getChainSpec(chain.genesis));
-        return success(`Chain name: ${spec?.name}`);
+        const result = await getChainSpec(chain.genesis);
+        if (!result.ok) return error(sdkErrorMessage(result.error), result.error);
+        return success(`Chain name: ${result.value?.name}`);
       } catch (err) {
         const e = err as { name?: string };
         return error(e.name ?? String(err), err);
@@ -1710,8 +1647,9 @@ export const chainTests: TestDefinition[] = [
     category: "chain",
     async run(chain: ChainConfig) {
       try {
-        const spec = unwrap(await getChainSpec(chain.genesis));
-        return success(`Properties: ${spec?.propertiesRaw}`);
+        const result = await getChainSpec(chain.genesis);
+        if (!result.ok) return error(sdkErrorMessage(result.error), result.error);
+        return success(`Properties: ${result.value?.propertiesRaw}`);
       } catch (err) {
         const e = err as { name?: string };
         return error(e.name ?? String(err), err);
@@ -1727,9 +1665,12 @@ export const chainTests: TestDefinition[] = [
     category: "chain",
     async run(chain: ChainConfig) {
       try {
-        const operationId = unwrap(
-          await broadcastTransaction(chain.genesis, "0x00" as `0x${string}`),
+        const result = await broadcastTransaction(
+          chain.genesis,
+          "0x00" as `0x${string}`,
         );
+        if (!result.ok) return error(sdkErrorMessage(result.error), result.error);
+        const operationId = result.value;
         return operationId
           ? success(`Broadcast started, operationId: ${operationId}`)
           : success("Broadcast accepted (no operationId)");
@@ -1751,9 +1692,12 @@ export const chainTests: TestDefinition[] = [
 
       let operationId: string | null;
       try {
-        operationId = unwrap(
-          await broadcastTransaction(chain.genesis, "0x00" as `0x${string}`),
+        const result = await broadcastTransaction(
+          chain.genesis,
+          "0x00" as `0x${string}`,
         );
+        if (!result.ok) return error(sdkErrorMessage(result.error), result.error);
+        operationId = result.value;
       } catch (err) {
         const e = err as { name?: string };
         return error(e.name ?? String(err), err);
@@ -1764,7 +1708,8 @@ export const chainTests: TestDefinition[] = [
 
       log(`Stopping broadcast ${operationId}...`);
       try {
-        unwrap(await stopTransaction(chain.genesis, operationId));
+        const result = await stopTransaction(chain.genesis, operationId);
+        if (!result.ok) return error(sdkErrorMessage(result.error), result.error);
         return success(`Stopped broadcast ${operationId}`);
       } catch (err) {
         const e = err as { name?: string };
@@ -2238,8 +2183,9 @@ export const contractTests: TestDefinition[] = [
     name: "Contract: Store Value if Person",
     description:
       "Generates a Ring VRF personhood proof (createRingVRFProof) and calls storeValueIfPerson; the contract verifies it via the individuality precompile (0x…0a010000) and stores the value only for a verified person. NOTE: needs an individuality-provisioned network AND a host matching the app's product-sdk — otherwise createRingVRFProof times out or the proof is rejected.",
-    api: "createRingVRFProof(dotNsId, 0, location, message) → contract.send('storeValueIfPerson', { _value, request })",
-    warning: "Not working: needs a host+network with the individuality ring provisioned (createRingVRFProof returns RingNotFound otherwise)",
+    api: "createRingVRFProof(context, location, message) → contract.send('storeValueIfPerson', { _value, request })",
+    warning:
+      "Not working: needs a host+network with the individuality ring provisioned (createRingVRFProof returns RingNotFound otherwise)",
     args: [
       {
         name: "value",
@@ -2269,20 +2215,15 @@ export const contractTests: TestDefinition[] = [
         // caller's H160 — so generate the proof over that exact address.
         const message = fromHex(deriveH160(account.publicKey));
 
-        // 0.18: createRingVRFProof(dotNsId, derivationIndex, location, message)
-        // returns only the proof bytes. Location is the 0.18 shape
-        // { genesisHash, ringRootHash, hints }; a placeholder zero root is used
-        // (no on-chain ring lookup here) and the call is guarded by a timeout.
+        // 0.19: createRingVRFProof resolves the ring itself and returns the full
+        // bundle {proof, contextualAlias, ringIndex, ringRevision}. Guarded by a
+        // timeout since an unprovisioned host never answers.
         log("Requesting Ring VRF personhood proof (createRingVRFProof)...");
         const proofResult = await Promise.race([
           accountsProvider
             .createRingVRFProof(
-              SELF_DOTNS,
-              0,
-              {
-                genesisHash: chain.genesis,
-                ringRootHash: `0x${"00".repeat(32)}`,
-              },
+              { productId: SELF_DOTNS, suffix: "0x" },
+              { chainId: chain.genesis, junctions: [] },
               message,
             )
             .match(
@@ -2300,21 +2241,10 @@ export const contractTests: TestDefinition[] = [
         if (!proofResult.ok) {
           return error(`createRingVRFProof ${proofResult.reason}`);
         }
-        const proofBytes = proofResult.proof;
-        log(`Proof received (${proofBytes.length} bytes)`);
-
-        // 0.18 returns only the proof, so fetch the contextual alias separately;
-        // ringIndex/revision aren't exposed (default 0).
-        const aliasResult = await accountsProvider
-          .getProductAccountAlias(SELF_DOTNS, 0)
-          .match(
-            (a) => ({ ok: true as const, alias: a }),
-            (e) => ({ ok: false as const, reason: e.tag }),
-          );
-        if (!aliasResult.ok) {
-          return error(`getProductAccountAlias ${aliasResult.reason}`);
-        }
-        const alias = aliasResult.alias;
+        const proof = proofResult.proof;
+        log(
+          `Proof received (ring ${proof.ringIndex}, revision ${proof.ringRevision})`,
+        );
 
         const allowanceError = await ensureSmartContractAllowance(
           log,
@@ -2332,15 +2262,15 @@ export const contractTests: TestDefinition[] = [
 
         const value = BigInt(args?.value ?? "7");
         // expectedStatus 2 = Full personhood tier (1 = Lite). `message` is
-        // overwritten with msg.sender inside the contract. ringIndex/revision
-        // are 0 on 0.18 (not exposed by createRingVRFProof).
+        // overwritten with msg.sender inside the contract; the alias/ring
+        // metadata come from the proof bundle.
         const request = {
           expectedStatus: 2,
-          proof: proofBytes,
-          expectedAlias: alias.alias,
-          ringIndex: 0,
-          context: alias.context,
-          revision: 0,
+          proof: proof.proof,
+          expectedAlias: proof.contextualAlias.alias,
+          ringIndex: proof.ringIndex,
+          context: proof.contextualAlias.context,
+          revision: proof.ringRevision,
           message,
         };
 
@@ -2388,7 +2318,7 @@ export const contractTests: TestDefinition[] = [
 
         return success(`Stored value ${value} with personhood proof`, {
           value: String(value),
-          alias: toHex(alias.alias),
+          alias: toHex(proof.contextualAlias.alias),
           contract: HOSTAPI_DEMO_ADDRESS,
         });
       } catch (e) {
@@ -2443,10 +2373,10 @@ export const entropyTests: TestDefinition[] = [
       const keyText = args?.key ?? "my-secret-key";
       const key = new TextEncoder().encode(keyText);
 
-      // The Parity `deriveEntropy` wrapper unwraps the ResultAsync internally
-      // and throws on error - signature is `(key) => Promise<Uint8Array>`.
       try {
-        const entropy = unwrap(await deriveEntropy(key));
+        const result = await deriveEntropy(key);
+        if (!result.ok) return error(sdkErrorMessage(result.error), result.error);
+        const entropy = result.value;
         return success(`Derived ${entropy.length} bytes of entropy`, {
           entropyHex: toHex(entropy),
         });
@@ -2480,7 +2410,7 @@ export const authTests: TestDefinition[] = [
 
       return result.match(
         (loginResult) => success(`Login result: ${loginResult}`),
-        (err) => error(`${err.tag}`, err),
+        (err) => error(sdkErrorMessage(err), err),
       );
     },
   },
@@ -2499,7 +2429,7 @@ export const authTests: TestDefinition[] = [
           success("User identity", {
             ...account,
           }),
-        (err) => error(`${err.tag}`, err),
+        (err) => error(sdkErrorMessage(err), err),
       );
     },
   },
@@ -2544,12 +2474,12 @@ type AllocatableResource =
 
 async function runResourceAllocation(resources: AllocatableResource[]) {
   try {
-    const outcomes = unwrap(await requestResourceAllocation(resources)).map(
-      (o, i) => ({
-        resource: resources[i].tag,
-        outcome: o,
-      }),
-    );
+    const result = await requestResourceAllocation(resources);
+    if (!result.ok) return error(sdkErrorMessage(result.error), result.error);
+    const outcomes = result.value.map((o, i) => ({
+      resource: resources[i].tag,
+      outcome: o,
+    }));
     return success(`Received ${outcomes.length} outcome(s)`, outcomes);
   } catch (err) {
     const e = err as { name?: string };
