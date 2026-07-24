@@ -24,7 +24,7 @@ if (!chatManager) {
       if (status === "New") {
         return chatManager.sendMessage(ROOM_ID, {
           tag: "Text",
-          value: `Echo bot is online! Send "${TRIGGER} <message>" to get a reply.`,
+          value: { text: `Echo bot is online! Send "${TRIGGER} <message>" to get a reply.` },
         });
       }
     })
@@ -35,13 +35,13 @@ if (!chatManager) {
     if (action.payload.tag !== "MessagePosted") return;
     if (action.roomId !== ROOM_ID) return;
     if (action.payload.value.tag !== "Text") return;
-    const text = action.payload.value.value;
+    const text = action.payload.value.value.text;
     if (!text.startsWith(TRIGGER)) return;
     const body = text.slice(TRIGGER.length).trim();
     console.log("[echo-bot worker] echoing:", body);
     await chatManager.sendMessage(ROOM_ID, {
       tag: "Text",
-      value: body.length > 0 ? `Echo: ${body}` : "Usage: !echo <message>",
+      value: { text: body.length > 0 ? `Echo: ${body}` : "Usage: !echo <message>" },
     });
   });
 }

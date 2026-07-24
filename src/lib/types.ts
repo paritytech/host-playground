@@ -80,7 +80,7 @@ export const CHAINS = {
     name: "Previewnet Hub",
     network: "Testnet",
     genesis:
-      "0x4bad3ce960c32a1d55005d258883d14fc6eca4486af35500bed93c314fbdb192" as const,
+      "0x29f7b15e6227f86b90bf5199b5c872c28649a30e5f15fae6dd8fa9d5d48d6fbb" as const,
     wsUrl: "wss://previewnet.substrate.dev/asset-hub",
     ss58Prefix: 0,
   },

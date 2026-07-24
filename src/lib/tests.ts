@@ -19,6 +19,8 @@ import {
   getChainSpec,
   broadcastTransaction,
   stopTransaction,
+  toHex,
+  fromHex,
   type AccountsProvider,
   type HostLocalStorage,
   type HostStatementStore,
@@ -27,6 +29,7 @@ import {
   type RemotePermissionItem,
 } from "@parity/product-sdk/host";
 import { WellKnownChain } from "@parity/product-sdk/chain";
+import { deriveH160 } from "@parity/product-sdk/address";
 import {
   calculateCid,
   cidToPreimageKey,
@@ -39,7 +42,6 @@ import {
   createClient,
   type PolkadotClient,
 } from "polkadot-api";
-import { toHex, fromHex } from "polkadot-api/utils";
 import { createInkSdk } from "@polkadot-api/sdk-ink";
 import { contracts } from "@polkadot-api/descriptors";
 import { CHAINS } from "./types";
@@ -53,6 +55,16 @@ import {
 import { getSelfDotNs } from "./dotns";
 import { getApp } from "./app";
 
+// The host + cloud-storage wrappers now return Result<T, E> instead of throwing.
+// unwrap returns the value or throws the error, so the existing try/catch
+// reporting in each test still applies.
+function unwrap<T>(
+  result: { ok: true; value: T } | { ok: false; error: unknown },
+): T {
+  if (result.ok) return result.value;
+  throw result.error;
+}
+
 // Cache papi clients per genesis — avoids in-flight chainHead events from a
 // destroyed client corrupting a new client's block tree (undefined.children).
 const clientCache = new Map<string, PolkadotClient>();
@@ -63,7 +75,7 @@ async function getClient(genesis: `0x${string}`): Promise<PolkadotClient> {
     // fast with a clear message instead of papi's cryptic "undefined.children".
     let supported = false;
     try {
-      supported = await isChainSupported(genesis);
+      supported = unwrap(await isChainSupported(genesis));
     } catch {
       // treat probe failure as unsupported and fall through to the throw
     }
@@ -127,8 +139,11 @@ async function pm(): Promise<PreimageManager> {
 
 let cachedStatementStore: HostStatementStore | null = null;
 async function statements(): Promise<HostStatementStore> {
+  console.log("[statements] entry; cached?", !!cachedStatementStore);
   if (cachedStatementStore) return cachedStatementStore;
+  console.log("[statements] awaiting getStatementStore()...");
   const s = await getStatementStore();
+  console.log("[statements] getStatementStore() returned:", s);
   if (!s)
     throw new Error(
       "getStatementStore returned null - not inside a host container",
@@ -191,7 +206,7 @@ async function ensureDevicePermission(
 ): Promise<TestResult | null> {
   log(`Requesting device permission: ${permission}...`);
   try {
-    const granted = await requestDevicePermission(permission);
+    const granted = unwrap(await requestDevicePermission(permission));
     return granted
       ? null
       : error(`Device permission not granted: ${permission}`, { granted });
@@ -234,10 +249,12 @@ async function ensureSmartContractAllowance(
 
   log(`Requesting SmartContractAllowance(${derivationIndex})...`);
   try {
-    const outcomes = await requestResourceAllocation([
-      { tag: "SmartContractAllowance", value: derivationIndex },
-    ]);
-    const outcome = outcomes[0]?.tag;
+    const outcomes = unwrap(
+      await requestResourceAllocation([
+        { tag: "SmartContractAllowance", value: derivationIndex },
+      ]),
+    );
+    const outcome = outcomes[0];
     if (outcome === "Allocated") {
       log(`SmartContractAllowance(${derivationIndex}) allocated`);
       return null;
@@ -264,10 +281,10 @@ function bytesEqual(a: Uint8Array, b: Uint8Array): boolean {
 // rejected with `Statement topic must be 32 bytes`. SHA-256 of the
 // UTF-8 encoding gives a deterministic 32-byte digest that can be
 // matched on subscribe and re-derived elsewhere.
-async function hashTopic(s: string): Promise<Uint8Array> {
+async function hashTopic(s: string): Promise<`0x${string}`> {
   const bytes = new TextEncoder().encode(s);
   const digest = await crypto.subtle.digest("SHA-256", bytes);
-  return new Uint8Array(digest);
+  return toHex(new Uint8Array(digest));
 }
 
 /**
@@ -312,7 +329,7 @@ export const accountTests: TestDefinition[] = [
           success("Product account:", {
             publicKey: toHex(account.publicKey),
           }),
-        (err) => error(`${err.name}`, err),
+        (err) => error(`${err.tag}`, err),
       );
     },
   },
@@ -333,7 +350,7 @@ export const accountTests: TestDefinition[] = [
             name: account.name,
             publicKey: toHex(account.publicKey)
           }))),
-        (err) => error(`${err.name}`, err),
+        (err) => error(`${err.tag}`, err),
       );
     },
   },
@@ -362,7 +379,7 @@ export const accountTests: TestDefinition[] = [
             context: toHex(alias.context),
             alias: toHex(alias.alias),
           }),
-        (err) => error(`${err.name}`, err),
+        (err) => error(`${err.tag}`, err),
       );
     },
   },
@@ -387,15 +404,12 @@ export const accountTests: TestDefinition[] = [
 
       return accountResult.match(
         (account) => {
-          const signer = accountsProvider.getProductAccountSigner(
-            account,
-            "createTransaction",
-          );
+          const signer = accountsProvider.getProductAccountSigner(account);
           return success("Product account signer created", {
             publicKey: toHex(signer.publicKey),
           });
         },
-        (err) => error(`${err.name}`, err),
+        (err) => error(`${err.tag}`, err),
       );
     },
   },
@@ -532,7 +546,7 @@ export const signingTests: TestDefinition[] = [
       const account = accountResult.match(
         (a) => a,
         (err) => {
-          log(`getProductAccount failed: ${err.name}`);
+          log(`getProductAccount failed: ${err.tag}`);
           return null;
         },
       );
@@ -544,10 +558,7 @@ export const signingTests: TestDefinition[] = [
 
       // mode="createTransaction" routes via the host's createTransaction path
       // instead of the default signPayload used by signSubmitAndWatch.
-      const signer = accountsProvider.getProductAccountSigner(
-        account,
-        "createTransaction",
-      );
+      const signer = accountsProvider.getProductAccountSigner(account);
 
       const client = await getClient(chain.genesis);
       const api = client.getUnsafeApi();
@@ -816,7 +827,7 @@ export const permissionTests: TestDefinition[] = [
     category: "permissions",
     async run(chain: ChainConfig) {
       try {
-        const supported = await isChainSupported(chain.genesis);
+        const supported = unwrap(await isChainSupported(chain.genesis));
         return success(`${chain.name} supported: ${supported}`);
       } catch (err) {
         const e = err as { name?: string };
@@ -832,7 +843,7 @@ export const permissionTests: TestDefinition[] = [
     category: "permissions",
     async run() {
       try {
-        const granted = await requestDevicePermission("Camera");
+        const granted = unwrap(await requestDevicePermission("Camera"));
         return success(`Camera permission: ${granted ? "granted" : "denied"}`);
       } catch (err) {
         const e = err as { name?: string };
@@ -848,7 +859,7 @@ export const permissionTests: TestDefinition[] = [
     category: "permissions",
     async run() {
       try {
-        const granted = await requestDevicePermission("Microphone");
+        const granted = unwrap(await requestDevicePermission("Microphone"));
         return success(
           `Microphone permission: ${granted ? "granted" : "denied"}`,
         );
@@ -866,7 +877,7 @@ export const permissionTests: TestDefinition[] = [
     category: "permissions",
     async run() {
       try {
-        const granted = await requestDevicePermission("Location");
+        const granted = unwrap(await requestDevicePermission("Location"));
         return success(
           `Location permission: ${granted ? "granted" : "denied"}`,
         );
@@ -884,7 +895,7 @@ export const permissionTests: TestDefinition[] = [
     category: "permissions",
     async run() {
       try {
-        const granted = await requestDevicePermission("Bluetooth");
+        const granted = unwrap(await requestDevicePermission("Bluetooth"));
         return success(
           `Bluetooth permission: ${granted ? "granted" : "denied"}`,
         );
@@ -902,7 +913,7 @@ export const permissionTests: TestDefinition[] = [
     category: "permissions",
     async run() {
       try {
-        const granted = await requestDevicePermission("Notifications");
+        const granted = unwrap(await requestDevicePermission("Notifications"));
         return success(
           `Notifications permission: ${granted ? "granted" : "denied"}`,
         );
@@ -920,7 +931,7 @@ export const permissionTests: TestDefinition[] = [
     category: "permissions",
     async run() {
       try {
-        const granted = await requestDevicePermission("NFC");
+        const granted = unwrap(await requestDevicePermission("NFC"));
         return success(`NFC permission: ${granted ? "granted" : "denied"}`);
       } catch (err) {
         const e = err as { name?: string };
@@ -936,7 +947,7 @@ export const permissionTests: TestDefinition[] = [
     category: "permissions",
     async run() {
       try {
-        const granted = await requestDevicePermission("Clipboard");
+        const granted = unwrap(await requestDevicePermission("Clipboard"));
         return success(
           `Clipboard permission: ${granted ? "granted" : "denied"}`,
         );
@@ -954,7 +965,7 @@ export const permissionTests: TestDefinition[] = [
     category: "permissions",
     async run() {
       try {
-        const granted = await requestDevicePermission("OpenUrl");
+        const granted = unwrap(await requestDevicePermission("OpenUrl"));
         return success(`OpenUrl permission: ${granted ? "granted" : "denied"}`);
       } catch (err) {
         const e = err as { name?: string };
@@ -970,7 +981,7 @@ export const permissionTests: TestDefinition[] = [
     category: "permissions",
     async run() {
       try {
-        const granted = await requestDevicePermission("Biometrics");
+        const granted = unwrap(await requestDevicePermission("Biometrics"));
         return success(
           `Biometrics permission: ${granted ? "granted" : "denied"}`,
         );
@@ -996,10 +1007,12 @@ export const permissionTests: TestDefinition[] = [
     async run(_chain, _logger, args) {
       const url = args?.url ?? "https://example.com";
       try {
-        const granted = await requestPermission({
-          tag: "Remote",
-          value: [url],
-        });
+        const granted = unwrap(
+          await requestPermission({
+            tag: "Remote",
+            value: { domains: [url] },
+          }),
+        );
         return success(`Remote permission: ${granted ? "granted" : "denied"}`);
       } catch (err) {
         const e = err as { name?: string };
@@ -1015,10 +1028,12 @@ export const permissionTests: TestDefinition[] = [
     category: "permissions",
     async run() {
       try {
-        const granted = await requestPermission({
-          tag: "WebRtc",
-          value: undefined,
-        });
+        const granted = unwrap(
+          await requestPermission({
+            tag: "WebRtc",
+            value: undefined,
+          }),
+        );
         return success(`WebRTC permission: ${granted ? "granted" : "denied"}`);
       } catch (err) {
         const e = err as { name?: string };
@@ -1034,10 +1049,12 @@ export const permissionTests: TestDefinition[] = [
     category: "permissions",
     async run(chain) {
       try {
-        const granted = await requestPermission({
-          tag: "ChainSubmit",
-          value: undefined,
-        });
+        const granted = unwrap(
+          await requestPermission({
+            tag: "ChainSubmit",
+            value: undefined,
+          }),
+        );
         return success(
           `Chain submit permission for ${chain.name}: ${granted ? "granted" : "denied"}`,
         );
@@ -1055,10 +1072,12 @@ export const permissionTests: TestDefinition[] = [
     category: "permissions",
     async run(chain) {
       try {
-        const granted = await requestPermission({
-          tag: "PreimageSubmit",
-          value: undefined,
-        });
+        const granted = unwrap(
+          await requestPermission({
+            tag: "PreimageSubmit",
+            value: undefined,
+          }),
+        );
         return success(
           `Preimage submit permission for ${chain.name}: ${granted ? "granted" : "denied"}`,
         );
@@ -1076,10 +1095,12 @@ export const permissionTests: TestDefinition[] = [
     category: "permissions",
     async run(chain) {
       try {
-        const granted = await requestPermission({
-          tag: "StatementSubmit",
-          value: undefined,
-        });
+        const granted = unwrap(
+          await requestPermission({
+            tag: "StatementSubmit",
+            value: undefined,
+          }),
+        );
         return success(
           `Statement submit permission for ${chain.name}: ${granted ? "granted" : "denied"}`,
         );
@@ -1106,26 +1127,28 @@ export const statementTests: TestDefinition[] = [
       },
     ],
     category: "statements",
-    async run(_chain, logger, args) {
-      const dotNsIdentifier = args?.dotNsIdentifier ?? SELF_DOTNS;
-
+    async run(_chain, _logger, _args) {
+      console.log("[create-proof] run start");
       const statementStore = (await statements());
+      console.log("[create-proof] got statement store:", statementStore);
       const messageBytes = new TextEncoder().encode(`Statement: ${Date.now()}`);
 
       try {
-        const proof = await statementStore.createProof([dotNsIdentifier, 0], {
+        console.log("[create-proof] awaiting createProofAuthorized...");
+        const proof = await statementStore.createProofAuthorized({
           proof: undefined,
           decryptionKey: undefined,
           expiry: createExpiryFromDuration(STATEMENT_TTL_SECS),
           channel: undefined,
           topics: [],
-          data: messageBytes,
+          data: toHex(messageBytes),
         });
+        console.log("[create-proof] createProofAuthorized resolved:", proof);
 
         const proofValue = proof.value;
         const sig =
           "signature" in proofValue
-            ? toHex(proofValue.signature).slice(0, 20)
+            ? proofValue.signature.slice(0, 20)
             : "onchain";
         return success(`Proof type: ${proof.tag}, sig: ${sig}...`);
       } catch (e) {
@@ -1147,19 +1170,21 @@ export const statementTests: TestDefinition[] = [
     async run(_chain, logger) {
       const messageBytes = new TextEncoder().encode(`Statement: ${Date.now()}`);
       try {
-        const proof = await createProofAuthorized({
-          proof: undefined,
-          decryptionKey: undefined,
-          expiry: createExpiryFromDuration(STATEMENT_TTL_SECS),
-          channel: undefined,
-          topics: [],
-          data: messageBytes,
-        });
+        const proof = unwrap(
+          await createProofAuthorized({
+            proof: undefined,
+            decryptionKey: undefined,
+            expiry: createExpiryFromDuration(STATEMENT_TTL_SECS),
+            channel: undefined,
+            topics: [],
+            data: toHex(messageBytes),
+          }),
+        );
 
         const proofValue = proof.value;
         const signature =
           "signature" in proofValue
-            ? toHex(proofValue.signature).slice(0, 20)
+            ? proofValue.signature.slice(0, 20)
             : "onchain";
 
         return success(`Proof type: ${proof.tag}, sig: ${signature}...`);
@@ -1182,9 +1207,8 @@ export const statementTests: TestDefinition[] = [
       },
     ],
     category: "statements",
-    async run(_chain, logger, args) {
+    async run(_chain, logger, _args) {
       const log = logger || (() => {});
-      const dotNsIdentifier = args?.dotNsIdentifier ?? SELF_DOTNS;
 
       const statementStore = (await statements());
       const messageBytes = new TextEncoder().encode(`Statement: ${Date.now()}`);
@@ -1195,15 +1219,12 @@ export const statementTests: TestDefinition[] = [
         expiry: createExpiryFromDuration(STATEMENT_TTL_SECS),
         channel: undefined,
         topics: [],
-        data: messageBytes,
+        data: toHex(messageBytes),
       };
 
       try {
         log("Creating proof...");
-        const proof = await statementStore.createProof(
-          [dotNsIdentifier, 0],
-          statement,
-        );
+        const proof = await statementStore.createProofAuthorized(statement);
         log(`Proof created: ${proof.tag}`);
 
         const signedStatement = {
@@ -1212,7 +1233,7 @@ export const statementTests: TestDefinition[] = [
           expiry: createExpiryFromDuration(STATEMENT_TTL_SECS),
           channel: undefined,
           topics: [],
-          data: messageBytes,
+          data: toHex(messageBytes),
         };
         log("Submitting signed statement...");
         await statementStore.submit(signedStatement);
@@ -1415,9 +1436,11 @@ export const preimageTests: TestDefinition[] = [
 
       log("Requesting BulletinAllowance...");
       try {
-        await requestResourceAllocation([
-          { tag: "BulletinAllowance", value: undefined },
-        ]);
+        unwrap(
+          await requestResourceAllocation([
+            { tag: "BulletinAllowance", value: undefined },
+          ]),
+        );
       } catch (allocErr) {
         return error("Bulletin allowance request failed", allocErr);
       }
@@ -1459,7 +1482,7 @@ export const preimageTests: TestDefinition[] = [
       log("Fetching by CID via queryBytes (host preimage lookup, up to 60s)...");
       let fetched: Uint8Array;
       try {
-        fetched = await queryBytes(cid, { lookupTimeoutMs: 60_000 });
+        fetched = unwrap(await queryBytes(cid, { lookupTimeoutMs: 60_000 }));
       } catch (e) {
         return error("Fetch by CID via host failed", {
           cid,
@@ -1521,7 +1544,7 @@ export const notificationTests: TestDefinition[] = [
 
       // Relative seconds → absolute epoch-ms; empty means immediate.
       const rawSeconds = args?.scheduleInSeconds?.trim() ?? "";
-      let scheduledAt: number | undefined;
+      let scheduledAt: bigint | undefined;
       if (rawSeconds !== "") {
         const seconds = Number(rawSeconds);
         if (!Number.isFinite(seconds) || seconds <= 0) {
@@ -1530,7 +1553,7 @@ export const notificationTests: TestDefinition[] = [
             `"Schedule in" must be a positive number of seconds, got "${rawSeconds}"`,
           );
         }
-        scheduledAt = Date.now() + Math.round(seconds * 1000);
+        scheduledAt = BigInt(Date.now() + Math.round(seconds * 1000));
       }
 
       const permErr = await ensureDevicePermission(log, "Notifications");
@@ -1622,7 +1645,7 @@ export const navigationTests: TestDefinition[] = [
     async run(_chain, logger, args) {
       const url = args?.url ?? "https://search.dot";
       try {
-        await navigateTo(url);
+        unwrap(await navigateTo(url));
         return success(`Navigated to ${url}`);
       } catch (err) {
         const e = err as { name?: string };
@@ -1640,7 +1663,7 @@ export const navigationTests: TestDefinition[] = [
     async run(_chain, logger, args) {
       const url = args?.url ?? "https://polkadot.com";
       try {
-        await navigateTo(url);
+        unwrap(await navigateTo(url));
         return success(`Navigated to ${url}`);
       } catch (err) {
         const e = err as { name?: string };
@@ -1661,7 +1684,7 @@ export const chainTests: TestDefinition[] = [
     category: "chain",
     async run(chain: ChainConfig) {
       try {
-        const spec = await getChainSpec(chain.genesis);
+        const spec = unwrap(await getChainSpec(chain.genesis));
         return success(`Genesis hash: ${spec?.genesisHash}`);
       } catch (err) {
         const e = err as { name?: string };
@@ -1677,7 +1700,7 @@ export const chainTests: TestDefinition[] = [
     category: "chain",
     async run(chain: ChainConfig) {
       try {
-        const spec = await getChainSpec(chain.genesis);
+        const spec = unwrap(await getChainSpec(chain.genesis));
         return success(`Chain name: ${spec?.name}`);
       } catch (err) {
         const e = err as { name?: string };
@@ -1694,7 +1717,7 @@ export const chainTests: TestDefinition[] = [
     category: "chain",
     async run(chain: ChainConfig) {
       try {
-        const spec = await getChainSpec(chain.genesis);
+        const spec = unwrap(await getChainSpec(chain.genesis));
         return success(`Properties: ${spec?.propertiesRaw}`);
       } catch (err) {
         const e = err as { name?: string };
@@ -1711,9 +1734,8 @@ export const chainTests: TestDefinition[] = [
     category: "chain",
     async run(chain: ChainConfig) {
       try {
-        const operationId = await broadcastTransaction(
-          chain.genesis,
-          "0x00" as `0x${string}`,
+        const operationId = unwrap(
+          await broadcastTransaction(chain.genesis, "0x00" as `0x${string}`),
         );
         return operationId
           ? success(`Broadcast started, operationId: ${operationId}`)
@@ -1736,9 +1758,8 @@ export const chainTests: TestDefinition[] = [
 
       let operationId: string | null;
       try {
-        operationId = await broadcastTransaction(
-          chain.genesis,
-          "0x00" as `0x${string}`,
+        operationId = unwrap(
+          await broadcastTransaction(chain.genesis, "0x00" as `0x${string}`),
         );
       } catch (err) {
         const e = err as { name?: string };
@@ -1750,7 +1771,7 @@ export const chainTests: TestDefinition[] = [
 
       log(`Stopping broadcast ${operationId}...`);
       try {
-        await stopTransaction(chain.genesis, operationId);
+        unwrap(await stopTransaction(chain.genesis, operationId));
         return success(`Stopped broadcast ${operationId}`);
       } catch (err) {
         const e = err as { name?: string };
@@ -1880,10 +1901,7 @@ export const contractTests: TestDefinition[] = [
       );
       if (!account) return error("No product account available");
 
-      const signer = accountsProvider.getProductAccountSigner(
-        account,
-        "createTransaction",
-      );
+      const signer = accountsProvider.getProductAccountSigner(account);
       const origin = AccountId().dec(account.publicKey);
 
       const allowanceError = await ensureSmartContractAllowance(
@@ -2036,10 +2054,7 @@ export const contractTests: TestDefinition[] = [
       );
       if (!account) return error("No product account available");
 
-      const signer = accountsProvider.getProductAccountSigner(
-        account,
-        "createTransaction",
-      );
+      const signer = accountsProvider.getProductAccountSigner(account);
       const origin = AccountId().dec(account.publicKey);
 
       const allowanceError = await ensureSmartContractAllowance(
@@ -2131,10 +2146,7 @@ export const contractTests: TestDefinition[] = [
       );
       if (!account) return error("No product account available");
 
-      const signer = accountsProvider.getProductAccountSigner(
-        account,
-        "createTransaction",
-      );
+      const signer = accountsProvider.getProductAccountSigner(account);
       const origin = AccountId().dec(account.publicKey);
 
       const allowanceError = await ensureSmartContractAllowance(
@@ -2228,6 +2240,169 @@ export const contractTests: TestDefinition[] = [
       }
     },
   },
+  {
+    id: "contract-store-value-if-person",
+    name: "Contract: Store Value if Person",
+    description:
+      "Generates a Ring VRF personhood proof (createRingVRFProof) and calls storeValueIfPerson; the contract verifies it via the individuality precompile (0x…0a010000) and stores the value only for a verified person. NOTE: needs an individuality-provisioned network AND a host matching the app's product-sdk — otherwise createRingVRFProof times out or the proof is rejected.",
+    api: "createRingVRFProof(dotNsId, 0, location, message) → contract.send('storeValueIfPerson', { _value, request })",
+    warning: "Needs an individuality-provisioned network + matching host; times out otherwise",
+    args: [
+      {
+        name: "value",
+        label: "Value (uint256)",
+        defaultValue: "7",
+      },
+    ],
+    category: "contract",
+    async run(chain: ChainConfig, logger?: TestLogger, args?) {
+      const log = logger || (() => {});
+
+      try {
+        log("Fetching product account...");
+        const accountsProvider = await accounts();
+        const account = await accountsProvider
+          .getProductAccount(SELF_DOTNS, 0)
+          .match(
+            (a) => a,
+            () => null,
+          );
+        if (!account) return error("No product account available");
+
+        const signer = accountsProvider.getProductAccountSigner(account);
+        const origin = AccountId().dec(account.publicKey);
+
+        // The contract binds the proof to `abi.encodePacked(msg.sender)` — the
+        // caller's H160 — so generate the proof over that exact address.
+        const message = fromHex(deriveH160(account.publicKey));
+
+        // 0.18: createRingVRFProof(dotNsId, derivationIndex, location, message)
+        // returns only the proof bytes. Location is the 0.18 shape
+        // { genesisHash, ringRootHash, hints }; a placeholder zero root is used
+        // (no on-chain ring lookup here) and the call is guarded by a timeout.
+        log("Requesting Ring VRF personhood proof (createRingVRFProof)...");
+        const proofResult = await Promise.race([
+          accountsProvider
+            .createRingVRFProof(
+              SELF_DOTNS,
+              0,
+              {
+                genesisHash: chain.genesis,
+                ringRootHash: `0x${"00".repeat(32)}`,
+              },
+              message,
+            )
+            .match(
+              (p) => ({ ok: true as const, proof: p }),
+              (e) => ({ ok: false as const, reason: e.tag }),
+            ),
+          new Promise<{ ok: false; reason: string }>((resolve) =>
+            setTimeout(
+              () =>
+                resolve({ ok: false, reason: "timed out (host never answered)" }),
+              15000,
+            ),
+          ),
+        ]);
+        if (!proofResult.ok) {
+          return error(`createRingVRFProof ${proofResult.reason}`);
+        }
+        const proofBytes = proofResult.proof;
+        log(`Proof received (${proofBytes.length} bytes)`);
+
+        // 0.18 returns only the proof, so fetch the contextual alias separately;
+        // ringIndex/revision aren't exposed (default 0).
+        const aliasResult = await accountsProvider
+          .getProductAccountAlias(SELF_DOTNS, 0)
+          .match(
+            (a) => ({ ok: true as const, alias: a }),
+            (e) => ({ ok: false as const, reason: e.tag }),
+          );
+        if (!aliasResult.ok) {
+          return error(`getProductAccountAlias ${aliasResult.reason}`);
+        }
+        const alias = aliasResult.alias;
+
+        const allowanceError = await ensureSmartContractAllowance(
+          log,
+          chain,
+          account,
+        );
+        if (allowanceError) return allowanceError;
+
+        const client = await getClient(chain.genesis);
+        const sdk = createInkSdk(client);
+        const contract = sdk.getContract(
+          contracts.hostApiDemo,
+          HOSTAPI_DEMO_ADDRESS,
+        );
+
+        const value = BigInt(args?.value ?? "7");
+        // expectedStatus 2 = Full personhood tier (1 = Lite). `message` is
+        // overwritten with msg.sender inside the contract. ringIndex/revision
+        // are 0 on 0.18 (not exposed by createRingVRFProof).
+        const request = {
+          expectedStatus: 2,
+          proof: proofBytes,
+          expectedAlias: alias.alias,
+          ringIndex: 0,
+          context: alias.context,
+          revision: 0,
+          message,
+        };
+
+        log("Dry-running storeValueIfPerson...");
+        const dryRun = await contract.query("storeValueIfPerson", {
+          origin,
+          data: { _value: value, request },
+        });
+        if (!dryRun.success) {
+          return error(
+            "Dry-run failed — proof rejected (not a verified person?)",
+            dryRun.value,
+          );
+        }
+
+        log("Signing and submitting...");
+        let settled = false;
+        await new Promise<void>((resolve, reject) => {
+          dryRun.value
+            .send()
+            .signSubmitAndWatch(signer)
+            .subscribe({
+              // eslint-disable-next-line @typescript-eslint/no-explicit-any
+              next: (ev: any) => {
+                log(`Event: ${ev.type}`);
+                if (ev.type === "txBestBlocksState" && ev.found) {
+                  settled = true;
+                  resolve();
+                }
+                if (ev.type === "finalized" && !ev.ok) {
+                  settled = true;
+                  reject(new Error("Tx failed"));
+                }
+              },
+              error: (err: unknown) => {
+                settled = true;
+                reject(err);
+              },
+              complete: () => {
+                if (!settled)
+                  reject(new Error("tx stream completed before settling"));
+              },
+            });
+        });
+
+        return success(`Stored value ${value} with personhood proof`, {
+          value: String(value),
+          alias: toHex(alias.alias),
+          contract: HOSTAPI_DEMO_ADDRESS,
+        });
+      } catch (e) {
+        return error(e instanceof Error ? e.message : String(e), e);
+      }
+    },
+  },
 ];
 
 // Theme Tests (v0.7)
@@ -2278,7 +2453,7 @@ export const entropyTests: TestDefinition[] = [
       // The Parity `deriveEntropy` wrapper unwraps the ResultAsync internally
       // and throws on error - signature is `(key) => Promise<Uint8Array>`.
       try {
-        const entropy = await deriveEntropy(key);
+        const entropy = unwrap(await deriveEntropy(key));
         return success(`Derived ${entropy.length} bytes of entropy`, {
           entropyHex: toHex(entropy),
         });
@@ -2312,7 +2487,7 @@ export const authTests: TestDefinition[] = [
 
       return result.match(
         (loginResult) => success(`Login result: ${loginResult}`),
-        (err) => error(`${err.name}`, err),
+        (err) => error(`${err.tag}`, err),
       );
     },
   },
@@ -2331,7 +2506,7 @@ export const authTests: TestDefinition[] = [
           success("User identity", {
             ...account,
           }),
-        (err) => error(`${err.name}`, err),
+        (err) => error(`${err.tag}`, err),
       );
     },
   },
@@ -2376,11 +2551,12 @@ type AllocatableResource =
 
 async function runResourceAllocation(resources: AllocatableResource[]) {
   try {
-    const result = await requestResourceAllocation(resources);
-    const outcomes = result.map((o, i) => ({
-      resource: resources[i].tag,
-      outcome: o.tag,
-    }));
+    const outcomes = unwrap(await requestResourceAllocation(resources)).map(
+      (o, i) => ({
+        resource: resources[i].tag,
+        outcome: o,
+      }),
+    );
     return success(`Received ${outcomes.length} outcome(s)`, outcomes);
   } catch (err) {
     const e = err as { name?: string };

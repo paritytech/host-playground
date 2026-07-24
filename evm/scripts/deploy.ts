@@ -14,7 +14,7 @@ async function main() {
 
   const artifact = JSON.parse(
     fs.readFileSync(
-      path.join(OUT_DIR, "HostApiDemo.sol/HostApiDemo.json"),
+      path.join(OUT_DIR, "HostDemo.sol/HostDemo.json"),
       "utf-8",
     ),
   );
@@ -31,7 +31,7 @@ async function main() {
     JSON.stringify(deployment, null, 2) + "\n",
   );
 
-  console.log(`\nHostApiDemo deployed at: ${address}`);
+  console.log(`\nHostDemo deployed at: ${address}`);
   console.log(`Wrote ${path.relative(EVM_DIR, DEPLOYMENT_FILE)}`);
 }
 

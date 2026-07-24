@@ -1,0 +1,1 @@
+../../../../product-infrastructure/submodules/individuality/precompiles/personhood/sol/IPersonhood.sol
