@@ -139,11 +139,8 @@ async function pm(): Promise<PreimageManager> {
 
 let cachedStatementStore: HostStatementStore | null = null;
 async function statements(): Promise<HostStatementStore> {
-  console.log("[statements] entry; cached?", !!cachedStatementStore);
   if (cachedStatementStore) return cachedStatementStore;
-  console.log("[statements] awaiting getStatementStore()...");
   const s = await getStatementStore();
-  console.log("[statements] getStatementStore() returned:", s);
   if (!s)
     throw new Error(
       "getStatementStore returned null - not inside a host container",
@@ -1128,13 +1125,10 @@ export const statementTests: TestDefinition[] = [
     ],
     category: "statements",
     async run(_chain, _logger, _args) {
-      console.log("[create-proof] run start");
       const statementStore = (await statements());
-      console.log("[create-proof] got statement store:", statementStore);
       const messageBytes = new TextEncoder().encode(`Statement: ${Date.now()}`);
 
       try {
-        console.log("[create-proof] awaiting createProofAuthorized...");
         const proof = await statementStore.createProofAuthorized({
           proof: undefined,
           decryptionKey: undefined,
@@ -1143,7 +1137,6 @@ export const statementTests: TestDefinition[] = [
           topics: [],
           data: toHex(messageBytes),
         });
-        console.log("[create-proof] createProofAuthorized resolved:", proof);
 
         const proofValue = proof.value;
         const sig =
@@ -2246,7 +2239,7 @@ export const contractTests: TestDefinition[] = [
     description:
       "Generates a Ring VRF personhood proof (createRingVRFProof) and calls storeValueIfPerson; the contract verifies it via the individuality precompile (0x…0a010000) and stores the value only for a verified person. NOTE: needs an individuality-provisioned network AND a host matching the app's product-sdk — otherwise createRingVRFProof times out or the proof is rejected.",
     api: "createRingVRFProof(dotNsId, 0, location, message) → contract.send('storeValueIfPerson', { _value, request })",
-    warning: "Needs an individuality-provisioned network + matching host; times out otherwise",
+    warning: "Not working: needs a host+network with the individuality ring provisioned (createRingVRFProof returns RingNotFound otherwise)",
     args: [
       {
         name: "value",
