@@ -43,7 +43,7 @@ import { toHex, fromHex } from "polkadot-api/utils";
 import { createInkSdk } from "@polkadot-api/sdk-ink";
 import { contracts } from "@polkadot-api/descriptors";
 import { CHAINS } from "./types";
-import deployment from "../../programs/deployment.json";
+import deployment from "../../evm/deployment.json";
 import {
   type ChainConfig,
   type TestDefinition,
