@@ -1,6 +1,6 @@
-# Guidance for Claude Code
+# Guidance for Coding Agents
 
-Working notes for anyone driving this repo through Claude Code. Skim, don't memorize.
+Working notes for anyone driving this repo through a coding agent. Skim, don't memorize.
 
 Host Playground is a Next.js app that exercises `@parity/product-sdk` inside the Host webview, validating behavior across product-sdk, Host, and the Polkadot App. See [README.md](README.md) for how to open it and [CONTRIBUTING.md](CONTRIBUTING.md) for documentation style.
 
