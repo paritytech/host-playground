@@ -137,6 +137,7 @@ const CATEGORY_GROUPS: { label: string; categories: TestCategory[] }[] = [
   {
     label: "Network",
     categories: [
+      "signing",
       "statements",
       "preimage",
       "chain",
@@ -150,7 +151,6 @@ const CATEGORY_GROUPS: { label: string; categories: TestCategory[] }[] = [
     categories: [
       "extension",
       "accounts",
-      "signing",
       "storage",
       "permissions",
       "notifications",
@@ -362,14 +362,10 @@ export default function SdkTestPage() {
             )}
           </div>
 
-          {/* Footer */}
-          <footer className="mt-16 border-t border-border/40 py-8 text-center text-sm text-muted-foreground">
-            Host Playground
-          </footer>
         </main>
 
-        {/* Logs, fixed to the right of the viewport, always on screen */}
-        <div className="mt-8 px-8 lg:fixed lg:right-8 lg:top-8 lg:z-40 lg:mt-0 lg:w-115 lg:px-0">
+        {/* Logs, fixed to the right of the viewport, spanning full height */}
+        <div className="mt-8 px-8 lg:fixed lg:bottom-8 lg:right-8 lg:top-8 lg:z-40 lg:mt-0 lg:w-115 lg:px-0">
           <LogViewer
             logs={logs}
             onClear={clearLogs}
