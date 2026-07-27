@@ -5,8 +5,12 @@
   "type": "module",
   "scripts": {
     "dev": "next dev",
+    "dev:previewnet": "NEXT_PUBLIC_NETWORK_GENESIS_HASH=0x29f7b15e6227f86b90bf5199b5c872c28649a30e5f15fae6dd8fa9d5d48d6fbb next dev",
+    "dev:paseo": "NEXT_PUBLIC_NETWORK_GENESIS_HASH=0xbf0488dbe9daa1de1c08c5f743e26fdc2a4ecd74cf87dd1b4b1eeb99ae4ef19f next dev",
     "start": "npx serve out",
     "build": "next build && vite build --config vite.config.worker.ts",
+    "build:previewnet": "NEXT_PUBLIC_NETWORK_GENESIS_HASH=0x29f7b15e6227f86b90bf5199b5c872c28649a30e5f15fae6dd8fa9d5d48d6fbb next build && vite build --config vite.config.worker.ts",
+    "build:paseo": "NEXT_PUBLIC_NETWORK_GENESIS_HASH=0xbf0488dbe9daa1de1c08c5f743e26fdc2a4ecd74cf87dd1b4b1eeb99ae4ef19f next build && vite build --config vite.config.worker.ts",
     "lint": "next lint",
     "lint:fix": "next lint --fix",
     "typecheck": "tsc --noEmit",

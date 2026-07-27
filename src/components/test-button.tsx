@@ -56,7 +56,11 @@ export function TestButton({
   };
 
   return (
-    <div className="border border-border rounded-md overflow-hidden" data-testid={`test-${test.id}`}>
+    <div
+      id={`test-${test.id}`}
+      data-testid={`test-${test.id}`}
+      className="scroll-mt-[calc(var(--header-height)+1rem)] border border-border rounded-md overflow-hidden"
+    >
       <Button
         variant="ghost"
         size="sm"

@@ -29,7 +29,7 @@ const statusVariant: Record<string, "success" | "error" | "info" | "warning"> =
 
 export function LogViewer({ logs, onClear, onExport, onReset }: LogViewerProps) {
   return (
-    <Card className="flex flex-col h-full">
+    <Card className="flex flex-col">
       <CardHeader className="flex flex-row items-center justify-between space-y-0">
         <CardTitle className="text-base font-semibold">Logs</CardTitle>
         <div className="flex gap-2">
