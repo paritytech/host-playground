@@ -1,7 +1,4 @@
 {
-  "env": {
-    "PATH": "/opt/homebrew/bin:/Users/tiago/.bun/bin:/Users/tiago/.nvm/versions/node/v22.13.1/bin:/Users/tiago/.pyenv/versions/3.11.8/bin:/usr/bin:/bin:/usr/sbin:/sbin:/usr/local/bin"
-  },
   "permissions": {
     "allow": [
       "Bash(yarn typecheck)",
