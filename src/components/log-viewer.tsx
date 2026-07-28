@@ -29,7 +29,7 @@ const statusVariant: Record<string, "success" | "error" | "info" | "warning"> =
 
 export function LogViewer({ logs, onClear, onExport, onReset }: LogViewerProps) {
   return (
-    <Card className="flex flex-col h-full">
+    <Card className="flex h-full flex-col">
       <CardHeader className="flex flex-row items-center justify-between space-y-0">
         <CardTitle className="text-base font-semibold">Logs</CardTitle>
         <div className="flex gap-2">
@@ -60,7 +60,7 @@ export function LogViewer({ logs, onClear, onExport, onReset }: LogViewerProps) 
         </div>
       </CardHeader>
       <CardContent className="flex-1 overflow-hidden">
-        <div className="h-[400px] overflow-y-auto rounded-xl bg-muted/50 p-4 font-mono text-sm">
+        <div className="h-full overflow-y-auto rounded-xl bg-muted/50 p-4 font-mono text-sm">
           {logs.length === 0 ? (
             <div className="flex h-full items-center justify-center text-muted-foreground">
               No logs yet. Run a test to see results.

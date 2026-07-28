@@ -39,6 +39,21 @@ type MessagesDescriptor = {
         };
         response: {};
     };
+    "storeValueIfPerson": {
+        message: {
+            "_value": bigint;
+            "request": {
+                "expectedStatus": number;
+                "proof": Uint8Array;
+                "expectedAlias": Uint8Array;
+                "ringIndex": number;
+                "context": Uint8Array;
+                "revision": number;
+                "message": Uint8Array;
+            };
+        };
+        response: {};
+    };
     "storedData": {
         message: {};
         response: Uint8Array;
@@ -82,6 +97,11 @@ type EventDescriptor = Enum<{
     };
     "ValueStored": {
         "oldValue": bigint;
+        "newValue": bigint;
+    };
+    "ValueStoredByPerson": {
+        "sender": Address;
+        "contextAlias": Uint8Array;
         "newValue": bigint;
     };
     "Withdrawn": {

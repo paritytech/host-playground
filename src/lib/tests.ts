@@ -40,11 +40,12 @@ import {
   createClient,
   type PolkadotClient,
 } from "polkadot-api";
-import { toHex } from "polkadot-api/utils";
+import { toHex, fromHex } from "polkadot-api/utils";
 import { createInkSdk } from "@polkadot-api/sdk-ink";
 import { contracts } from "@polkadot-api/descriptors";
+import { deriveH160 } from "@parity/product-sdk/address";
 import { CHAINS } from "./types";
-import deployment from "../../programs/deployment.json";
+import deployment from "../../evm/deployment.json";
 import {
   type ChainConfig,
   type TestDefinition,
@@ -2174,6 +2175,154 @@ export const contractTests: TestDefinition[] = [
         });
       } catch (e) {
         return error(`Failed to query: ${e}`);
+      }
+    },
+  },
+  {
+    id: "contract-store-value-if-person",
+    name: "Contract: Store Value if Person",
+    description:
+      "Generates a Ring VRF personhood proof (createRingVRFProof) and calls storeValueIfPerson; the contract verifies it via the individuality precompile (0x…0a010000) and stores the value only for a verified person. NOTE: needs an individuality-provisioned network AND a host matching the app's product-sdk — otherwise createRingVRFProof times out or the proof is rejected.",
+    api: "createRingVRFProof(context, location, message) → contract.send('storeValueIfPerson', { _value, request })",
+    warning:
+      "Not working: needs a host+network with the individuality ring provisioned (createRingVRFProof returns RingNotFound otherwise)",
+    args: [
+      {
+        name: "value",
+        label: "Value (uint256)",
+        defaultValue: "7",
+      },
+    ],
+    category: "contract",
+    async run(chain: ChainConfig, logger?: TestLogger, args?) {
+      const log = logger || (() => {});
+
+      try {
+        log("Fetching product account...");
+        const accountsProvider = await accounts();
+        const account = await accountsProvider
+          .getProductAccount(SELF_DOTNS, 0)
+          .match(
+            (a) => a,
+            () => null,
+          );
+        if (!account) return error("No product account available");
+
+        const signer = accountsProvider.getProductAccountSigner(account);
+        const origin = AccountId().dec(account.publicKey);
+
+        // The contract binds the proof to `abi.encodePacked(msg.sender)` — the
+        // caller's H160 — so generate the proof over that exact address.
+        const message = fromHex(deriveH160(account.publicKey));
+
+        // 0.19: createRingVRFProof resolves the ring itself and returns the full
+        // bundle {proof, contextualAlias, ringIndex, ringRevision}. Guarded by a
+        // timeout since an unprovisioned host never answers.
+        log("Requesting Ring VRF personhood proof (createRingVRFProof)...");
+        const proofResult = await Promise.race([
+          accountsProvider
+            .createRingVRFProof(
+              { productId: SELF_DOTNS, suffix: "0x" },
+              { chainId: chain.genesis, junctions: [] },
+              message,
+            )
+            .match(
+              (p) => ({ ok: true as const, proof: p }),
+              (e) => ({ ok: false as const, reason: e.tag }),
+            ),
+          new Promise<{ ok: false; reason: string }>((resolve) =>
+            setTimeout(
+              () =>
+                resolve({ ok: false, reason: "timed out (host never answered)" }),
+              15000,
+            ),
+          ),
+        ]);
+        if (!proofResult.ok) {
+          return error(`createRingVRFProof ${proofResult.reason}`);
+        }
+        const proof = proofResult.proof;
+        log(
+          `Proof received (ring ${proof.ringIndex}, revision ${proof.ringRevision})`,
+        );
+
+        const allowanceError = await ensureSmartContractAllowance(
+          log,
+          chain,
+          account,
+        );
+        if (allowanceError) return allowanceError;
+
+        const client = await getClient(chain.genesis);
+        const sdk = createInkSdk(client);
+        const contract = sdk.getContract(
+          contracts.hostApiDemo,
+          HOSTAPI_DEMO_ADDRESS,
+        );
+
+        const value = BigInt(args?.value ?? "7");
+        // expectedStatus 2 = Full personhood tier (1 = Lite). `message` is
+        // overwritten with msg.sender inside the contract; the alias/ring
+        // metadata come from the proof bundle.
+        const request = {
+          expectedStatus: 2,
+          proof: proof.proof,
+          expectedAlias: proof.contextualAlias.alias,
+          ringIndex: proof.ringIndex,
+          context: proof.contextualAlias.context,
+          revision: proof.ringRevision,
+          message,
+        };
+
+        log("Dry-running storeValueIfPerson...");
+        const dryRun = await contract.query("storeValueIfPerson", {
+          origin,
+          data: { _value: value, request },
+        });
+        if (!dryRun.success) {
+          return error(
+            "Dry-run failed — proof rejected (not a verified person?)",
+            dryRun.value,
+          );
+        }
+
+        log("Signing and submitting...");
+        let settled = false;
+        await new Promise<void>((resolve, reject) => {
+          dryRun.value
+            .send()
+            .signSubmitAndWatch(signer)
+            .subscribe({
+              // eslint-disable-next-line @typescript-eslint/no-explicit-any
+              next: (ev: any) => {
+                log(`Event: ${ev.type}`);
+                if (ev.type === "txBestBlocksState" && ev.found) {
+                  settled = true;
+                  resolve();
+                }
+                if (ev.type === "finalized" && !ev.ok) {
+                  settled = true;
+                  reject(new Error("Tx failed"));
+                }
+              },
+              error: (err: unknown) => {
+                settled = true;
+                reject(err);
+              },
+              complete: () => {
+                if (!settled)
+                  reject(new Error("tx stream completed before settling"));
+              },
+            });
+        });
+
+        return success(`Stored value ${value} with personhood proof`, {
+          value: String(value),
+          alias: toHex(proof.contextualAlias.alias),
+          contract: HOSTAPI_DEMO_ADDRESS,
+        });
+      } catch (e) {
+        return error(e instanceof Error ? e.message : String(e), e);
       }
     },
   },

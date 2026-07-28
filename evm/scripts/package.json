@@ -1,0 +1,9 @@
+{
+  "name": "host-playground-evm-scripts",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "deploy:paseo-next-v2": "cd .. && forge build && NETWORK=paseo-next-v2 bun scripts/deploy.ts",
+    "deploy:previewnet": "cd .. && forge build && NETWORK=previewnet bun scripts/deploy.ts"
+  }
+}

@@ -1,13 +1,24 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.24;
 
-contract HostApiDemo {
+import {IPersonhood} from "./interfaces/IPersonhood.sol";
+
+contract HostDemo {
+    /// @dev Proof-of-personhood precompile (individuality pallet).
+    IPersonhood constant PERSONHOOD =
+        IPersonhood(0x000000000000000000000000000000000a010000);
+
     address public owner;
     uint256 public storedValue;
     bytes public storedData;
     uint256 public totalDeposits;
 
     event ValueStored(uint256 oldValue, uint256 newValue);
+    event ValueStoredByPerson(
+        address indexed sender,
+        bytes32 contextAlias,
+        uint256 newValue
+    );
     event DataStored(uint256 length);
     event Deposited(address indexed sender, uint256 amount);
     event Withdrawn(address indexed to, uint256 amount);
@@ -21,6 +32,15 @@ contract HostApiDemo {
         _;
     }
 
+    /// Requires a valid proof-of-personhood bound to the caller.
+    modifier onlyPerson(IPersonhood.ProofVerificationRequest memory request) {
+        request.message = abi.encodePacked(msg.sender);
+        require(
+            PERSONHOOD.personhoodInfoByProof(request),
+            "Personhood proof invalid"
+        );
+        _;
+    }
 
     function version() public pure returns (uint256) {
         return 1;
@@ -42,18 +62,26 @@ contract HostApiDemo {
         return address(this).balance;
     }
 
-
     function storeValue(uint256 _value) public {
         uint256 oldValue = storedValue;
         storedValue = _value;
         emit ValueStored(oldValue, _value);
     }
 
+    function storeValueIfPerson(
+        uint256 _value,
+        IPersonhood.ProofVerificationRequest memory request
+    ) public onlyPerson(request) {
+        uint256 oldValue = storedValue;
+        storedValue = _value;
+        emit ValueStored(oldValue, _value);
+        emit ValueStoredByPerson(msg.sender, request.expectedAlias, _value);
+    }
+
     function storeData(bytes calldata _data) public {
         storedData = _data;
         emit DataStored(_data.length);
     }
-
 
     function deposit() public payable {
         require(msg.value > 0, "Zero deposit");

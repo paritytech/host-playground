@@ -23,6 +23,9 @@ yarn install --immutable
 yarn dev
 ```
 
+The target network is baked at build/dev time via
+`NEXT_PUBLIC_NETWORK_GENESIS_HASH`.
+
 ## Deployment
 
 The app is deployed automatically via GitHub Actions on push to `main`.

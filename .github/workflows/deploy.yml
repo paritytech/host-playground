@@ -1,4 +1,4 @@
-name: Deploy to DotNS
+name: Deploy
 
 on:
   push:
@@ -21,8 +21,21 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  build:
+  deploy:
+    name: Deploy ${{ matrix.target.display-name }}
     runs-on: parity-int-ubuntu
+    strategy:
+      fail-fast: false
+      matrix:
+        target:
+          - env: preview
+            display-name: Previewnet
+            genesis: "0x29f7b15e6227f86b90bf5199b5c872c28649a30e5f15fae6dd8fa9d5d48d6fbb"
+            primary: true
+          - env: paseo-next-v2
+            display-name: Paseo Next v2
+            genesis: "0xbf0488dbe9daa1de1c08c5f743e26fdc2a4ecd74cf87dd1b4b1eeb99ae4ef19f"
+            primary: false
     steps:
       - uses: actions/checkout@v4
 
@@ -36,33 +49,10 @@ jobs:
       - name: Install dependencies
         run: yarn install --immutable
 
-      - name: Build
+      - name: Build for ${{ matrix.target.env }}
+        env:
+          NEXT_PUBLIC_NETWORK_GENESIS_HASH: ${{ matrix.target.genesis }}
         run: yarn build
-
-      - uses: actions/upload-artifact@v4
-        with:
-          name: web-dist
-          path: out/
-
-  deploy:
-    needs: build
-    runs-on: parity-int-ubuntu
-    strategy:
-      fail-fast: false
-      matrix:
-        env: [paseo-next-v2, preview]
-    steps:
-      - uses: actions/setup-node@v4
-        with:
-          node-version: 22
-
-      - uses: actions/checkout@v4
-
-      - name: Download build artifact
-        uses: actions/download-artifact@v4
-        with:
-          name: web-dist
-          path: out
 
       - name: Compute build hash
         id: hash
@@ -74,7 +64,7 @@ jobs:
         uses: actions/cache@v4
         with:
           path: .deploy-cache
-          key: deploy-${{ matrix.env }}-${{ steps.hash.outputs.hash }}
+          key: deploy-${{ matrix.target.env }}-${{ steps.hash.outputs.hash }}
 
       - name: Load cached CID
         id: cached-deploy
@@ -102,11 +92,19 @@ jobs:
         id: domain-input
         run: |
           if [ "${{ github.event_name }}" == "push" ]; then
-            echo "dotns=host-playground.dot" >> "$GITHUB_OUTPUT"
+            if [ "${{ matrix.target.primary }}" == "true" ]; then
+              echo "dotns=host-playground.dot" >> "$GITHUB_OUTPUT"
+            else
+              echo "dotns=host-playground-beta00.dot" >> "$GITHUB_OUTPUT"
+            fi
           else
             BRANCH="${{ github.event.pull_request.head.ref }}"
             SAFE_BRANCH=$(echo "$BRANCH" | tr '/' '-' | sed 's/[^a-z0-9-]//g' | cut -c1-20)
-            echo "dotns=${SAFE_BRANCH}-host-playground00.dot" >> "$GITHUB_OUTPUT"
+            if [ "${{ matrix.target.primary }}" == "true" ]; then
+              echo "dotns=${SAFE_BRANCH}-host-playground00.dot" >> "$GITHUB_OUTPUT"
+            else
+              echo "dotns=${SAFE_BRANCH}-host-playground-beta00.dot" >> "$GITHUB_OUTPUT"
+            fi
           fi
 
       - name: Deploy
@@ -126,7 +124,7 @@ jobs:
             if [ "${{ github.event_name }}" = "push" ]; then
               PUBLISH_FLAG='--publish'
             fi
-            bulletin-deploy --env ${{ matrix.env }} $PUBLISH_FLAG 'out' '${{ steps.domain-input.outputs.dotns }}'
+            bulletin-deploy --env ${{ matrix.target.env }} $PUBLISH_FLAG 'out' '${{ steps.domain-input.outputs.dotns }}'
 
       - name: Validate deployment outputs
         if: steps.cache.outputs.cache-hit != 'true'
@@ -154,30 +152,30 @@ jobs:
           fi
           # Translate bulletin-deploy env id → dot.li network name (most match
           # 1:1; "preview" is the exception — dot.li knows it as "previewnet").
-          case "${{ matrix.env }}" in
+          case "${{ matrix.target.env }}" in
             preview) NETWORK="previewnet" ;;
-            *) NETWORK="${{ matrix.env }}" ;;
+            *) NETWORK="${{ matrix.target.env }}" ;;
           esac
           mkdir -p .deploy-result
           printf '{"env":"%s","network":"%s","domain":"%s","cid":"%s"}\n' \
-            "${{ matrix.env }}" "$NETWORK" "$DOMAIN" "$CID" \
-            > .deploy-result/${{ matrix.env }}.json
-          cat .deploy-result/${{ matrix.env }}.json
+            "${{ matrix.target.env }}" "$NETWORK" "$DOMAIN" "$CID" \
+            > .deploy-result/${{ matrix.target.env }}.json
+          cat .deploy-result/${{ matrix.target.env }}.json
 
       - name: Upload deployment result
         uses: actions/upload-artifact@v4
         with:
-          name: deploy-result-${{ matrix.env }}
-          path: .deploy-result/${{ matrix.env }}.json
+          name: deploy-result-${{ matrix.target.env }}
+          path: .deploy-result/${{ matrix.target.env }}.json
 
       - name: Deployment summary
         run: |
-          DOMAIN=$(jq -r .domain .deploy-result/${{ matrix.env }}.json)
-          NETWORK=$(jq -r .network .deploy-result/${{ matrix.env }}.json)
-          CID=$(jq -r .cid .deploy-result/${{ matrix.env }}.json)
+          DOMAIN=$(jq -r .domain .deploy-result/${{ matrix.target.env }}.json)
+          NETWORK=$(jq -r .network .deploy-result/${{ matrix.target.env }}.json)
+          CID=$(jq -r .cid .deploy-result/${{ matrix.target.env }}.json)
           URL="https://${DOMAIN}.paseo.li?network=${NETWORK}&chainBackend=rpc-gateway"
           {
-            echo "### ${DOMAIN}.dot — ${{ matrix.env }}"
+            echo "### ${DOMAIN}.dot — ${{ matrix.target.env }}"
             echo ""
             echo "Browser &nbsp; ${URL}"
             echo "Desktop &nbsp; \`${DOMAIN}.dot\`"
