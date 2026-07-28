@@ -90,6 +90,8 @@ jobs:
 
       - name: Determine domain
         id: domain-input
+        env:
+          BRANCH: ${{ github.event.pull_request.head.ref }}
         run: |
           if [ "${{ github.event_name }}" == "push" ]; then
             if [ "${{ matrix.target.primary }}" == "true" ]; then
@@ -98,8 +100,7 @@ jobs:
               echo "dotns=host-playground-beta00.dot" >> "$GITHUB_OUTPUT"
             fi
           else
-            BRANCH="${{ github.event.pull_request.head.ref }}"
-            SAFE_BRANCH=$(echo "$BRANCH" | tr '/' '-' | sed 's/[^a-z0-9-]//g' | cut -c1-20)
+            SAFE_BRANCH=$(printf '%s' "$BRANCH" | tr '/' '-' | sed 's/[^a-z0-9-]//g' | cut -c1-20)
             if [ "${{ matrix.target.primary }}" == "true" ]; then
               echo "dotns=${SAFE_BRANCH}-host-playground00.dot" >> "$GITHUB_OUTPUT"
             else
@@ -120,11 +121,7 @@ jobs:
             export IPFS_CID='${{ steps.cached-deploy.outputs.cid }}'
             export NODE_OPTIONS='--max-old-space-size=8192'
             export MANIFEST_DOMAIN='${{ steps.domain-input.outputs.dotns }}'
-            PUBLISH_FLAG=''
-            if [ "${{ github.event_name }}" = "push" ]; then
-              PUBLISH_FLAG='--publish'
-            fi
-            bulletin-deploy --env ${{ matrix.target.env }} $PUBLISH_FLAG 'out' '${{ steps.domain-input.outputs.dotns }}'
+            bulletin-deploy --env ${{ matrix.target.env }} 'out' '${{ steps.domain-input.outputs.dotns }}'
 
       - name: Validate deployment outputs
         if: steps.cache.outputs.cache-hit != 'true'
