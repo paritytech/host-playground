@@ -36,10 +36,7 @@
       "Bash(wc:*)",
       "Bash(mkdir:*)",
       "Bash(node:*)",
-      "Bash(npx:*)",
-      "Bash(npx bulletin-deploy *)",
-      "Bash(export MNEMONIC='bottom drive obey lake curtain smoke basket hold race lonely fit walk')",
-      "Bash(bulletin-deploy --unpublish host-playground.dot --env paseo-next-v2)"
+      "Bash(npx:*)"
     ],
     "deny": []
   },
