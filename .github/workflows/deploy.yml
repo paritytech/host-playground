@@ -31,11 +31,9 @@ jobs:
           - env: preview
             display-name: Previewnet
             genesis: "0x29f7b15e6227f86b90bf5199b5c872c28649a30e5f15fae6dd8fa9d5d48d6fbb"
-            primary: true
           - env: paseo-next-v2
             display-name: Paseo Next v2
             genesis: "0xbf0488dbe9daa1de1c08c5f743e26fdc2a4ecd74cf87dd1b4b1eeb99ae4ef19f"
-            primary: false
     steps:
       - uses: actions/checkout@v4
 
@@ -94,18 +92,10 @@ jobs:
           BRANCH: ${{ github.event.pull_request.head.ref }}
         run: |
           if [ "${{ github.event_name }}" == "push" ]; then
-            if [ "${{ matrix.target.primary }}" == "true" ]; then
-              echo "dotns=host-playground.dot" >> "$GITHUB_OUTPUT"
-            else
-              echo "dotns=host-playground-beta00.dot" >> "$GITHUB_OUTPUT"
-            fi
+            echo "dotns=host-playground.dot" >> "$GITHUB_OUTPUT"
           else
             SAFE_BRANCH=$(printf '%s' "$BRANCH" | tr '/' '-' | sed 's/[^a-z0-9-]//g' | cut -c1-20)
-            if [ "${{ matrix.target.primary }}" == "true" ]; then
-              echo "dotns=${SAFE_BRANCH}-host-playground00.dot" >> "$GITHUB_OUTPUT"
-            else
-              echo "dotns=${SAFE_BRANCH}-host-playground-beta00.dot" >> "$GITHUB_OUTPUT"
-            fi
+            echo "dotns=${SAFE_BRANCH}-host-playground00.dot" >> "$GITHUB_OUTPUT"
           fi
 
       - name: Deploy
