@@ -76,7 +76,7 @@ un-allowlistable and forces a prompt. Keep commands plain:
 |---|---|
 | A host-API test definition | [src/lib/tests.ts](src/lib/tests.ts) |
 | Network table (genesis, ws URL) | `CHAINS` in [src/lib/types.ts](src/lib/types.ts) |
-| The demo contract the tests call | [evm/src/HostApiDemo.sol](evm/src/HostApiDemo.sol) |
+| The demo contract the tests call | [evm/src/HostDemo.sol](evm/src/HostDemo.sol) |
 | Deployed contract address | [evm/deployment.json](evm/deployment.json) |
 | Contract deploy scripts | [evm/scripts/deploy.ts](evm/scripts/deploy.ts), [evm/scripts/lib.ts](evm/scripts/lib.ts) |
 | Service worker | [worker/index.ts](worker/index.ts), [vite.config.worker.ts](vite.config.worker.ts) |
