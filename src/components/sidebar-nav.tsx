@@ -32,6 +32,10 @@ interface SidebarNavProps {
   onQueryChange: (query: string) => void;
   /** Categories that currently have matching tests. Others are dimmed. */
   visibleIds: Set<TestCategory>;
+  /** Hide the in-sidebar search field. The mobile top bar owns search there. */
+  showSearch?: boolean;
+  /** Called after a category tap so the mobile drawer can close itself. */
+  onNavigate?: () => void;
 }
 
 // Prefer the PAPI light-client entry for chains it ships a spec for. Otherwise
@@ -65,6 +69,8 @@ export function SidebarNav({
   query,
   onQueryChange,
   visibleIds,
+  showSearch = true,
+  onNavigate,
 }: SidebarNavProps) {
   const sectionIds = groups.flatMap((g) =>
     g.items.map((c) => `section-${c.id}`),
@@ -84,29 +90,31 @@ export function SidebarNav({
         </div>
       </div>
 
-      <div className="px-4 pb-1 pt-2">
-        <div className="relative">
-          <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-          <input
-            type="text"
-            value={query}
-            onChange={(e) => onQueryChange(e.target.value)}
-            placeholder="Search"
-            aria-label="Search tests"
-            className="h-9 w-full appearance-none rounded-lg border border-border/70 bg-card pl-9 pr-9 text-sm leading-none text-foreground outline-none placeholder:text-muted-foreground focus:border-foreground/30 focus:ring-2 focus:ring-foreground/10"
-          />
-          {isSearching && (
-            <button
-              type="button"
-              onClick={() => onQueryChange("")}
-              aria-label="Clear search"
-              className="absolute right-2 top-1/2 flex h-5 w-5 -translate-y-1/2 cursor-pointer items-center justify-center rounded-full text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
-            >
-              <X className="h-3.5 w-3.5" />
-            </button>
-          )}
+      {showSearch && (
+        <div className="px-4 pb-1 pt-2">
+          <div className="relative">
+            <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+            <input
+              type="text"
+              value={query}
+              onChange={(e) => onQueryChange(e.target.value)}
+              placeholder="Search"
+              aria-label="Search tests"
+              className="h-9 w-full appearance-none rounded-lg border border-border/70 bg-card pl-9 pr-9 text-sm leading-none text-foreground outline-none placeholder:text-muted-foreground focus:border-foreground/30 focus:ring-2 focus:ring-foreground/10"
+            />
+            {isSearching && (
+              <button
+                type="button"
+                onClick={() => onQueryChange("")}
+                aria-label="Clear search"
+                className="absolute right-2 top-1/2 flex h-5 w-5 -translate-y-1/2 cursor-pointer items-center justify-center rounded-full text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+              >
+                <X className="h-3.5 w-3.5" />
+              </button>
+            )}
+          </div>
         </div>
-      </div>
+      )}
 
       {/* Categories, grouped */}
       <div className="flex-1 overflow-hidden px-2.5 pb-3 pt-4">
@@ -123,7 +131,10 @@ export function SidebarNav({
                 return (
                   <button
                     key={cat.id}
-                    onClick={() => scrollToSection(cat.id)}
+                    onClick={() => {
+                      scrollToSection(cat.id);
+                      onNavigate?.();
+                    }}
                     disabled={isDimmed}
                     className={cn(
                       "flex w-full items-center gap-3 rounded-lg px-3 py-1.5 text-left text-sm transition-colors",
