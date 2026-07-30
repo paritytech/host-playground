@@ -291,6 +291,20 @@ export default function SdkTestPage() {
     };
   }, [navOpen, logsOpen]);
 
+  // The overlays are hidden at the lg breakpoint, so close them when the
+  // viewport grows into the desktop layout. Otherwise a sheet left open on a
+  // narrow width keeps the body scroll locked after the sheet disappears.
+  useEffect(() => {
+    const onResize = () => {
+      if (window.matchMedia("(min-width: 1024px)").matches) {
+        setNavOpen(false);
+        setLogsOpen(false);
+      }
+    };
+    window.addEventListener("resize", onResize);
+    return () => window.removeEventListener("resize", onResize);
+  }, []);
+
   const q = search.trim().toLowerCase();
   const visibleCategories = ORDERED_CATEGORIES.map((category) => {
     const all = testsByCategory[category];
