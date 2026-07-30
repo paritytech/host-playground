@@ -41,6 +41,24 @@ import pkg from "@/package.json";
 
 const SDK_VERSION_LABEL = `@parity/product-sdk ${pkg.dependencies["@parity/product-sdk"].replace(/^[\^~]/, "")}`;
 
+const TEST_TIMEOUT_MS = 30_000;
+
+// Prevent Host API calls from hanging indefinitely
+const withTimeout = <T,>(
+  promise: Promise<T>,
+  ms: number,
+  label: string,
+): Promise<T> => {
+  let timer: ReturnType<typeof setTimeout>;
+  const timeout = new Promise<never>((_, reject) => {
+    timer = setTimeout(
+      () => reject(new Error(`Test "${label}" timed out after ${ms / 1000}s`)),
+      ms,
+    );
+  });
+  return Promise.race([promise, timeout]).finally(() => clearTimeout(timer));
+};
+
 const categoryIcons: Record<TestCategory, LucideIcon> = {
   extension: Plug,
   accounts: User,
@@ -347,7 +365,11 @@ export default function SdkTestPage() {
       };
 
       try {
-        const result = await test.run(currentChain, testLogger, args, navigate);
+        const result = await withTimeout(
+          test.run(currentChain, testLogger, args, navigate),
+          TEST_TIMEOUT_MS,
+          test.name,
+        );
         updateLog(
           logId,
           result.success ? "success" : "error",
