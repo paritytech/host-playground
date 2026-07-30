@@ -203,36 +203,6 @@ function sdkErrorMessage(value: unknown): string {
   return formatHostError(value);
 }
 
-/** Request a device permission with a friendly error if denied. */
-async function ensureDevicePermission(
-  log: (msg: string) => void,
-  permission:
-    | "Notifications"
-    | "Camera"
-    | "Microphone"
-    | "Bluetooth"
-    | "NFC"
-    | "Location"
-    | "Clipboard"
-    | "OpenUrl"
-    | "Biometrics",
-): Promise<TestResult | null> {
-  log(`Requesting device permission: ${permission}...`);
-  try {
-    const result = await requestDevicePermission(permission);
-    if (!result.ok) {
-      return error(sdkErrorMessage(result.error), result.error);
-    }
-    return result.value
-      ? null
-      : error(`Device permission not granted: ${permission}`, {
-          granted: false,
-        });
-  } catch (err) {
-    return error(`Device permission denied (${permission})`, err);
-  }
-}
-
 async function runDevicePermissionTest(
   permission: Parameters<typeof requestDevicePermission>[0],
   label: string,
@@ -1465,8 +1435,7 @@ export const notificationTests: TestDefinition[] = [
       },
     ],
     category: "notifications",
-    async run(_chain, logger, args) {
-      const log = logger || (() => {});
+    async run(_chain, _logger, args) {
       const text = args?.text ?? "Hello from demo product!";
       const deeplink = args?.deeplink?.trim() || undefined;
 
@@ -1484,9 +1453,9 @@ export const notificationTests: TestDefinition[] = [
         scheduledAt = BigInt(Date.now() + Math.round(seconds * 1000));
       }
 
-      const permErr = await ensureDevicePermission(log, "Notifications");
-      if (permErr) return permErr;
-
+      // The host's push() prompts for the Notifications permission itself, so
+      // no explicit pre-check here. Requesting it first caused a second prompt
+      // when the user picked "Allow once" (see issue #33).
       const nm = await getNotificationManager();
       if (!nm)
         return error(
@@ -1517,8 +1486,7 @@ export const notificationTests: TestDefinition[] = [
     api: "getNotificationManager().cancel(id)",
     args: [{ name: "id", label: "Notification id", defaultValue: "" }],
     category: "notifications",
-    async run(_chain, logger, args) {
-      const log = logger || (() => {});
+    async run(_chain, _logger, args) {
       const rawId = args?.id?.trim() ?? "";
       const id = Number(rawId);
       if (rawId === "" || !Number.isInteger(id) || id <= 0) {
@@ -1527,9 +1495,6 @@ export const notificationTests: TestDefinition[] = [
           `"Notification id" must be a positive integer, got "${rawId}"`,
         );
       }
-
-      const permErr = await ensureDevicePermission(log, "Notifications");
-      if (permErr) return permErr;
 
       const nm = await getNotificationManager();
       if (!nm)
