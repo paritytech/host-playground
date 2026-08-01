@@ -55,6 +55,18 @@ import {
 import { getSelfDotNs } from "./dotns";
 import { getApp } from "./app";
 
+type AllocatableResource = Parameters<
+  typeof requestResourceAllocation
+>[0][number];
+type DerivationIndex = Extract<
+  AllocatableResource,
+  { tag: "SmartContractAllowance" }
+>["value"];
+
+function formatDerivationIndex(index: DerivationIndex): string {
+  return index.tag === "Left" ? String(index.value) : index.value;
+}
+
 // Cache papi clients per genesis — avoids in-flight chainHead events from a
 // destroyed client corrupting a new client's block tree (undefined.children).
 const clientCache = new Map<string, PolkadotClient>();
@@ -158,7 +170,10 @@ const READ_ORIGIN = "12dCP8UFhSktvmSgJcP93tNPdgVQMdBQqJNcFrZTnDoiBE9Y";
 
 const SELF_DOTNS = getSelfDotNs();
 
-const PRODUCT_ALIAS_CONTEXT_SUFFIX = "0x00" as const;
+const PRODUCT_ALIAS_CONTEXT_SUFFIX: DerivationIndex = {
+  tag: "Left",
+  value: 0,
+};
 const PRODUCT_ALIAS_RING_LOCATION: RingLocation = {
   chainId:
     "0xc5af1826b31493f08b7e2a823842f98575b806a784126f28da9608c68665afa5",
@@ -270,9 +285,13 @@ async function runRemotePermissionTest(
 async function ensureSmartContractAllowance(
   log: (msg: string) => void,
   chain: ChainConfig,
-  productAccount: { publicKey: Uint8Array; derivationIndex: number },
+  productAccount: {
+    publicKey: Uint8Array;
+    derivationIndex: DerivationIndex;
+  },
 ): Promise<TestResult | null> {
   const { publicKey, derivationIndex } = productAccount;
+  const derivationIndexLabel = formatDerivationIndex(derivationIndex);
   try {
     const address = AccountId(chain.ss58Prefix).dec(publicKey);
     const api = (await getClient(chain.genesis)).getUnsafeApi();
@@ -285,7 +304,7 @@ async function ensureSmartContractAllowance(
     const bal = BigInt(acct?.balance ?? 0);
     if (bal > BigInt(0)) {
       log(
-        `SmartContractAllowance(${derivationIndex}) already provisioned (PGAS asset=${pgasAssetId}, balance=${bal})`,
+        `SmartContractAllowance(${derivationIndexLabel}) already provisioned (PGAS asset=${pgasAssetId}, balance=${bal})`,
       );
       return null;
     }
@@ -293,7 +312,7 @@ async function ensureSmartContractAllowance(
     log(`PGAS balance probe failed (${e}); falling through to request`);
   }
 
-  log(`Requesting SmartContractAllowance(${derivationIndex})...`);
+  log(`Requesting SmartContractAllowance(${derivationIndexLabel})...`);
   try {
     const result = await requestResourceAllocation([
       { tag: "SmartContractAllowance", value: derivationIndex },
@@ -302,7 +321,7 @@ async function ensureSmartContractAllowance(
     const outcomes = result.value;
     const outcome = outcomes[0];
     if (outcome === "Allocated") {
-      log(`SmartContractAllowance(${derivationIndex}) allocated`);
+      log(`SmartContractAllowance(${derivationIndexLabel}) allocated`);
       return null;
     }
     if (outcome === "Rejected") {
@@ -2222,7 +2241,10 @@ export const contractTests: TestDefinition[] = [
         const proofResult = await Promise.race([
           accountsProvider
             .createRingVRFProof(
-              { productId: SELF_DOTNS, suffix: "0x" },
+              {
+                productId: SELF_DOTNS,
+                suffix: { tag: "Left", value: 0 },
+              },
               { chainId: chain.genesis, junctions: [] },
               message,
             )
@@ -2467,11 +2489,6 @@ export const paymentTests: TestDefinition[] = [
   },
 ];
 
-type AllocatableResource =
-  | { tag: "StatementStoreAllowance"; value: undefined }
-  | { tag: "BulletinAllowance"; value: undefined }
-  | { tag: "SmartContractAllowance"; value: number };
-
 async function runResourceAllocation(resources: AllocatableResource[]) {
   try {
     const result = await requestResourceAllocation(resources);
@@ -2528,7 +2545,10 @@ export const allowancesTests: TestDefinition[] = [
     ],
     category: "allowances",
     async run(_chain, _logger, args) {
-      const derivationIndex = Number(args?.derivationIndex ?? "0");
+      const derivationIndex: DerivationIndex = {
+        tag: "Left",
+        value: Number(args?.derivationIndex ?? "0"),
+      };
       return runResourceAllocation([
         { tag: "SmartContractAllowance", value: derivationIndex },
       ]);
@@ -2549,7 +2569,10 @@ export const allowancesTests: TestDefinition[] = [
     ],
     category: "allowances",
     async run(_chain, _logger, args) {
-      const derivationIndex = Number(args?.derivationIndex ?? "0");
+      const derivationIndex: DerivationIndex = {
+        tag: "Left",
+        value: Number(args?.derivationIndex ?? "0"),
+      };
       return runResourceAllocation([
         { tag: "StatementStoreAllowance", value: undefined },
         { tag: "BulletinAllowance", value: undefined },
