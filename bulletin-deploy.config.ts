@@ -21,7 +21,7 @@ export default {
   domain: process.env.MANIFEST_DOMAIN ?? "host-playground.dot",
   displayName: "Host Playground",
   description:
-    "Reference playground exercising the @novasamatech/host-api-wrapper surface against a paired Polkadot host.",
+    "Reference playground exercising the @parity/product-sdk Host API surface against a paired Polkadot host.",
   // Placeholder 1×1 PNG — replace with a real product icon (jpeg or png).
   // Path resolves relative to this config file.
   icon: { path: "./public/icon.png", format: "png" as const },
