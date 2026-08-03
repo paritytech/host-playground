@@ -74,6 +74,14 @@ test card). Historical breaking changes to expect:
   `createRingVRFProof(dotNsId, derivIdx, location, message)` → `(context, location, message)`
   returning the rich `RingVRFProof` (`{proof, contextualAlias, ringIndex, ringRevision}`);
   descriptors dropped the `summit-*` chains.
+- **0.20**: RFC-0022 turned `DerivationIndex` into a tagged selector,
+  `{tag:"Left", value:number}` for a plain index or `{tag:"Right", value:HexString}`
+  for raw 32 bytes. Hosts expand `Left(n)` to `index_bytes(n)`, so `Left` is the form
+  products use. It reaches every wire field that picks an account inside a product
+  subtree: `ProductAccountId.derivationIndex`, `ProductProofContext.suffix`,
+  `AllocatableResource::SmartContractAllowance`, `PaymentTopUpSource::ProductAccount`.
+  RFC-0004 packed suffixes are obsolete, so a `"0x00"`-style suffix becomes `Left(0)`.
+  RFC-0023 adds `account.signVrf`.
 
 ## 4. Bump, install, migrate, verify
 
@@ -84,18 +92,24 @@ test card). Historical breaking changes to expect:
 
 ## Gotchas (learned the hard way)
 
+- **A local copy of an SDK type hides call sites.** Before counting the sites a changed
+  type breaks, grep for a local re-declaration of it. In the 0.20 bump a hand-written
+  `AllocatableResource` in [tests.ts](src/lib/tests.ts) declared `value: number` and
+  swallowed two of the six sites, so `typecheck` reported four. Deleting the duplicate
+  and importing the type from `@parity/product-sdk-host` surfaced the rest. Fix the
+  duplicate first, then count.
 - **Descriptor regen.** After changing the contract ABI, regenerate the papi
   descriptor: refresh `.papi/contracts/*.json` from the forge artifact, then
   `npx papi generate` (needs `esbuild` — `yarn add -D esbuild` if missing), then
   `yarn install --check-files` to re-sync the `file:.papi/descriptors` dep into
   `node_modules` (a plain `yarn install` won't copy it).
-- **truapi ↔ host version skew.** The SDK's wire schema can run *ahead* of the
-  shipped host. 0.19's `createAccountProof` response is a `V1`-versioned struct;
-  Desktop hosts on `@novasamatech/host-api@0.8.11` frame it without the `V1`
-  envelope → `RangeError: Offset is outside the bounds of the DataView` inside
-  truapi's `decodeResponse`. This is not an app bug and not fixable by choosing
-  0.18 (0.18 sends the old request shape the new host rejects). It needs a host
-  aligned to the SDK's truapi.
+- **truapi and host version skew.** The SDK wire schema can run *ahead* of the
+  shipped host. The 0.19 `createAccountProof` response is a `V1`-versioned struct.
+  Desktop hosts on an older `@novasamatech/host-api` frame it without the `V1`
+  envelope, so `decodeResponse` inside truapi throws
+  `RangeError: Offset is outside the bounds of the DataView`. This is not an app
+  bug. It is also not fixable by pinning back to 0.18, which sends the old request
+  shape the new host rejects. It needs a host aligned to the SDK truapi version.
 - **Ring-VRF / personhood is host+network dependent.** `createRingVRFProof`
   delegates to the host (it selects the member key); the member key is derived
   from the user's private seed, so the app can't build it. Errors surface as the
