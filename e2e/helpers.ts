@@ -5,7 +5,7 @@ export async function waitForAppReady(testHost: TestHost, options?: { timeout?: 
   const timeout = options?.timeout ?? 90_000;
   const frame = testHost.productFrame();
   await testHost.waitForConnection(timeout);
-  await frame.locator('h1:has-text("Host Playground")').waitFor({ state: 'visible', timeout });
+  await frame.locator('h1:has-text("Host Playground")').first().waitFor({ state: 'visible', timeout });
   return frame;
 }
 

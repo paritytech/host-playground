@@ -4,7 +4,7 @@ import { waitForAppReady } from './helpers';
 test.describe('App loads', () => {
   test('shows playground heading', async ({ testHost }) => {
     const frame = await waitForAppReady(testHost);
-    await expect(frame.locator('h1:has-text("Host Playground")')).toBeVisible();
+    await expect(frame.locator('h1:has-text("Host Playground")').first()).toBeVisible();
   });
 
   test('shows sidebar categories', async ({ testHost }) => {

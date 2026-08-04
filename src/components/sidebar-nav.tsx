@@ -82,9 +82,9 @@ export function SidebarNav({
     <nav className="flex h-full flex-col overflow-hidden border-r border-border/60 bg-background">
       {/* Brand */}
       <div className="shrink-0 px-5 pb-4 pt-6">
-        <div className="whitespace-nowrap text-lg font-semibold tracking-tight text-foreground">
+        <h1 className="whitespace-nowrap text-lg font-semibold tracking-tight text-foreground">
           Host Playground
-        </div>
+        </h1>
         <div className="mt-1 truncate text-xs text-muted-foreground">
           {version}
         </div>
