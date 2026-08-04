@@ -1,6 +1,6 @@
 # Host Playground
 
-An interactive playground for testing `@novasamatech/product-sdk`. Designed to run exclusively within the Host webview environment to validate functionality across `product-sdk`, Host, and the Polkadot App.
+An interactive playground for testing `@parity/product-sdk`. Designed to run exclusively within the Host webview environment to validate functionality across `product-sdk`, Host, and the Polkadot App.
 
 ## How to Open
 

@@ -21,6 +21,8 @@ import {
   stopTransaction,
   formatHostError,
   type AccountsProvider,
+  type AllocatableResource,
+  type DerivationIndex,
   type HostLocalStorage,
   type HostStatementStore,
   type PreimageManager,
@@ -158,7 +160,18 @@ const READ_ORIGIN = "12dCP8UFhSktvmSgJcP93tNPdgVQMdBQqJNcFrZTnDoiBE9Y";
 
 const SELF_DOTNS = getSelfDotNs();
 
-const PRODUCT_ALIAS_CONTEXT_SUFFIX = "0x00" as const;
+/**
+ * Plain account selector inside the product subtree.
+ *
+ * Hosts expand it to `index_bytes(n)` per RFC-0022. The raw 32-byte form is the
+ * escape hatch and no card needs it.
+ */
+function accountIndex(index: number): DerivationIndex {
+  return { tag: "Left", value: index };
+}
+
+/** Context shared by the alias card and the ring-VRF proof card. Index 0 is the product default account. */
+const PRODUCT_ALIAS_CONTEXT_SUFFIX = accountIndex(0);
 const PRODUCT_ALIAS_RING_LOCATION: RingLocation = {
   chainId:
     "0xc5af1826b31493f08b7e2a823842f98575b806a784126f28da9608c68665afa5",
@@ -266,7 +279,7 @@ async function ensureSmartContractAllowance(
   log(`Requesting SmartContractAllowance(${derivationIndex})...`);
   try {
     const result = await requestResourceAllocation([
-      { tag: "SmartContractAllowance", value: derivationIndex },
+      { tag: "SmartContractAllowance", value: accountIndex(derivationIndex) },
     ]);
     if (!result.ok) return error(sdkErrorMessage(result.error), result.error);
     const outcomes = result.value;
@@ -310,7 +323,9 @@ async function hashTopic(s: string): Promise<`0x${string}`> {
 /**
  * Statement-Store expiry: high 32 bits = unix expiry (s), low 32 = sequence
  * number. A missing/zero expiry is encoded as epoch and rejected as already
- * expired, so it must be set. Matches @novasamatech/sdk-statement, inlined.
+ * expired, so it must be set. Matches `createExpiry` in
+ * `@parity/product-sdk-statement-store`, inlined because the umbrella does not
+ * re-export it and the host-side statement store does not pull that package in.
  */
 function createExpiryFromDuration(
   durationSecs: number,
@@ -2187,7 +2202,7 @@ export const contractTests: TestDefinition[] = [
         const proofResult = await Promise.race([
           accountsProvider
             .createRingVRFProof(
-              { productId: SELF_DOTNS, suffix: "0x" },
+              { productId: SELF_DOTNS, suffix: PRODUCT_ALIAS_CONTEXT_SUFFIX },
               { chainId: chain.genesis, junctions: [] },
               message,
             )
@@ -2432,11 +2447,6 @@ export const paymentTests: TestDefinition[] = [
   },
 ];
 
-type AllocatableResource =
-  | { tag: "StatementStoreAllowance"; value: undefined }
-  | { tag: "BulletinAllowance"; value: undefined }
-  | { tag: "SmartContractAllowance"; value: number };
-
 async function runResourceAllocation(resources: AllocatableResource[]) {
   try {
     const result = await requestResourceAllocation(resources);
@@ -2483,7 +2493,7 @@ export const allowancesTests: TestDefinition[] = [
     name: "Allocate SmartContract Allowance",
     description:
       "Requests a smart-contract allowance for a derivation index (RFC-0010)",
-    api: 'requestResourceAllocation([{ tag: "SmartContractAllowance", value: derivationIndex }])',
+    api: 'requestResourceAllocation([{ tag: "SmartContractAllowance", value: { tag: "Left", value: derivationIndex } }])',
     args: [
       {
         name: "derivationIndex",
@@ -2495,7 +2505,7 @@ export const allowancesTests: TestDefinition[] = [
     async run(_chain, _logger, args) {
       const derivationIndex = Number(args?.derivationIndex ?? "0");
       return runResourceAllocation([
-        { tag: "SmartContractAllowance", value: derivationIndex },
+        { tag: "SmartContractAllowance", value: accountIndex(derivationIndex) },
       ]);
     },
   },
@@ -2518,7 +2528,7 @@ export const allowancesTests: TestDefinition[] = [
       return runResourceAllocation([
         { tag: "StatementStoreAllowance", value: undefined },
         { tag: "BulletinAllowance", value: undefined },
-        { tag: "SmartContractAllowance", value: derivationIndex },
+        { tag: "SmartContractAllowance", value: accountIndex(derivationIndex) },
       ]);
     },
   },
