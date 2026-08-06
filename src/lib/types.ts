@@ -61,6 +61,8 @@ export interface TestDefinition {
   args?: TestArg[];
   warning?: string;
   disabled?: string;
+  /** Overrides the runner's default 30s cap — for live chain writes that wait on block inclusion. */
+  timeoutMs?: number;
   category: TestCategory;
   run: (
     chain: ChainConfig,

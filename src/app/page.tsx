@@ -367,7 +367,7 @@ export default function SdkTestPage() {
       try {
         const result = await withTimeout(
           test.run(currentChain, testLogger, args, navigate),
-          TEST_TIMEOUT_MS,
+          test.timeoutMs ?? TEST_TIMEOUT_MS,
           test.name,
         );
         updateLog(

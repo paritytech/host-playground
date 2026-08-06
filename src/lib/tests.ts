@@ -1949,6 +1949,7 @@ export const contractTests: TestDefinition[] = [
     description:
       "Calls deposit() on the HostApiDemo contract (payable write operation)",
     api: "contract.send('deposit', { origin, value: amount }).signSubmitAndWatch(signer)",
+    timeoutMs: 90_000,
     args: [
       {
         name: "amount",
@@ -2041,6 +2042,7 @@ export const contractTests: TestDefinition[] = [
     description:
       "Calls withdraw() on the HostApiDemo contract (write operation)",
     api: "contract.send('withdraw', { origin, data: { _amount } }).signSubmitAndWatch(signer)",
+    timeoutMs: 90_000,
     args: [
       {
         name: "amount",

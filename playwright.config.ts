@@ -23,7 +23,7 @@ export default defineConfig({
   ],
 
   webServer: {
-    command: 'yarn dev --port 5199',
+    command: 'yarn dev:paseo --port 5199',
     port: 5199,
     reuseExistingServer: !process.env.CI,
     timeout: 30_000,
