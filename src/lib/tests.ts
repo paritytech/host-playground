@@ -63,10 +63,6 @@ type DerivationIndex = Extract<
   { tag: "SmartContractAllowance" }
 >["value"];
 
-function formatDerivationIndex(index: DerivationIndex): string {
-  return index.tag === "Left" ? String(index.value) : index.value;
-}
-
 // Cache papi clients per genesis — avoids in-flight chainHead events from a
 // destroyed client corrupting a new client's block tree (undefined.children).
 const clientCache = new Map<string, PolkadotClient>();
@@ -287,11 +283,11 @@ async function ensureSmartContractAllowance(
   chain: ChainConfig,
   productAccount: {
     publicKey: Uint8Array;
-    derivationIndex: DerivationIndex;
+    derivationIndex: number;
   },
 ): Promise<TestResult | null> {
   const { publicKey, derivationIndex } = productAccount;
-  const derivationIndexLabel = formatDerivationIndex(derivationIndex);
+  const derivationIndexLabel = String(derivationIndex);
   try {
     const address = AccountId(chain.ss58Prefix).dec(publicKey);
     const api = (await getClient(chain.genesis)).getUnsafeApi();
@@ -315,7 +311,10 @@ async function ensureSmartContractAllowance(
   log(`Requesting SmartContractAllowance(${derivationIndexLabel})...`);
   try {
     const result = await requestResourceAllocation([
-      { tag: "SmartContractAllowance", value: derivationIndex },
+      {
+        tag: "SmartContractAllowance",
+        value: { tag: "Left", value: derivationIndex },
+      },
     ]);
     if (!result.ok) return error(sdkErrorMessage(result.error), result.error);
     const outcomes = result.value;

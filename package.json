@@ -3,6 +3,9 @@
   "version": "0.1.0",
   "private": true,
   "type": "module",
+  "resolutions": {
+    "@parity/truapi": "0.6.0"
+  },
   "scripts": {
     "dev": "next dev",
     "dev:previewnet": "NEXT_PUBLIC_NETWORK_GENESIS_HASH=0x29f7b15e6227f86b90bf5199b5c872c28649a30e5f15fae6dd8fa9d5d48d6fbb next dev",
@@ -20,8 +23,9 @@
     "test:e2e:ui": "playwright test --ui"
   },
   "dependencies": {
-    "@parity/product-sdk": "^0.19.1",
+    "@parity/product-sdk": "^0.20.1",
     "@parity/product-sdk-descriptors": "^0.8.0",
+    "@parity/truapi": "0.6.0",
     "@polkadot-api/descriptors": "file:.papi/descriptors",
     "@polkadot-api/ink-contracts": "^0.5.0",
     "@polkadot-api/sdk-ink": "0.7.0",
@@ -35,6 +39,7 @@
     "polkadot-api": "^2.1.0",
     "react": "^19.2.1",
     "react-dom": "^19.2.1",
+    "react-reconciler": "0.33.0",
     "rxjs": "^7.8.2",
     "tailwind-merge": "^3.3.1"
   },
@@ -45,6 +50,7 @@
     "@types/node": "^20",
     "@types/react": "^19",
     "@types/react-dom": "^19",
+    "@types/react-reconciler": "0.33.0",
     "esbuild": "^0.28.1",
     "eslint": "^9",
     "eslint-config-next": "^15.5.4",

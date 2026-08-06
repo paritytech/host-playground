@@ -18,6 +18,10 @@ const nextConfig = {
     ignoreBuildErrors: false,
   },
   transpilePackages: ['@polkadot-api/descriptors'],
+  webpack(config) {
+    config.resolve.symlinks = false
+    return config
+  },
 }
 
 export default nextConfig
