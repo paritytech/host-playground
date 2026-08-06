@@ -16,26 +16,27 @@ Good documentation starts with a single, clear sentence. Everything else comes a
 
    Bad: `Run the test → log the result → render the card.`
    Good: `Run the test. Log the result. The card renders.`
+
 8. **No possessive apostrophes.** Drop the `'s`.
 
    Bad: `Releases the signer's lock so it can submit again.`
    Good: `Releases the signer lock so it can submit again.`
+
 9. **Minimize parenthetical asides.** A parenthetical usually means the sentence is carrying a detail it should either state plainly or drop. Fold it into the prose, or cut it.
 
    Bad: `Tests live in the tests array (test id to definition).`
    Good: `Tests live in the tests array, which maps a test id to its definition.`
+
 10. **Prefer full words to abbreviations.** In prose and in the names you reference. Established acronyms like `cid`, `evm`, and `sdk` are fine.
 
-   Bad: `const res = runTest(def)`
-   Good: `const result = runTest(definition)`
-11. **Don't write "on-chain".** Either omit it or say "network". The reader knows the data comes from the chain from context.
+Bad: `const res = runTest(def)`
+Good: `const result = runTest(definition)` 11. **Don't write "on-chain".** Either omit it or say "network". The reader knows the data comes from the chain from context.
 
-   Bad: `Discovered on-chain by enumerating storage.`
-   Good: `Discovered by enumerating storage.` or `Read from the network by enumerating storage.`
-12. **Don't name the variable in its own doc.** The declaration already shows the name. Describe what the value holds, not what it is called.
+Bad: `Discovered on-chain by enumerating storage.`
+Good: `Discovered by enumerating storage.` or `Read from the network by enumerating storage.` 12. **Don't name the variable in its own doc.** The declaration already shows the name. Describe what the value holds, not what it is called.
 
-   Bad: `` /** `contextAlias` (the derived alias) from the precompile. */ `` above `contextAlias: string | null`
-   Good: `/** Derived per-context pseudonym from the precompile. */` above `contextAlias: string | null`
+Bad: ``/** `contextAlias` (the derived alias) from the precompile. */`` above `contextAlias: string | null`
+Good: `/** Derived per-context pseudonym from the precompile. */` above `contextAlias: string | null`
 
 #### TypeScript
 
@@ -61,12 +62,30 @@ export async function runTest(test: TestDefinition): Promise<TestResult> {
 9. Don't write "on-chain". Omit it or say "network".
 10. Don't repeat the variable name in its own doc. Describe what it holds.
 
-## E2E Test Conventions
+## Test Conventions
 
-### Given/When/Then markers MUST be bare
+### A describe block states an outcome
 
-In Playwright test files, the `// Given`, `// When`, `// Then` markers are
-section headers — nothing else. **No descriptive text after them. Ever.**
+Every `describe` name ends in **`works`** or **`fails`**. The subject comes first, the outcome last. This applies to every test file, unit and E2E alike.
+
+```ts
+// ❌ WRONG — names the subject but not what is asserted about it
+describe('dotns resolution', ...)
+describe('runTest', ...)
+
+// ✅ CORRECT
+describe('dotns resolution works', ...)
+describe('dotns resolution fails', ...)
+describe('test running works', ...)
+```
+
+Split the happy path and the failure path into two blocks rather than mixing them under one name. A bare subject invites a grab-bag of unrelated cases. Naming the outcome forces the question of which half a new case belongs to, and makes a failing run say what broke.
+
+Prefer a singular subject so the verb agrees without thought. `test running works`, not `tests run`.
+
+### Given/When/Then markers must be bare
+
+Every test body is split by `// Given`, `// When`, `// Then`, in unit specs as much as in Playwright. They are section headers, nothing else. **No descriptive text after them. Ever.**
 
 ```ts
 // ❌ WRONG — never do this
@@ -80,7 +99,4 @@ section headers — nothing else. **No descriptive text after them. Ever.**
 // Then
 ```
 
-This applies to test code AND to test snippets in chat / PR descriptions /
-review comments. If you're tempted to explain what's happening in that block,
-the explanation belongs in the test name or as a separate comment line — not
-inline with the marker.
+This applies to test code and to test snippets in chat, PR descriptions, and review comments. If you are tempted to explain what is happening in that block, the explanation belongs in the test name, or in a comment above the `it(` line where it cannot be mistaken for part of a marker.
