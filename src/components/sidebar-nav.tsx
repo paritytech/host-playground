@@ -4,7 +4,7 @@ import { Fragment } from "react";
 import { Search, X, type LucideIcon } from "lucide-react";
 import type { TestCategory } from "@/src/lib/types";
 import { useActiveSection } from "@/src/lib/use-active-section";
-import { cn } from "@/src/lib/utils";
+import { cn } from "@/src/utils/logs";
 
 interface CategoryItem {
   id: TestCategory;

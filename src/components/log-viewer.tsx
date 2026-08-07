@@ -10,7 +10,7 @@ import {
   CardTitle,
 } from "@/src/components/card";
 import type { LogEntry } from "@/src/lib/types";
-import { formatTimestamp } from "@/src/lib/utils";
+import { formatTimestamp } from "@/src/utils/logs";
 
 interface LogViewerProps {
   logs: LogEntry[];
@@ -27,7 +27,12 @@ const statusVariant: Record<string, "success" | "error" | "info" | "warning"> =
     pending: "warning",
   };
 
-export function LogViewer({ logs, onClear, onExport, onReset }: LogViewerProps) {
+export function LogViewer({
+  logs,
+  onClear,
+  onExport,
+  onReset,
+}: LogViewerProps) {
   return (
     <Card className="flex h-full flex-col">
       <CardHeader className="flex flex-row items-center justify-between space-y-0">

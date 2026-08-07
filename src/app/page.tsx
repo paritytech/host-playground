@@ -36,28 +36,13 @@ import {
   type TestCategory,
 } from "@/src/lib/types";
 import { useLogs } from "@/src/lib/use-logs";
-import { cn, stringify } from "@/src/lib/utils";
+import { cn, stringify } from "@/src/utils/logs";
+import { withTimeout } from "@/src/utils/with-timeout";
 import pkg from "@/package.json";
 
 const SDK_VERSION_LABEL = `@parity/product-sdk ${pkg.dependencies["@parity/product-sdk"].replace(/^[\^~]/, "")}`;
 
 const TEST_TIMEOUT_MS = 30_000;
-
-// Prevent Host API calls from hanging indefinitely
-const withTimeout = <T,>(
-  promise: Promise<T>,
-  ms: number,
-  label: string,
-): Promise<T> => {
-  let timer: ReturnType<typeof setTimeout>;
-  const timeout = new Promise<never>((_, reject) => {
-    timer = setTimeout(
-      () => reject(new Error(`Test "${label}" timed out after ${ms / 1000}s`)),
-      ms,
-    );
-  });
-  return Promise.race([promise, timeout]).finally(() => clearTimeout(timer));
-};
 
 const categoryIcons: Record<TestCategory, LucideIcon> = {
   extension: Plug,
@@ -258,7 +243,7 @@ function NotInHostScreen() {
   );
 }
 
-export default function SdkTestPage() {
+export default function Home() {
   const { push: navigate } = useRouter();
   const { logs, log, updateLog, clearLogs, exportLogs } = useLogs();
   const [runningTest, setRunningTest] = useState<string | null>(null);
@@ -487,7 +472,6 @@ export default function SdkTestPage() {
               ))
             )}
           </div>
-
         </main>
 
         {/* Logs, fixed to the right of the viewport, spanning full height.
@@ -572,7 +556,10 @@ export default function SdkTestPage() {
           style={
             logDragging
               ? {
-                  opacity: Math.max(0, 1 - logDragY / (logDrag.current.height || 1)),
+                  opacity: Math.max(
+                    0,
+                    1 - logDragY / (logDrag.current.height || 1),
+                  ),
                   transition: "none",
                 }
               : undefined
