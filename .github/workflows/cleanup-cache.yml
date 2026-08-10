@@ -12,16 +12,23 @@ jobs:
     name: Cleanup Cache
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-
+      # No checkout step. This job only calls the Actions cache API, so it needs
+      # no repository files. Adding one would fail: the permissions block above
+      # grants no contents scope, and cloning a private repo without it returns
+      # HTTP 404 rather than a permission error.
       - name: Cleanup branch caches
         run: |
-          gh actions-cache list --branch "$BRANCH" --limit 100 | \
-            cut -f1 | \
-            while read -r key; do
-              [ -z "$key" ] && continue
-              gh actions-cache delete "$key" --branch "$BRANCH" --confirm || true
-            done
+          keys=$(gh cache list --ref "$BRANCH" --limit 100 --json key --jq '.[].key' || true)
+          if [ -z "$keys" ]; then
+            echo "No caches for $BRANCH, nothing to do."
+            exit 0
+          fi
+          echo "$keys" | while read -r key; do
+            [ -n "$key" ] && gh cache delete "$key" || true
+          done
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          # gh reads the repository from the git remote, which is absent without
+          # a checkout, so pass it explicitly.
+          GH_REPO: ${{ github.repository }}
           BRANCH: refs/pull/${{ github.event.pull_request.number }}/merge
