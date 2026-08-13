@@ -74,35 +74,25 @@ export interface TestDefinition {
 
 // Chain configurations
 export const CHAINS = {
-  PASEO_NEXT_V2_ASSET_HUB: {
+  PASEO_ASSETHUBNEXTV2: {
     name: "Paseo Next v2 Hub",
     network: "Testnet",
     genesis:
-      "0xbf0488dbe9daa1de1c08c5f743e26fdc2a4ecd74cf87dd1b4b1eeb99ae4ef19f" as const,
+      "0x23e730eb1c6fecae09c917439a5038cb6122d0d48980e8b9bbf0ff56f94a2ca6" as const,
     wsUrl: "wss://paseo-asset-hub-next-rpc.polkadot.io",
     ss58Prefix: 0,
     peopleWsUrl: "wss://paseo-people-next-system-rpc.polkadot.io",
     bulletinWsUrl: "wss://paseo-bulletin-next-rpc.polkadot.io",
   },
-  PREVIEWNET_ASSET_HUB: {
+  PREVIEWNET_ASSETHUB: {
     name: "Previewnet Hub",
     network: "Testnet",
     genesis:
-      "0x29f7b15e6227f86b90bf5199b5c872c28649a30e5f15fae6dd8fa9d5d48d6fbb" as const,
+      "0x4d11c803cc6921429e3876638977ad006ea1bba8cd3976a0bca2f164e7026210" as const,
     wsUrl: "wss://previewnet.substrate.dev/asset-hub",
     ss58Prefix: 0,
     peopleWsUrl: "wss://previewnet.substrate.dev/people",
     bulletinWsUrl: "wss://previewnet.substrate.dev/bulletin",
-  },
-  PASEO_ASSET_HUB: {
-    name: "Paseo Hub v1 (deprecated)",
-    network: "Testnet",
-    genesis:
-      "0xd6eec26135305a8ad257a20d003357284c8aa03d0bdb2b357ab0a22371e11ef2" as const,
-    wsUrl: "wss://sys.ibp.network/asset-hub-paseo",
-    ss58Prefix: 0,
-    papiNetworkId: "paseo_asset_hub",
-    peopleNetworkId: "paseo_people",
   },
 } as const;
 
@@ -114,6 +104,6 @@ const CHAIN_ID_BY_GENESIS = Object.fromEntries(
 
 export const ACTIVE_CHAIN_ID: ChainId =
   CHAIN_ID_BY_GENESIS[process.env.NEXT_PUBLIC_NETWORK_GENESIS_HASH ?? ""] ??
-  "PREVIEWNET_ASSET_HUB";
+  "PREVIEWNET_ASSETHUB";
 
 export const ACTIVE_CHAIN: ChainConfig = CHAINS[ACTIVE_CHAIN_ID];

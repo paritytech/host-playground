@@ -20,13 +20,13 @@ export const NETWORKS: Record<NetworkKey, NetworkConfig> = {
     name: "Paseo Next v2 Hub",
     ethRpc: "https://eth-rpc-paseo-next.polkadot.io",
     genesis:
-      "0xbf0488dbe9daa1de1c08c5f743e26fdc2a4ecd74cf87dd1b4b1eeb99ae4ef19f",
+      "0x23e730eb1c6fecae09c917439a5038cb6122d0d48980e8b9bbf0ff56f94a2ca6",
   },
   previewnet: {
     name: "Previewnet Hub",
     ethRpc: "https://previewnet.substrate.dev/eth-rpc",
     genesis:
-      "0x29f7b15e6227f86b90bf5199b5c872c28649a30e5f15fae6dd8fa9d5d48d6fbb",
+      "0x4d11c803cc6921429e3876638977ad006ea1bba8cd3976a0bca2f164e7026210",
   },
 };
 
