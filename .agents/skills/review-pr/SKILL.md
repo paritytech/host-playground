@@ -101,7 +101,7 @@ npm run format:check 2>&1 | tail -10
 For E2E-touching changes, run the relevant Playwright spec:
 
 ```sh
-npx playwright test --config tests/playwright.config.ts tests/<file>.spec.ts --grep "<pattern>"
+npx playwright test --config e2e/playwright.config.ts e2e/<file>.spec.ts --grep "<pattern>"
 ```
 
 Note which checks ran, were skipped, or were deferred to CI.

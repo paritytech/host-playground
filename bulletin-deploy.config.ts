@@ -24,7 +24,6 @@ export default {
   displayName: "Host Playground",
   description:
     "Reference playground exercising the @parity/product-sdk Host API surface against a paired Polkadot host.",
-  // Placeholder 1×1 PNG — replace with a real product icon (jpeg or png).
   // Path resolves relative to this config file.
   icon: { path: "./apps/app/public/icon.png", format: "png" as const },
   executables: [

@@ -15,7 +15,7 @@ Run in parallel:
 
 - `yarn typecheck` — `tsc --noEmit`, must be clean
 - `yarn lint` — `next lint` (warnings OK; errors are not)
-- `yarn test` — vitest unit tests (`src/**/*.test.ts`)
+- `yarn test` — vitest unit tests, config at `apps/app/vitest.config.ts`. The repo has no `*.test.ts` files yet, so this reports no tests found until someone adds one.
 
 ### 2. Contract (only if `evm/` changed)
 
@@ -30,7 +30,7 @@ Run in parallel:
 
 ### 4. Manual (optional, UI-visible changes only)
 
-- `yarn dev` → open `http://localhost:3000`
+- `yarn dev`, then open `http://localhost:3000`
 - Note: host-API cards only work inside a Polkadot host container; a plain
   browser tab returns `HostUnavailableError`. Don't treat that as a regression.
 

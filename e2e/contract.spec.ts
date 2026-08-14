@@ -31,11 +31,9 @@ test.describe("Contract writes", () => {
   test("deposit then withdraw", async ({ testHost }) => {
     const frame = await waitForAppReady(testHost);
 
-    // Deposit 0.1 PAS
     const depositResult = await runTest(frame, "contract-deposit");
     expect(depositResult).toBe("success");
 
-    // Withdraw 0.1 PAS
     const withdrawResult = await runTest(frame, "contract-withdraw");
     expect(withdrawResult).toBe("success");
   });

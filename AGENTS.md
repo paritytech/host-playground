@@ -10,12 +10,12 @@ Host Playground is a Next.js app that exercises `@parity/product-sdk` inside the
 - `apps/app/lib/tests/` — the heart of the project: one file per category, each entry defining one host-API test with its `run` function, and the UI renders them as cards. `index.ts` collects them into `testsByCategory`; `shared.ts` holds the helpers every category leans on (host accessors, `success`/`error`, the SimpleStore read/write plumbing, `watchTx`).
 - `apps/app/lib/types.ts` — shared types plus the `NETWORKS` network table (genesis hash, ws URL per network).
 - `apps/app/lib/categories.ts` — per-category title, description, icon, and the sidebar grouping/order.
-- `apps/worker/` — a service worker bundled separately with Vite (`vite.config.worker.ts`) into `apps/app/out/worker`.
+- `apps/worker/` — a service worker bundled separately with Vite (`apps/worker/vite.config.ts`) into `apps/app/out/worker`.
 - `evm/` — Foundry project for the `SimpleStore` contract that the on-network tests call.
   - `evm/src/` — Solidity sources and interfaces.
   - `evm/scripts/` — TypeScript deploy scripts run with `bun`, plus their own `package.json`.
   - `evm/deployment.json` — the deployed `SimpleStore` address the app imports.
-- `e2e/` — Playwright specs.
+- `e2e/` — Playwright specs plus the `playwright.config.ts` that runs them.
 
 ## Build / test / lint
 
@@ -51,6 +51,8 @@ Each command runs `forge build`, deploys via viem over the network eth-rpc, and 
 - **`evm/deployment.json` is a single flat `{ "simpleStore": "0x…" }`.** [shared.ts](apps/app/lib/tests/shared.ts) imports it at module load, so the app targets one deployed address at a time. Deploying to a second network overwrites it.
 - **`evm/` is excluded from the root TypeScript build** (see [tsconfig.json](tsconfig.json)); the deploy scripts typecheck against their own [evm/scripts/tsconfig.json](evm/scripts/tsconfig.json).
 - **Two TypeScript projects.** The root [tsconfig.json](tsconfig.json) covers everything outside `apps/app`, and [apps/app/tsconfig.json](apps/app/tsconfig.json) covers the app, where `@/*` means `apps/app/*` and `@root/*` means the repo root. `yarn typecheck` runs both.
+- **`bulletin-deploy.config.ts` has to keep that exact filename.** The CLI finds it by walking up from the build dir looking for `bulletin-deploy.config.{ts,js,mjs}` and there is no flag to point it elsewhere. Rename the file and the deploy still uploads the app, then silently skips the manifest publish.
+- **The configs live with what they configure.** [apps/worker/vite.config.ts](apps/worker/vite.config.ts), [apps/app/vitest.config.ts](apps/app/vitest.config.ts), and [e2e/playwright.config.ts](e2e/playwright.config.ts) are all passed to their tool with `--config` from the root package scripts, so run them through `yarn` rather than calling the tools bare.
 - **`.papi/descriptors/dist/` is generated.** Don't hand-edit it.
 - **Network config lives in one place — `NETWORKS` in [types.ts](apps/app/lib/types.ts).** Keep the deploy scripts in sync with it rather than inventing new endpoints.
 
@@ -84,9 +86,9 @@ un-allowlistable and forces a prompt. Keep commands plain:
 | The demo contract the tests call | [evm/src/SimpleStore.sol](evm/src/SimpleStore.sol) |
 | Deployed contract address | [evm/deployment.json](evm/deployment.json) |
 | Contract deploy scripts | [evm/scripts/deploy.ts](evm/scripts/deploy.ts), [evm/scripts/lib.ts](evm/scripts/lib.ts) |
-| Service worker | [apps/worker/index.ts](apps/worker/index.ts), [vite.config.worker.ts](vite.config.worker.ts) |
+| Service worker | [apps/worker/index.ts](apps/worker/index.ts), [apps/worker/vite.config.ts](apps/worker/vite.config.ts) |
 | Bulletin deploy config | [bulletin-deploy.config.ts](bulletin-deploy.config.ts) |
-| E2E specs and conventions | [e2e/](e2e/), [CONTRIBUTING.md](CONTRIBUTING.md) |
+| E2E specs and conventions | [e2e/](e2e/), [e2e/playwright.config.ts](e2e/playwright.config.ts), [CONTRIBUTING.md](CONTRIBUTING.md) |
 
 ## Documentation style
 
