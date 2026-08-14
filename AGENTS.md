@@ -6,9 +6,11 @@ Host Playground is a Next.js app that exercises `@parity/product-sdk` inside the
 
 ## Repo layout
 
-- `src/` — the Next.js app. `src/lib/tests.ts` is the heart of the project: each entry defines one host-API test with its `run` function, and the UI renders them as cards.
-- `src/lib/types.ts` — shared types plus the `NETWORKS` network table (genesis hash, ws URL per network).
-- `worker/` — a service worker bundled separately with Vite (`vite.config.worker.ts`).
+- `apps/app/` — the Next.js app, and the Next project root: `next.config.js`, `postcss.config.mjs`, `tsconfig.json`, and `public/` live here, and the static export lands in `apps/app/out`.
+- `apps/app/lib/tests/` — the heart of the project: one file per category, each entry defining one host-API test with its `run` function, and the UI renders them as cards. `index.ts` collects them into `testsByCategory`; `shared.ts` holds the helpers every category leans on (host accessors, `success`/`error`, the SimpleStore read/write plumbing, `watchTx`).
+- `apps/app/lib/types.ts` — shared types plus the `NETWORKS` network table (genesis hash, ws URL per network).
+- `apps/app/lib/categories.ts` — per-category title, description, icon, and the sidebar grouping/order.
+- `apps/worker/` — a service worker bundled separately with Vite (`vite.config.worker.ts`) into `apps/app/out/worker`.
 - `evm/` — Foundry project for the `SimpleStore` contract that the on-network tests call.
   - `evm/src/` — Solidity sources and interfaces.
   - `evm/scripts/` — TypeScript deploy scripts run with `bun`, plus their own `package.json`.
@@ -21,12 +23,13 @@ Run from the repo root with `yarn`:
 
 ```bash
 yarn install --immutable
-yarn dev                # next dev
-yarn build              # next build + vite worker build
-yarn typecheck          # tsc --noEmit
-yarn lint               # next lint
+yarn dev                # next dev apps/app
+yarn build              # next build apps/app + vite worker build
+yarn typecheck          # tsc --noEmit for the repo root and apps/app
+yarn lint               # next lint apps/app
 yarn test               # vitest run
 yarn test:e2e           # playwright
+yarn format             # prettier --write
 ```
 
 Verify with `yarn typecheck`, `yarn lint`, and the relevant tests before calling work complete.
@@ -45,10 +48,11 @@ Each command runs `forge build`, deploys via viem over the network eth-rpc, and 
 
 ## Codebase gotchas
 
-- **`evm/deployment.json` is a single flat `{ "simpleStore": "0x…" }`.** [tests.ts](src/lib/tests.ts) imports it at module load, so the app targets one deployed address at a time. Deploying to a second network overwrites it.
+- **`evm/deployment.json` is a single flat `{ "simpleStore": "0x…" }`.** [shared.ts](apps/app/lib/tests/shared.ts) imports it at module load, so the app targets one deployed address at a time. Deploying to a second network overwrites it.
 - **`evm/` is excluded from the root TypeScript build** (see [tsconfig.json](tsconfig.json)); the deploy scripts typecheck against their own [evm/scripts/tsconfig.json](evm/scripts/tsconfig.json).
+- **Two TypeScript projects.** The root [tsconfig.json](tsconfig.json) covers everything outside `apps/app`, and [apps/app/tsconfig.json](apps/app/tsconfig.json) covers the app, where `@/*` means `apps/app/*` and `@root/*` means the repo root. `yarn typecheck` runs both.
 - **`.papi/descriptors/dist/` is generated.** Don't hand-edit it.
-- **Network config lives in one place — `NETWORKS` in [types.ts](src/lib/types.ts).** Keep the deploy scripts in sync with it rather than inventing new endpoints.
+- **Network config lives in one place — `NETWORKS` in [types.ts](apps/app/lib/types.ts).** Keep the deploy scripts in sync with it rather than inventing new endpoints.
 
 ## Bash command construction (keep commands auto-approvable)
 
@@ -74,12 +78,13 @@ un-allowlistable and forces a prompt. Keep commands plain:
 
 | You're looking for | Start here |
 |---|---|
-| A host-API test definition | [src/lib/tests.ts](src/lib/tests.ts) |
-| Network table (genesis, ws URL) | `NETWORKS` in [src/lib/types.ts](src/lib/types.ts) |
+| A host-API test definition | [apps/app/lib/tests/](apps/app/lib/tests/), one file per category |
+| Helpers shared by the tests | [apps/app/lib/tests/shared.ts](apps/app/lib/tests/shared.ts) |
+| Network table (genesis, ws URL) | `NETWORKS` in [apps/app/lib/types.ts](apps/app/lib/types.ts) |
 | The demo contract the tests call | [evm/src/SimpleStore.sol](evm/src/SimpleStore.sol) |
 | Deployed contract address | [evm/deployment.json](evm/deployment.json) |
 | Contract deploy scripts | [evm/scripts/deploy.ts](evm/scripts/deploy.ts), [evm/scripts/lib.ts](evm/scripts/lib.ts) |
-| Service worker | [worker/index.ts](worker/index.ts), [vite.config.worker.ts](vite.config.worker.ts) |
+| Service worker | [apps/worker/index.ts](apps/worker/index.ts), [vite.config.worker.ts](vite.config.worker.ts) |
 | Bulletin deploy config | [bulletin-deploy.config.ts](bulletin-deploy.config.ts) |
 | E2E specs and conventions | [e2e/](e2e/), [CONTRIBUTING.md](CONTRIBUTING.md) |
 

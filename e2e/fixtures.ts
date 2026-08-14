@@ -1,12 +1,12 @@
-import { test as base, expect } from '@playwright/test';
+import { test as base, expect } from "@playwright/test";
 import {
   createTestHostFixture,
   PASEO_ASSET_HUB,
   type TestHost,
-} from '@parity/host-api-test-sdk/playwright';
-import { NETWORKS } from '../src/lib/types';
+} from "@parity/host-api-test-sdk/playwright";
+import { NETWORKS } from "../apps/app/lib/types";
 
-const PRODUCT_URL = 'http://localhost:5199';
+const PRODUCT_URL = "http://localhost:5199";
 
 const PASEO = {
   ...PASEO_ASSET_HUB,
@@ -30,7 +30,7 @@ const modernTransportTest = base.extend({
   page: async ({ page }, use) => {
     await page.addInitScript(() => {
       window.addEventListener(
-        'message',
+        "message",
         (event) => {
           const hostWindow = window.parent;
           const injectedPort = (
@@ -56,17 +56,19 @@ const modernTransportTest = base.extend({
 
 const bobFixture = createTestHostFixture({
   productUrl: PRODUCT_URL,
-  accounts: ['bob'],
+  accounts: ["bob"],
   networks: [PASEO],
   // App derives its DotNS identifier from window.location.host, so under
   // Playwright that's 'localhost:5199'. Map both to bob so the same Bob
   // signer is used whether the app is opened under the local host or a
   // canonical .dot identifier.
   productAccounts: {
-    'host-playground.dot/0': 'bob',
-    'localhost:5199/0': 'bob',
+    "host-playground.dot/0": "bob",
+    "localhost:5199/0": "bob",
   },
 });
 
-export const test = modernTransportTest.extend<{ testHost: TestHost }>(bobFixture);
+export const test = modernTransportTest.extend<{ testHost: TestHost }>(
+  bobFixture,
+);
 export { expect };
