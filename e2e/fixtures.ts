@@ -4,8 +4,15 @@ import {
   PASEO_ASSET_HUB,
   type TestHost,
 } from '@parity/host-api-test-sdk/playwright';
+import { NETWORKS } from '../src/lib/types';
 
 const PRODUCT_URL = 'http://localhost:5199';
+
+const PASEO = {
+  ...PASEO_ASSET_HUB,
+  genesisHash: NETWORKS.PASEO_ASSETHUBNEXTV2.genesis,
+  rpcUrl: NETWORKS.PASEO_ASSETHUBNEXTV2.wsUrl,
+};
 
 /**
  * host-api-test-sdk 0.11 exposes both its legacy window transport and its
@@ -50,7 +57,7 @@ const modernTransportTest = base.extend({
 const bobFixture = createTestHostFixture({
   productUrl: PRODUCT_URL,
   accounts: ['bob'],
-  networks: [PASEO_ASSET_HUB],
+  networks: [PASEO],
   // App derives its DotNS identifier from window.location.host, so under
   // Playwright that's 'localhost:5199'. Map both to bob so the same Bob
   // signer is used whether the app is opened under the local host or a

@@ -7,7 +7,7 @@ Host Playground is a Next.js app that exercises `@parity/product-sdk` inside the
 ## Repo layout
 
 - `src/` — the Next.js app. `src/lib/tests.ts` is the heart of the project: each entry defines one host-API test with its `run` function, and the UI renders them as cards.
-- `src/lib/types.ts` — shared types plus the `CHAINS` network table (genesis hash, ws URL per network).
+- `src/lib/types.ts` — shared types plus the `NETWORKS` network table (genesis hash, ws URL per network).
 - `worker/` — a service worker bundled separately with Vite (`vite.config.worker.ts`).
 - `evm/` — Foundry project for the `HostApiDemo` contract that the on-network tests call.
   - `evm/src/` — Solidity sources and interfaces.
@@ -48,7 +48,7 @@ Each command runs `forge build`, deploys via viem over the network eth-rpc, and 
 - **`evm/deployment.json` is a single flat `{ "hostApiDemo": "0x…" }`.** [tests.ts](src/lib/tests.ts) imports it at module load, so the app targets one deployed address at a time. Deploying to a second network overwrites it.
 - **`evm/` is excluded from the root TypeScript build** (see [tsconfig.json](tsconfig.json)); the deploy scripts typecheck against their own [evm/scripts/tsconfig.json](evm/scripts/tsconfig.json).
 - **`.papi/descriptors/dist/` is generated.** Don't hand-edit it.
-- **Network config lives in one place — `CHAINS` in [types.ts](src/lib/types.ts).** Keep the deploy scripts in sync with it rather than inventing new endpoints.
+- **Network config lives in one place — `NETWORKS` in [types.ts](src/lib/types.ts).** Keep the deploy scripts in sync with it rather than inventing new endpoints.
 
 ## Bash command construction (keep commands auto-approvable)
 
@@ -75,7 +75,7 @@ un-allowlistable and forces a prompt. Keep commands plain:
 | You're looking for | Start here |
 |---|---|
 | A host-API test definition | [src/lib/tests.ts](src/lib/tests.ts) |
-| Network table (genesis, ws URL) | `CHAINS` in [src/lib/types.ts](src/lib/types.ts) |
+| Network table (genesis, ws URL) | `NETWORKS` in [src/lib/types.ts](src/lib/types.ts) |
 | The demo contract the tests call | [evm/src/HostDemo.sol](evm/src/HostDemo.sol) |
 | Deployed contract address | [evm/deployment.json](evm/deployment.json) |
 | Contract deploy scripts | [evm/scripts/deploy.ts](evm/scripts/deploy.ts), [evm/scripts/lib.ts](evm/scripts/lib.ts) |

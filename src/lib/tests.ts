@@ -46,7 +46,7 @@ import { toHex, fromHex } from "polkadot-api/utils";
 import { createInkSdk } from "@polkadot-api/sdk-ink";
 import { contracts } from "@polkadot-api/descriptors";
 import { deriveH160 } from "@parity/product-sdk/address";
-import { CHAINS } from "./types";
+import { NETWORKS } from "./types";
 import deployment from "../../evm/deployment.json";
 import {
   type ChainConfig,
@@ -191,7 +191,7 @@ const PRODUCT_ALIAS_RING_LOCATION: RingLocation = {
 // it's intentionally absent — the card reports that rather than signing on the
 // wrong chain.
 const PEOPLE_CHAIN_BY_HUB: Record<string, typeof paseo_individuality> = {
-  [CHAINS.PASEO_ASSETHUBNEXTV2.genesis]: paseo_individuality,
+  [NETWORKS.PASEO_ASSETHUBNEXTV2.genesis]: paseo_individuality,
 };
 
 // The personhood rings live on the People chain, not the hub. The ring
@@ -200,9 +200,9 @@ const PEOPLE_CHAIN_BY_HUB: Record<string, typeof paseo_individuality> = {
 // are fixed 32-byte ASCII tags from the individuality reality traits, space
 // padded when shorter.
 const ASSETHUB_GENESIS_TO_PEOPLE_GENESIS: Record<string, `0x${string}`> = {
-  [CHAINS.PASEO_ASSETHUBNEXTV2.genesis]:
+  [NETWORKS.PASEO_ASSETHUBNEXTV2.genesis]:
     "0x89a63b11fef2c0273fc72c0d864da0793a665dade5db153e0cab995348c5440f",
-  [CHAINS.PREVIEWNET_ASSETHUB.genesis]:
+  [NETWORKS.PREVIEWNET_ASSETHUB.genesis]:
     "0x3138c6d4ce58c760047a413c2a930e919b4673a841ab4890de59aac3bd037f3d",
 };
 

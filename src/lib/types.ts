@@ -73,7 +73,7 @@ export interface TestDefinition {
 }
 
 // Chain configurations
-export const CHAINS = {
+export const NETWORKS = {
   PASEO_ASSETHUBNEXTV2: {
     name: "Paseo Next v2 Hub",
     network: "Testnet",
@@ -96,14 +96,14 @@ export const CHAINS = {
   },
 } as const;
 
-export type ChainId = keyof typeof CHAINS;
+export type ChainId = keyof typeof NETWORKS;
 
 const CHAIN_ID_BY_GENESIS = Object.fromEntries(
-  (Object.keys(CHAINS) as ChainId[]).map((id) => [CHAINS[id].genesis, id]),
+  (Object.keys(NETWORKS) as ChainId[]).map((id) => [NETWORKS[id].genesis, id]),
 ) as Record<string, ChainId>;
 
 export const ACTIVE_CHAIN_ID: ChainId =
   CHAIN_ID_BY_GENESIS[process.env.NEXT_PUBLIC_NETWORK_GENESIS_HASH ?? ""] ??
   "PREVIEWNET_ASSETHUB";
 
-export const ACTIVE_CHAIN: ChainConfig = CHAINS[ACTIVE_CHAIN_ID];
+export const ACTIVE_CHAIN: ChainConfig = NETWORKS[ACTIVE_CHAIN_ID];

@@ -115,7 +115,7 @@ test card). Historical breaking changes to expect:
   from the user's private seed, so the app can't build it. Errors surface as the
   host `CreateProofErr` (`RingNotFound` = no ring on the requested chain).
 - **Stale testnet genesis.** Testnets reset; the hardcoded genesis hashes in
-  `CHAINS` ([src/lib/types.ts](src/lib/types.ts)) go stale (Previewnet did). If the
+  `NETWORKS` ([src/lib/types.ts](src/lib/types.ts)) go stale (Previewnet did). If the
   host reports "does not serve chain 0x…", verify against the live RPC before
   assuming a host problem:
   `curl -s -H 'Content-Type: application/json' -d '{"jsonrpc":"2.0","id":1,"method":"chain_getBlockHash","params":[0]}' <https-rpc>`.
