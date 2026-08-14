@@ -533,52 +533,33 @@
   resolved "https://registry.npmjs.org/@nolyfill/is-core-module/-/is-core-module-1.0.39.tgz"
   integrity sha512-nn5ozdjYQpUCZlWGuxcJY/KpxkWQs4DcbMCmKojjyrYDEAGy4Ce19NN4v5MduafTwJlbKc99UA8YhSVqq9yPZA==
 
-"@novasamatech/host-api-wrapper@0.8.10", "@novasamatech/host-api-wrapper@^0.8.9":
-  version "0.8.10"
-  resolved "https://registry.yarnpkg.com/@novasamatech/host-api-wrapper/-/host-api-wrapper-0.8.10.tgz#4267a3bf1ee5225753389881229f58edc4e2a036"
-  integrity sha512-0DqpRgjpSorLu1ZE7hRmqJkXAECwVyXUqkl2i0qyLKeQFACiX138yXq0lRe/RDLSLv6P3EbH3HM5PbFA04Kthg==
+"@novasamatech/host-api-wrapper@0.9.4", "@novasamatech/host-api-wrapper@^0.8.9":
+  version "0.9.4"
+  resolved "https://registry.yarnpkg.com/@novasamatech/host-api-wrapper/-/host-api-wrapper-0.9.4.tgz#231253ea89b9f84c64fa4c7ebd68834dd451b157"
+  integrity sha512-tzmZV2daRscfZL4xa5BzKuRtWOf6x66ZSf8w4Roi4LqbnAbdBwYz60NoEKy6mEDgrMD3Hug4FNRrLMp9p1QNrA==
   dependencies:
-    "@novasamatech/host-api" "0.8.10"
+    "@novasamatech/host-api" "0.9.4"
     "@polkadot-api/json-rpc-provider-proxy" "^0.4.0"
     "@polkadot-api/substrate-bindings" "^0.20.3"
     "@polkadot/extension-inject" "^0.63.1"
     neverthrow "^8.2.0"
     polkadot-api ">=2"
 
-"@novasamatech/host-api@0.8.10", "@novasamatech/host-api@^0.8.9":
-  version "0.8.10"
-  resolved "https://registry.yarnpkg.com/@novasamatech/host-api/-/host-api-0.8.10.tgz#8256d0f277077feeda5d6e3148db692976724cb1"
-  integrity sha512-pTSj3vDtgYUCn3b8QbtRM4JHhLNIU1wIHpu16HOZjNx77mtWBXxgb8MwvKAk5lGGlNKhJzWd49rrCaal6PmGIQ==
+"@novasamatech/host-api@0.9.4", "@novasamatech/host-api@^0.8.0", "@novasamatech/host-api@^0.8.9":
+  version "0.9.4"
+  resolved "https://registry.yarnpkg.com/@novasamatech/host-api/-/host-api-0.9.4.tgz#da65f363d36c0e6cefb09bbf8a7aa0005baaa851"
+  integrity sha512-9yVjbyjUVfgDnNx3sJYlRW3kcpvBQv4F1LXqQZfJco/2Egcq8WM6Yplpnubfxhvj+IXl2gEEMQbX3thZms6LUQ==
   dependencies:
-    "@novasamatech/scale" "0.8.10"
-    nanoevents "9.1.0"
-    nanoid "5.1.11"
+    "@novasamatech/scale" "0.9.4"
+    nanoevents "10.0.0"
+    nanoid "6.0.0"
     neverthrow "^8.2.0"
     scale-ts "1.6.1"
 
-"@novasamatech/host-api@^0.8.0":
-  version "0.8.6"
-  resolved "https://registry.yarnpkg.com/@novasamatech/host-api/-/host-api-0.8.6.tgz#3f9d6a8d768a0ce0780c1034d2379256ed038cc0"
-  integrity sha512-DayCRwOncCcYO/Hc+pYQaBXsTYOn8h/2dl/hAFy1yVgG/LEBLcZrUmhUpotUFEhgWvfc0/KQa59P7T11H49AWA==
-  dependencies:
-    "@novasamatech/scale" "0.8.6"
-    nanoevents "9.1.0"
-    nanoid "5.1.11"
-    neverthrow "^8.2.0"
-    scale-ts "1.6.1"
-
-"@novasamatech/scale@0.8.10":
-  version "0.8.10"
-  resolved "https://registry.yarnpkg.com/@novasamatech/scale/-/scale-0.8.10.tgz#2026d01ba6a99480e48adc52f713385e6ad1297d"
-  integrity sha512-Oko3OMmZJQXwx5IzsB2YGTMc8RKhy2lyF7NtF0w5YQT7xX1lUuBKmNWxuKpjOjckf2uOkHIJUAacKBmLP622Fw==
-  dependencies:
-    "@polkadot-api/utils" "^0.4.0"
-    scale-ts "1.6.1"
-
-"@novasamatech/scale@0.8.6":
-  version "0.8.6"
-  resolved "https://registry.yarnpkg.com/@novasamatech/scale/-/scale-0.8.6.tgz#f2e2e34eac88be25af00e526a1bb8972bc7dff8f"
-  integrity sha512-XsiNMntDVUmwQYieowid2s5t1THk/Asb4JohmWOrIFetj5ZdaD8mjLCt42WTWxaZaJyYyCjjGBssnUbcLyTWFw==
+"@novasamatech/scale@0.9.4":
+  version "0.9.4"
+  resolved "https://registry.yarnpkg.com/@novasamatech/scale/-/scale-0.9.4.tgz#c145e38b24cac949a21d02fdbf0c56eb14252245"
+  integrity sha512-gUdY/KgWZAv5WUUeGmflo4bhTpfpbFMImtxN2VYfRarOQbbWOzKm7uelqgv8GAQUM85982wVhULPFRDA4b2qXA==
   dependencies:
     "@polkadot-api/utils" "^0.4.0"
     scale-ts "1.6.1"
@@ -4512,15 +4493,15 @@ multiformats@^14.0.0:
   resolved "https://registry.yarnpkg.com/multiformats/-/multiformats-14.0.0.tgz#4818a926e4cbec76bacffdf81f9c74019538fd20"
   integrity sha512-iWK1RrAS58p2NDfeZFuSUSv3ZPewTIhsGbh/5NgeGGJwJmRljLxGtjRR3nkn+loG3zl+IrfR/W1590QnrSK+Gg==
 
-nanoevents@9.1.0:
-  version "9.1.0"
-  resolved "https://registry.yarnpkg.com/nanoevents/-/nanoevents-9.1.0.tgz#76c8c86ed54a26131ada5a0a1c5682f48690dbb7"
-  integrity sha512-Jd0fILWG44a9luj8v5kED4WI+zfkkgwKyRQKItTtlPfEsh7Lznfi1kr8/iZ+XAIss4Qq5GqRB0qtWbaz9ceO/A==
+nanoevents@10.0.0:
+  version "10.0.0"
+  resolved "https://registry.yarnpkg.com/nanoevents/-/nanoevents-10.0.0.tgz#ea060a543af487b51fc129ca0263464756906e45"
+  integrity sha512-PmIJ3BNxOzgVgnS1r/Pvyj6eZx/xUV2JCPogh0brD6smDIwjRlr1KBl9yoRX323PlfaNrBDDnfCgC9SL00OjSg==
 
-nanoid@5.1.11:
-  version "5.1.11"
-  resolved "https://registry.yarnpkg.com/nanoid/-/nanoid-5.1.11.tgz#559dbdbc41737da341ac938c25514563d2dd94c7"
-  integrity sha512-v+KEsUv2ps74PaSKv0gHTxTCgMXOIfBEbaqa6w6ISIGC7ZsvHN4N9oJ8d4cmf0n5oTzQz2SLmThbQWhjd/8eKg==
+nanoid@6.0.0:
+  version "6.0.0"
+  resolved "https://registry.yarnpkg.com/nanoid/-/nanoid-6.0.0.tgz#8a07398e87773c6a97d158921cad826a9c344eab"
+  integrity sha512-mkUH+rPkwU2qPadJ0oJZOjeZ5Mxn8Q1UhevwkTRWNuUZzyia3h4rhzK39hxaHTk0o2OxB8W2SQ6A8k23ZDi1pQ==
 
 nanoid@^3.3.11, nanoid@^3.3.6:
   version "3.3.11"

@@ -200,6 +200,28 @@ async function ensureDevicePermission(
   }
 }
 
+type AccountSelector = number | Uint8Array;
+type DerivationIndex =
+  | { tag: "Index"; value: number }
+  | { tag: "Raw"; value: Uint8Array };
+
+function wireDerivationIndex(index: AccountSelector): DerivationIndex {
+  return typeof index === "number"
+    ? { tag: "Index", value: index }
+    : { tag: "Raw", value: index };
+}
+
+function accountSelectorLabel(selector: AccountSelector): string {
+  return typeof selector === "number" ? String(selector) : toHex(selector);
+}
+function codecErrorLabel(value: unknown): string {
+  if (value && typeof value === "object") {
+    if ("name" in value && typeof value.name === "string") return value.name;
+    if ("tag" in value && typeof value.tag === "string") return value.tag;
+  }
+  return String(value);
+}
+
 /**
  * Ensure the product account has a SmartContractAllowance slot before a
  * contract write (RFC-0010). A non-zero PGAS asset balance means already
@@ -209,9 +231,10 @@ async function ensureDevicePermission(
 async function ensureSmartContractAllowance(
   log: (msg: string) => void,
   chain: ChainConfig,
-  productAccount: { publicKey: Uint8Array; derivationIndex: number },
+  productAccount: { publicKey: Uint8Array; derivationIndex: AccountSelector },
 ): Promise<TestResult | null> {
   const { publicKey, derivationIndex } = productAccount;
+  const selectorLabel = accountSelectorLabel(derivationIndex);
   try {
     const address = AccountId(chain.ss58Prefix).dec(publicKey);
     const api = (await getClient(chain.genesis)).getUnsafeApi();
@@ -224,7 +247,7 @@ async function ensureSmartContractAllowance(
     const bal = BigInt(acct?.balance ?? 0);
     if (bal > BigInt(0)) {
       log(
-        `SmartContractAllowance(${derivationIndex}) already provisioned (PGAS asset=${pgasAssetId}, balance=${bal})`,
+        `SmartContractAllowance(${selectorLabel}) already provisioned (PGAS asset=${pgasAssetId}, balance=${bal})`,
       );
       return null;
     }
@@ -232,14 +255,14 @@ async function ensureSmartContractAllowance(
     log(`PGAS balance probe failed (${e}); falling through to request`);
   }
 
-  log(`Requesting SmartContractAllowance(${derivationIndex})...`);
+  log(`Requesting SmartContractAllowance(${selectorLabel})...`);
   try {
     const outcomes = await requestResourceAllocation([
-      { tag: "SmartContractAllowance", value: derivationIndex },
+      { tag: "SmartContractAllowance", value: wireDerivationIndex(derivationIndex) },
     ]);
     const outcome = outcomes[0]?.tag;
     if (outcome === "Allocated") {
-      log(`SmartContractAllowance(${derivationIndex}) allocated`);
+      log(`SmartContractAllowance(${selectorLabel}) allocated`);
       return null;
     }
     if (outcome === "Rejected") {
@@ -312,36 +335,7 @@ export const accountTests: TestDefinition[] = [
           success("Product account:", {
             publicKey: toHex(account.publicKey),
           }),
-        (err) => error(`${err.name}`, err),
-      );
-    },
-  },
-  {
-    id: "accounts-provider-alias",
-    name: "Get Product Account Alias",
-    description: "Gets a product account alias via getAccountsProvider",
-    api: "accountsProvider.getProductAccountAlias(dotNsIdentifier)",
-    args: [
-      {
-        name: "dotNsIdentifier",
-        label: "DotNS ID",
-        defaultValue: SELF_DOTNS,
-      },
-    ],
-    category: "accounts",
-    async run(_chain, _logger, args) {
-      const dotNsIdentifier = args?.dotNsIdentifier ?? SELF_DOTNS;
-      const accountsProvider = (await accounts());
-      const result =
-        await accountsProvider.getProductAccountAlias(dotNsIdentifier);
-
-      return result.match(
-        (alias) =>
-          success("Account alias retrieved", {
-            context: toHex(alias.context),
-            alias: toHex(alias.alias),
-          }),
-        (err) => error(`${err.name}`, err),
+        (err) => error(codecErrorLabel(err), err),
       );
     },
   },
@@ -374,7 +368,7 @@ export const accountTests: TestDefinition[] = [
             publicKey: toHex(signer.publicKey),
           });
         },
-        (err) => error(`${err.name}`, err),
+        (err) => error(codecErrorLabel(err), err),
       );
     },
   },
@@ -2351,7 +2345,7 @@ export const paymentTests: TestDefinition[] = [
 type AllocatableResource =
   | { tag: "StatementStoreAllowance"; value: undefined }
   | { tag: "BulletinAllowance"; value: undefined }
-  | { tag: "SmartContractAllowance"; value: number };
+  | { tag: "SmartContractAllowance"; value: DerivationIndex };
 
 async function runResourceAllocation(resources: AllocatableResource[]) {
   try {
@@ -2410,7 +2404,7 @@ export const allowancesTests: TestDefinition[] = [
     async run(_chain, _logger, args) {
       const derivationIndex = Number(args?.derivationIndex ?? "0");
       return runResourceAllocation([
-        { tag: "SmartContractAllowance", value: derivationIndex },
+        { tag: "SmartContractAllowance", value: wireDerivationIndex(derivationIndex) },
       ]);
     },
   },
@@ -2433,7 +2427,7 @@ export const allowancesTests: TestDefinition[] = [
       return runResourceAllocation([
         { tag: "StatementStoreAllowance", value: undefined },
         { tag: "BulletinAllowance", value: undefined },
-        { tag: "SmartContractAllowance", value: derivationIndex },
+        { tag: "SmartContractAllowance", value: wireDerivationIndex(derivationIndex) },
       ]);
     },
   },
