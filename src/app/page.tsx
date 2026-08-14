@@ -35,7 +35,7 @@ import {
   type TestDefinition,
   type TestCategory,
 } from "@/src/lib/types";
-import { useLogs } from "@/src/hooks/use-logs";
+import { useLogs } from "@/src/lib/use-logs";
 import { cn, stringify } from "@/src/utils/logs";
 import { withTimeout } from "@/src/utils/with-timeout";
 import pkg from "@/package.json";
