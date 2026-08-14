@@ -27,7 +27,6 @@ export async function runTest(
   await expect(btn).toBeVisible({ timeout: 10_000 });
   await btn.click();
 
-  // Wait for the latest log entry to resolve (not pending)
   const lastEntry = frame.locator('[data-testid="log-entry"]').last();
   await expect(lastEntry).not.toHaveAttribute("data-status", "pending", {
     timeout,

@@ -11,7 +11,6 @@ test.describe("App loads", () => {
 
   test("shows sidebar categories", async ({ testHost }) => {
     const frame = await waitForAppReady(testHost);
-    // Sidebar nav items
     await expect(
       frame.getByRole("heading", { name: /Accounts/ }),
     ).toBeVisible();

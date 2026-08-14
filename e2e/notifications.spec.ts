@@ -12,7 +12,7 @@ test.describe("Notifications", () => {
     expect(log.length).toBeGreaterThan(0);
     const entry = log[log.length - 1];
     expect(entry.text).toBe("Hello from demo product!");
-    // Empty "Schedule in" → immediate delivery, no scheduledAt.
+    // An empty "Schedule in" field means immediate delivery, so no scheduledAt.
     expect(entry.scheduledAt).toBeUndefined();
   });
 
@@ -34,24 +34,21 @@ test.describe("Notifications", () => {
   test("cancel", async ({ testHost }) => {
     const frame = await waitForAppReady(testHost);
 
-    // 1. Schedule a notification far in the future
+    // Schedule far enough out that the host cannot deliver it first.
     const scheduled = await runTestWithArgs(frame, "push-notification", {
       scheduleInSeconds: "3600",
     });
     expect(scheduled).toBe("success");
 
-    // 2. Read the host-assigned id from the log
     const afterSchedule = await testHost.getNotificationLog();
     const entry = afterSchedule[afterSchedule.length - 1];
     expect(entry.cancelled).toBe(false);
 
-    // 3. Cancel it by id
     const result = await runTestWithArgs(frame, "cancel-notification", {
       id: String(entry.id),
     });
     expect(result).toBe("success");
 
-    // 4. Verify the host marked the entry cancelled
     const afterCancel = await testHost.getNotificationLog();
     expect(afterCancel.find((e) => e.id === entry.id)?.cancelled).toBe(true);
   });

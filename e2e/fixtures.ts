@@ -15,10 +15,10 @@ const PASEO = {
 };
 
 /**
- * host-api-test-sdk 0.11 exposes both its legacy window transport and its
- * modern MessagePort transport. TrUAPI 0.5.1 intentionally accepts the first
- * valid transport it sees, so the host's eager legacy handshake probe can win
- * the race with `truapi-init`: requests then leave over window.postMessage,
+ * host-api-test-sdk since 0.11 exposes both its legacy window transport and its
+ * modern MessagePort transport. TrUAPI intentionally accepts the first valid
+ * transport it sees, so the eager legacy handshake probe from the host can win
+ * the race with `truapi-init`. Requests then leave over window.postMessage
  * while the dual-stack host replies over the newly-created MessagePort.
  *
  * This fixture is explicitly testing the modern mock-host path. Ignore legacy
