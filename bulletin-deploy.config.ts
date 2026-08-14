@@ -18,22 +18,22 @@
  */
 
 export default {
-  domain: process.env.MANIFEST_DOMAIN ?? "host-playground.dot",
+  domain: process.env.MANIFEST_DOMAIN ?? "host-playground",
   displayName: "Host Playground",
   description:
     "Reference playground exercising the @parity/product-sdk Host API surface against a paired Polkadot host.",
   // Placeholder 1×1 PNG — replace with a real product icon (jpeg or png).
   // Path resolves relative to this config file.
-  icon: { path: "./public/icon.png", format: "png" as const },
+  icon: { path: "./apps/app/public/icon.png", format: "png" as const },
   executables: [
     {
       kind: "app" as const,
-      path: "./out",
+      path: "./apps/app/out",
       appVersion: [0, 1, 0] as const,
     },
     {
       kind: "worker" as const,
-      path: "./out/worker",
+      path: "./apps/app/out/worker",
       appVersion: [0, 1, 0] as const,
       entrypoint: "index.js",
       includes: { chat: true, pocket: false },

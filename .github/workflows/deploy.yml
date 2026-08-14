@@ -54,7 +54,7 @@ jobs:
 
       - name: Compute build hash
         id: hash
-        run: echo "hash=$(find out -type f -exec sha256sum {} \; | sort | sha256sum | cut -d' ' -f1)" >> "$GITHUB_OUTPUT"
+        run: echo "hash=$(find apps/app/out -type f -exec sha256sum {} \; | sort | sha256sum | cut -d' ' -f1)" >> "$GITHUB_OUTPUT"
 
       - name: Check deployment cache
         id: cache
@@ -91,11 +91,14 @@ jobs:
         env:
           BRANCH: ${{ github.event.pull_request.head.ref }}
         run: |
+          # Bare label, no TLD. Each environment has its own suffix (.dot on
+          # preview, .paseo on paseo-next-v2) and bulletin-deploy rejects the
+          # wrong one, so let the CLI append whichever its environment uses.
           if [ "${{ github.event_name }}" == "push" ]; then
-            echo "dotns=host-playground.dot" >> "$GITHUB_OUTPUT"
+            echo "dotns=host-playground" >> "$GITHUB_OUTPUT"
           else
             SAFE_BRANCH=$(printf '%s' "$BRANCH" | tr '/' '-' | sed 's/[^a-z0-9-]//g' | cut -c1-20)
-            echo "dotns=${SAFE_BRANCH}-host-playground00.dot" >> "$GITHUB_OUTPUT"
+            echo "dotns=${SAFE_BRANCH}-host-playground00" >> "$GITHUB_OUTPUT"
           fi
 
       - name: Deploy
@@ -111,7 +114,7 @@ jobs:
             export IPFS_CID='${{ steps.cached-deploy.outputs.cid }}'
             export NODE_OPTIONS='--max-old-space-size=8192'
             export MANIFEST_DOMAIN='${{ steps.domain-input.outputs.dotns }}'
-            bulletin-deploy --env ${{ matrix.target.env }} 'out' '${{ steps.domain-input.outputs.dotns }}'
+            bulletin-deploy --env ${{ matrix.target.env }} 'apps/app/out' '${{ steps.domain-input.outputs.dotns }}'
 
       - name: Validate deployment outputs
         if: steps.cache.outputs.cache-hit != 'true'
