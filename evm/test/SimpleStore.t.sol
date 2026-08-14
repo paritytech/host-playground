@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.24;
 
-import {HostDemo} from "../src/HostDemo.sol";
+import {SimpleStore} from "../src/SimpleStore.sol";
 import {IPersonhood} from "../src/interfaces/IPersonhood.sol";
 
 /// Minimal Foundry cheatcode surface — avoids a forge-std dependency for this
@@ -12,15 +12,15 @@ interface Vm {
     function expectRevert() external;
 }
 
-contract HostDemoPersonhoodTest {
+contract SimpleStorePersonhoodTest {
     Vm constant vm = Vm(0x7109709ECfa91a80626fF3989D68f67F5b1DD12D);
     // Proof-of-personhood precompile address (see IPersonhood).
     address constant PERSONHOOD = 0x000000000000000000000000000000000a010000;
 
-    HostDemo demo;
+    SimpleStore demo;
 
     function setUp() public {
-        demo = new HostDemo();
+        demo = new SimpleStore();
     }
 
     function _request()

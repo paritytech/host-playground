@@ -153,7 +153,7 @@ async function theme(): Promise<ThemeProvider> {
   return cachedTheme;
 }
 
-const HOSTAPI_DEMO_ADDRESS = deployment.hostApiDemo;
+const SIMPLE_STORE_ADDRESS = deployment.simpleStore;
 // `origin` for pallet-revive view dry-runs: needs an existing H160 mapping or
 // the chain returns AccountUnmapped. The CI deployer's H160 padded with 12×0xEE
 // and SS58-encoded (prefix 0); auto-mapped on every bulletin-deploy. Public.
@@ -672,7 +672,7 @@ export const signingTests: TestDefinition[] = [
     id: "sign-batch-payload",
     name: "Sign & Submit Batch (2 contract writes)",
     description:
-      "Batches two storeValue calls on the HostApiDemo contract using Utility.batch_all, signs via the createTransaction product signer, and submits atomically. All calls must be pallet-revive — mixing a System.remark in here makes the batch fail because the AsPgas fee route only applies to revive calls.",
+      "Batches two storeValue calls on the SimpleStore contract using Utility.batch_all, signs via the createTransaction product signer, and submits atomically. All calls must be pallet-revive — mixing a System.remark in here makes the batch fail because the AsPgas fee route only applies to revive calls.",
     api: "api.tx.Utility.batch_all([storeValue, storeValue]).signSubmitAndWatch(signer)",
     category: "signing",
     async run(chain: ChainConfig, logger?: TestLogger) {
@@ -704,8 +704,8 @@ export const signingTests: TestDefinition[] = [
       const api = client.getUnsafeApi();
       const sdk = createInkSdk(client);
       const contract = sdk.getContract(
-        contracts.hostApiDemo,
-        HOSTAPI_DEMO_ADDRESS,
+        contracts.simpleStore,
+        SIMPLE_STORE_ADDRESS,
       );
 
       log("Building 2 contract calls...");
@@ -738,7 +738,7 @@ export const signingTests: TestDefinition[] = [
               resolve(
                 success(`Batch finalized on ${chain.name}`, {
                   txHash: event.txHash,
-                  contract: HOSTAPI_DEMO_ADDRESS,
+                  contract: SIMPLE_STORE_ADDRESS,
                   calls: [
                     "Revive.call (storeValue=42)",
                     "Revive.call (storeValue=43)",
@@ -1840,17 +1840,17 @@ export const contractTests: TestDefinition[] = [
   {
     id: "contract-query-stored-value",
     name: "Contract: Query Stored Value",
-    description: "Reads getStoredValue() from the HostApiDemo contract",
+    description: "Reads getStoredValue() from the SimpleStore contract",
     api: "contract.query('getStoredValue', { origin })",
     category: "contract",
     async run(chain: ChainConfig) {
-      const contractAddress = HOSTAPI_DEMO_ADDRESS;
+      const contractAddress = SIMPLE_STORE_ADDRESS;
       const origin = READ_ORIGIN;
       const client = await getClient(chain.genesis);
       try {
         const sdk = createInkSdk(client);
         const contract = sdk.getContract(
-          contracts.hostApiDemo,
+          contracts.simpleStore,
           contractAddress,
         );
         const result = await contract.query("getStoredValue", { origin });
@@ -1868,7 +1868,7 @@ export const contractTests: TestDefinition[] = [
     id: "contract-store-value",
     name: "Contract: Store Value",
     description:
-      "Calls storeValue() on the HostApiDemo contract (write operation)",
+      "Calls storeValue() on the SimpleStore contract (write operation)",
     api: "contract.send('storeValue', { origin, data: { _value } }).signSubmitAndWatch(signer)",
     args: [
       {
@@ -1906,8 +1906,8 @@ export const contractTests: TestDefinition[] = [
       const client = await getClient(chain.genesis);
       const sdk = createInkSdk(client);
       const contract = sdk.getContract(
-        contracts.hostApiDemo,
-        HOSTAPI_DEMO_ADDRESS,
+        contracts.simpleStore,
+        SIMPLE_STORE_ADDRESS,
       );
 
       const value = BigInt(args?.value ?? "42");
@@ -1951,24 +1951,24 @@ export const contractTests: TestDefinition[] = [
 
       return success(`Stored value: ${value}`, {
         value: String(value),
-        contract: HOSTAPI_DEMO_ADDRESS,
+        contract: SIMPLE_STORE_ADDRESS,
       });
     },
   },
   {
     id: "contract-query-data-length",
     name: "Contract: Query Data Length",
-    description: "Reads getStoredDataLength() from the HostApiDemo contract",
+    description: "Reads getStoredDataLength() from the SimpleStore contract",
     api: "contract.query('getStoredDataLength', { origin })",
     category: "contract",
     async run(chain: ChainConfig) {
-      const contractAddress = HOSTAPI_DEMO_ADDRESS;
+      const contractAddress = SIMPLE_STORE_ADDRESS;
       const origin = READ_ORIGIN;
       const client = await getClient(chain.genesis);
       try {
         const sdk = createInkSdk(client);
         const contract = sdk.getContract(
-          contracts.hostApiDemo,
+          contracts.simpleStore,
           contractAddress,
         );
         const result = await contract.query("getStoredDataLength", { origin });
@@ -1986,17 +1986,17 @@ export const contractTests: TestDefinition[] = [
     id: "contract-query-balance",
     name: "Contract: Query Balance",
     description:
-      "Reads getBalance() (address(this).balance) from the HostApiDemo contract",
+      "Reads getBalance() (address(this).balance) from the SimpleStore contract",
     api: "contract.query('getBalance', { origin })",
     category: "contract",
     async run(chain: ChainConfig) {
-      const contractAddress = HOSTAPI_DEMO_ADDRESS;
+      const contractAddress = SIMPLE_STORE_ADDRESS;
       const origin = READ_ORIGIN;
       const client = await getClient(chain.genesis);
       try {
         const sdk = createInkSdk(client);
         const contract = sdk.getContract(
-          contracts.hostApiDemo,
+          contracts.simpleStore,
           contractAddress,
         );
         const result = await contract.query("getBalance", { origin });
@@ -2021,7 +2021,7 @@ export const contractTests: TestDefinition[] = [
     id: "contract-deposit",
     name: "Contract: Deposit",
     description:
-      "Calls deposit() on the HostApiDemo contract (payable write operation)",
+      "Calls deposit() on the SimpleStore contract (payable write operation)",
     api: "contract.send('deposit', { origin, value: amount }).signSubmitAndWatch(signer)",
     timeoutMs: 90_000,
     args: [
@@ -2060,8 +2060,8 @@ export const contractTests: TestDefinition[] = [
       const client = await getClient(chain.genesis);
       const sdk = createInkSdk(client);
       const contract = sdk.getContract(
-        contracts.hostApiDemo,
-        HOSTAPI_DEMO_ADDRESS,
+        contracts.simpleStore,
+        SIMPLE_STORE_ADDRESS,
       );
 
       const amountStr = args?.amount ?? "0.1";
@@ -2106,7 +2106,7 @@ export const contractTests: TestDefinition[] = [
 
       return success(`Deposited ${amountStr} PAS`, {
         planck: String(planck),
-        contract: HOSTAPI_DEMO_ADDRESS,
+        contract: SIMPLE_STORE_ADDRESS,
       });
     },
   },
@@ -2114,7 +2114,7 @@ export const contractTests: TestDefinition[] = [
     id: "contract-withdraw",
     name: "Contract: Withdraw",
     description:
-      "Calls withdraw() on the HostApiDemo contract (write operation)",
+      "Calls withdraw() on the SimpleStore contract (write operation)",
     api: "contract.send('withdraw', { origin, data: { _amount } }).signSubmitAndWatch(signer)",
     timeoutMs: 90_000,
     args: [
@@ -2153,8 +2153,8 @@ export const contractTests: TestDefinition[] = [
       const client = await getClient(chain.genesis);
       const sdk = createInkSdk(client);
       const contract = sdk.getContract(
-        contracts.hostApiDemo,
-        HOSTAPI_DEMO_ADDRESS,
+        contracts.simpleStore,
+        SIMPLE_STORE_ADDRESS,
       );
 
       const amountStr = args?.amount ?? "0.1";
@@ -2203,24 +2203,24 @@ export const contractTests: TestDefinition[] = [
 
       return success(`Withdrew ${amountStr} PAS`, {
         wei: String(wei),
-        contract: HOSTAPI_DEMO_ADDRESS,
+        contract: SIMPLE_STORE_ADDRESS,
       });
     },
   },
   {
     id: "contract-query-total-deposits",
     name: "Contract: Query Total Deposits",
-    description: "Reads totalDeposits() from the HostApiDemo contract",
+    description: "Reads totalDeposits() from the SimpleStore contract",
     api: "contract.query('totalDeposits', { origin })",
     category: "contract",
     async run(chain: ChainConfig) {
-      const contractAddress = HOSTAPI_DEMO_ADDRESS;
+      const contractAddress = SIMPLE_STORE_ADDRESS;
       const origin = READ_ORIGIN;
       const client = await getClient(chain.genesis);
       try {
         const sdk = createInkSdk(client);
         const contract = sdk.getContract(
-          contracts.hostApiDemo,
+          contracts.simpleStore,
           contractAddress,
         );
         const result = await contract.query("totalDeposits", { origin });
@@ -2323,8 +2323,8 @@ export const contractTests: TestDefinition[] = [
         const client = await withTrace("getClient", getClient(chain.genesis));
         const sdk = createInkSdk(client);
         const contract = sdk.getContract(
-          contracts.hostApiDemo,
-          HOSTAPI_DEMO_ADDRESS,
+          contracts.simpleStore,
+          SIMPLE_STORE_ADDRESS,
         );
 
         const value = BigInt(args?.value ?? "7");
@@ -2404,7 +2404,7 @@ export const contractTests: TestDefinition[] = [
         return success(`Stored value ${value} with personhood proof`, {
           value: String(value),
           alias: toHex(proof.contextualAlias.alias),
-          contract: HOSTAPI_DEMO_ADDRESS,
+          contract: SIMPLE_STORE_ADDRESS,
         });
       } catch (e) {
         return error(e instanceof Error ? e.message : String(e), e);

@@ -3,7 +3,7 @@ pragma solidity ^0.8.24;
 
 import {IPersonhood} from "./interfaces/IPersonhood.sol";
 
-contract HostDemo {
+contract SimpleStore {
     /// @dev Proof-of-personhood precompile (individuality pallet).
     IPersonhood constant PERSONHOOD =
         IPersonhood(0x000000000000000000000000000000000a010000);

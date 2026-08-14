@@ -1,1 +1,1 @@
-export { descriptor as hostApiDemo } from './hostApiDemo';
+export { descriptor as simpleStore } from './simpleStore';

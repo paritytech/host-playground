@@ -35,7 +35,7 @@ import {
   type TestDefinition,
   type TestCategory,
 } from "@/src/lib/types";
-import { useLogs } from "@/src/lib/use-logs";
+import { useLogs } from "@/src/hooks/use-logs";
 import { cn, stringify } from "@/src/utils/logs";
 import { withTimeout } from "@/src/utils/with-timeout";
 import pkg from "@/package.json";
@@ -110,7 +110,7 @@ const categoryInfo: Record<
   contract: {
     title: "Contract",
     description:
-      "Read and write operations on the HostApiDemo Solidity contract",
+      "Read and write operations on the SimpleStore Solidity contract",
   },
   theme: {
     title: "Theme",

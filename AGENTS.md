@@ -9,10 +9,10 @@ Host Playground is a Next.js app that exercises `@parity/product-sdk` inside the
 - `src/` — the Next.js app. `src/lib/tests.ts` is the heart of the project: each entry defines one host-API test with its `run` function, and the UI renders them as cards.
 - `src/lib/types.ts` — shared types plus the `NETWORKS` network table (genesis hash, ws URL per network).
 - `worker/` — a service worker bundled separately with Vite (`vite.config.worker.ts`).
-- `evm/` — Foundry project for the `HostApiDemo` contract that the on-network tests call.
+- `evm/` — Foundry project for the `SimpleStore` contract that the on-network tests call.
   - `evm/src/` — Solidity sources and interfaces.
   - `evm/scripts/` — TypeScript deploy scripts run with `bun`, plus their own `package.json`.
-  - `evm/deployment.json` — the deployed `HostApiDemo` address the app imports.
+  - `evm/deployment.json` — the deployed `SimpleStore` address the app imports.
 - `e2e/` — Playwright specs.
 
 ## Build / test / lint
@@ -37,15 +37,15 @@ Verify with `yarn typecheck`, `yarn lint`, and the relevant tests before calling
 
 ```bash
 cd evm/scripts
-npm run deploy:paseo-next-v2      # deploy HostApiDemo to Paseo Next v2 Hub
-npm run deploy:previewnet         # deploy HostApiDemo to Previewnet Hub
+npm run deploy:paseo-next-v2      # deploy SimpleStore to Paseo Next v2 Hub
+npm run deploy:previewnet         # deploy SimpleStore to Previewnet Hub
 ```
 
 Each command runs `forge build`, deploys via viem over the network eth-rpc, and rewrites `evm/deployment.json`. The default deployer key is a public testnet CI key; override with `PRIVATE_KEY`. A deploy is a live, hard-to-reverse action, so confirm before running one.
 
 ## Codebase gotchas
 
-- **`evm/deployment.json` is a single flat `{ "hostApiDemo": "0x…" }`.** [tests.ts](src/lib/tests.ts) imports it at module load, so the app targets one deployed address at a time. Deploying to a second network overwrites it.
+- **`evm/deployment.json` is a single flat `{ "simpleStore": "0x…" }`.** [tests.ts](src/lib/tests.ts) imports it at module load, so the app targets one deployed address at a time. Deploying to a second network overwrites it.
 - **`evm/` is excluded from the root TypeScript build** (see [tsconfig.json](tsconfig.json)); the deploy scripts typecheck against their own [evm/scripts/tsconfig.json](evm/scripts/tsconfig.json).
 - **`.papi/descriptors/dist/` is generated.** Don't hand-edit it.
 - **Network config lives in one place — `NETWORKS` in [types.ts](src/lib/types.ts).** Keep the deploy scripts in sync with it rather than inventing new endpoints.
@@ -76,7 +76,7 @@ un-allowlistable and forces a prompt. Keep commands plain:
 |---|---|
 | A host-API test definition | [src/lib/tests.ts](src/lib/tests.ts) |
 | Network table (genesis, ws URL) | `NETWORKS` in [src/lib/types.ts](src/lib/types.ts) |
-| The demo contract the tests call | [evm/src/HostDemo.sol](evm/src/HostDemo.sol) |
+| The demo contract the tests call | [evm/src/SimpleStore.sol](evm/src/SimpleStore.sol) |
 | Deployed contract address | [evm/deployment.json](evm/deployment.json) |
 | Contract deploy scripts | [evm/scripts/deploy.ts](evm/scripts/deploy.ts), [evm/scripts/lib.ts](evm/scripts/lib.ts) |
 | Service worker | [worker/index.ts](worker/index.ts), [vite.config.worker.ts](vite.config.worker.ts) |

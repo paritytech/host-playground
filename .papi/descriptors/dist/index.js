@@ -109,7 +109,7 @@ const descriptor = { abi: [{ "type": "constructor", "inputs": [], "stateMutabili
 
 var index = /*#__PURE__*/Object.freeze({
   __proto__: null,
-  hostApiDemo: descriptor
+  simpleStore: descriptor
 });
 
 const metadatas = { ["0x8d6a039a69478214c5846f4504e80f3cd3d2374b4c964976b071aececac586fd"]: _allDescriptors };
