@@ -29,6 +29,7 @@ jobs:
         run: yarn typecheck
 
   e2e:
+    name: E2E
     runs-on: parity-int-ubuntu
     steps:
       - uses: actions/checkout@v4

@@ -11,6 +11,9 @@ const compat = new FlatCompat({
 
 const eslintConfig = [
   ...compat.extends("next/core-web-vitals", "next/typescript"),
+  // The Next project lives in apps/app, not the repo root. Without this the
+  // next plugin looks for a router next to this config and warns it found none.
+  { settings: { next: { rootDir: "apps/app" } } },
 ];
 
 export default eslintConfig;

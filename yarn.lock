@@ -712,24 +712,24 @@
     "@noble/hashes" "^1.7.1"
     "@polkadot-api/substrate-bindings" "^0.12.0"
 
-"@parity/product-sdk-chain-client@0.9.3":
-  version "0.9.3"
-  resolved "https://registry.yarnpkg.com/@parity/product-sdk-chain-client/-/product-sdk-chain-client-0.9.3.tgz#fc6504fcfc14748594d1f33586f8bbe0ac4996b1"
-  integrity sha512-BbdQprm55HktV5RxrYkmmVZOS9Zi43vadEtXbeYA21pO+8DLXwxLJQ6d3cfls6dhTPuxtarWGBNXtG8wXLg3Lg==
+"@parity/product-sdk-chain-client@0.10.0":
+  version "0.10.0"
+  resolved "https://registry.yarnpkg.com/@parity/product-sdk-chain-client/-/product-sdk-chain-client-0.10.0.tgz#1709d3ede7174ae27be77c8812632ff933e22efe"
+  integrity sha512-aiHddqjqELg0kBMLv0FkRzrxnR1FbOKe36cPxshHckETcNpwN9vYPEZyQoKl4vf5UqXaivmoIUqFiQPKaDGVEA==
   dependencies:
-    "@parity/product-sdk-descriptors" "0.8.0"
+    "@parity/product-sdk-descriptors" "0.9.0"
     "@parity/product-sdk-host" "0.15.1"
     "@parity/product-sdk-logger" "0.1.1"
     polkadot-api "^2.1.6"
 
-"@parity/product-sdk-cloud-storage@0.9.1":
-  version "0.9.1"
-  resolved "https://registry.yarnpkg.com/@parity/product-sdk-cloud-storage/-/product-sdk-cloud-storage-0.9.1.tgz#fb2fb299e5d3f5b36633cc7b67d990cd2d019a1c"
-  integrity sha512-X1TY8WxaNW4Z/6TumQ1qLzXVqsnLbs4mwCi505FHbiiFFdqWHoj0pUpfsQ0blN1R9kJCuMamvWiJpFPodJqtNA==
+"@parity/product-sdk-cloud-storage@0.10.0":
+  version "0.10.0"
+  resolved "https://registry.yarnpkg.com/@parity/product-sdk-cloud-storage/-/product-sdk-cloud-storage-0.10.0.tgz#0ae33f9a89dc2f42a372159bb751a0b3fb351542"
+  integrity sha512-Fb/2RNCUltKnO/xBetbcURFhKEsRDSG8DotO4SQT4RZ94bic7dq3jKaJXS3tY8H6ysYgPvnJrcgtfw5pskpzeg==
   dependencies:
     "@parity/bulletin-sdk" "^0.3.0"
-    "@parity/product-sdk-chain-client" "0.9.3"
-    "@parity/product-sdk-descriptors" "0.8.0"
+    "@parity/product-sdk-chain-client" "0.10.0"
+    "@parity/product-sdk-descriptors" "0.9.0"
     "@parity/product-sdk-errors" "0.2.0"
     "@parity/product-sdk-host" "0.15.1"
     "@parity/product-sdk-logger" "0.1.1"
@@ -764,10 +764,10 @@
     "@noble/hashes" "^1.7.1"
     tweetnacl "^1.0.3"
 
-"@parity/product-sdk-descriptors@0.8.0", "@parity/product-sdk-descriptors@^0.8.0":
-  version "0.8.0"
-  resolved "https://registry.yarnpkg.com/@parity/product-sdk-descriptors/-/product-sdk-descriptors-0.8.0.tgz#c0ee93ce84f4b13876d6a1604cfabe9268b67ba7"
-  integrity sha512-DfdrtzjBqiS4A/fnqoDOyW+KiBVKkOtfDDl1/BLHtvYxp3TanPkS952Sd28F7v1Rk/0xnqm8d7shD06/XoLqhg==
+"@parity/product-sdk-descriptors@0.9.0", "@parity/product-sdk-descriptors@^0.9.0":
+  version "0.9.0"
+  resolved "https://registry.yarnpkg.com/@parity/product-sdk-descriptors/-/product-sdk-descriptors-0.9.0.tgz#f42e536530a05e84c7cd679ab60cf1a2678ed1a9"
+  integrity sha512-BhRsa8ZHR4nV5l4Wc+qQ3WASOOmJW0NRSYDAwv5Q4ikYGtGctZXDuqY0NQtd51y6b2e87hTDGZH8stH7k6e5UQ==
   dependencies:
     polkadot-api "^2.1.6"
 
@@ -842,14 +842,14 @@
     "@polkadot-labs/hdkd-helpers" "^0.0.30"
     polkadot-api "^2.1.6"
 
-"@parity/product-sdk@0.20.1":
-  version "0.20.1"
-  resolved "https://registry.yarnpkg.com/@parity/product-sdk/-/product-sdk-0.20.1.tgz#dd23dcf05b27fb0db0ecac60f06d3b7f30c512cf"
-  integrity sha512-cleu6EoLKAha2AR1XJrT4uapFZMOSpkmo6Jr1JQvF7va7ulCBJcLn9B6hvY1XbK7Bku5rspjI73CjZc8nHZ60Q==
+"@parity/product-sdk@0.21.0":
+  version "0.21.0"
+  resolved "https://registry.yarnpkg.com/@parity/product-sdk/-/product-sdk-0.21.0.tgz#31e3a82bfe125ff34892358108225152c43d1e29"
+  integrity sha512-bec5G3sRXYiLexKg+cn21KW8IW6hM26kmd8wbbsTNXMjcFs2cTTRG3YAnMP6tsN+nd3fFT0RB011F/psdM/ihg==
   dependencies:
     "@parity/product-sdk-address" "0.1.1"
-    "@parity/product-sdk-chain-client" "0.9.3"
-    "@parity/product-sdk-cloud-storage" "0.9.1"
+    "@parity/product-sdk-chain-client" "0.10.0"
+    "@parity/product-sdk-cloud-storage" "0.10.0"
     "@parity/product-sdk-contracts" "0.10.1"
     "@parity/product-sdk-crypto" "0.1.1"
     "@parity/product-sdk-errors" "0.2.0"
@@ -4594,6 +4594,11 @@ prelude-ls@^1.2.1:
   version "1.2.1"
   resolved "https://registry.npmjs.org/prelude-ls/-/prelude-ls-1.2.1.tgz"
   integrity sha512-vkcDPrRZo1QZLbn5RLGPpg/WmIQ65qoWWhcGKf/b5eplkkarX0m9z8ppCat4mlOqUsWpyNuYgO3VRyrYHSzX5g==
+
+prettier@^3.9.6:
+  version "3.9.6"
+  resolved "https://registry.yarnpkg.com/prettier/-/prettier-3.9.6.tgz#b3ea5146515d40fc53f18aa63f74dfab1e10dbf6"
+  integrity sha512-OpN0zzVdiaiAhxpuuj5efpIS4sY9j7bY6uR5mnj5yPzGkdkjNKSJeUThPb60Jw29QuAZgA4o+/iB49kFiaBX6g==
 
 pretty-ms@^9.2.0:
   version "9.3.0"

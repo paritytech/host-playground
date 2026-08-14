@@ -1,0 +1,8 @@
+.next
+out
+.papi
+node_modules
+evm/lib
+evm/out
+evm/cache
+yarn.lock

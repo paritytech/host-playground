@@ -1,1 +1,1 @@
-{"cliVersion":"0.20.4","whitelist":null,"chains":{"paseoHub":"0x670dc28c750e2d7a592e6c6e88eb5d7c"},"contracts":{"ink":{},"sol":{"hostApiDemo":"0x6784fdbaa378958d6b0412a16f14102c"}}}
+{"cliVersion":"0.20.4","whitelist":null,"chains":{"paseoHub":"0x670dc28c750e2d7a592e6c6e88eb5d7c"},"contracts":{"ink":{},"sol":{"simpleStore":"0x6784fdbaa378958d6b0412a16f14102c"}}}

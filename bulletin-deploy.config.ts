@@ -6,9 +6,11 @@
  * dotNS text records on top of the legacy contenthash publish; when
  * missing, the legacy contenthash deploy is the only thing that runs.
  *
- * `domain` MUST match the CLI's deploy domain — for PR-preview deploys we
- * read it from MANIFEST_DOMAIN, falling back to the canonical name for
- * local invocations and pushes to main.
+ * `domain` MUST match the CLI's deploy domain and is validated as a full
+ * dotNS name, suffix included — the bare label the CLI takes on the command
+ * line is rejected here. For PR-preview deploys we read it from
+ * MANIFEST_DOMAIN, which the workflow builds by appending the environment's
+ * suffix; local invocations and pushes to main fall back to the canonical name.
  *
  * Intentionally no `import { defineConfig } from "bulletin-deploy"` —
  * keeps bulletin-deploy out of our local node_modules (the CLI runs from
@@ -24,16 +26,16 @@ export default {
     "Reference playground exercising the @parity/product-sdk Host API surface against a paired Polkadot host.",
   // Placeholder 1×1 PNG — replace with a real product icon (jpeg or png).
   // Path resolves relative to this config file.
-  icon: { path: "./public/icon.png", format: "png" as const },
+  icon: { path: "./apps/app/public/icon.png", format: "png" as const },
   executables: [
     {
       kind: "app" as const,
-      path: "./out",
+      path: "./apps/app/out",
       appVersion: [0, 1, 0] as const,
     },
     {
       kind: "worker" as const,
-      path: "./out/worker",
+      path: "./apps/app/out/worker",
       appVersion: [0, 1, 0] as const,
       entrypoint: "index.js",
       includes: { chat: true, pocket: false },

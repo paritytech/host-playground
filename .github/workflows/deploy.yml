@@ -30,10 +30,12 @@ jobs:
         target:
           - env: preview
             display-name: Previewnet
-            genesis: "0x29f7b15e6227f86b90bf5199b5c872c28649a30e5f15fae6dd8fa9d5d48d6fbb"
+            genesis: "0x4d11c803cc6921429e3876638977ad006ea1bba8cd3976a0bca2f164e7026210"
+            suffix: .dot
           - env: paseo-next-v2
-            display-name: Paseo Next v2
-            genesis: "0xbf0488dbe9daa1de1c08c5f743e26fdc2a4ecd74cf87dd1b4b1eeb99ae4ef19f"
+            display-name: Paseo
+            genesis: "0x23e730eb1c6fecae09c917439a5038cb6122d0d48980e8b9bbf0ff56f94a2ca6"
+            suffix: .paseo
     steps:
       - uses: actions/checkout@v4
 
@@ -54,7 +56,7 @@ jobs:
 
       - name: Compute build hash
         id: hash
-        run: echo "hash=$(find out -type f -exec sha256sum {} \; | sort | sha256sum | cut -d' ' -f1)" >> "$GITHUB_OUTPUT"
+        run: echo "hash=$(find apps/app/out -type f -exec sha256sum {} \; | sort | sha256sum | cut -d' ' -f1)" >> "$GITHUB_OUTPUT"
 
       - name: Check deployment cache
         id: cache
@@ -91,12 +93,18 @@ jobs:
         env:
           BRANCH: ${{ github.event.pull_request.head.ref }}
         run: |
+          # Two forms of the same name. `label` has no TLD and is what the
+          # browser URL is built from; `dotns` carries this environment's suffix
+          # (.dot on preview, .paseo on paseo-next-v2) and is what the CLI and
+          # the product manifest must both name, spelled identically.
           if [ "${{ github.event_name }}" == "push" ]; then
-            echo "dotns=host-playground.dot" >> "$GITHUB_OUTPUT"
+            LABEL="host-playground"
           else
-            SAFE_BRANCH=$(printf '%s' "$BRANCH" | tr '/' '-' | sed 's/[^a-z0-9-]//g' | cut -c1-20)
-            echo "dotns=${SAFE_BRANCH}-host-playground00.dot" >> "$GITHUB_OUTPUT"
+            LABEL=$(printf '%s' "$BRANCH" | tr '/' '-' | sed 's/[^a-z0-9-]//g' | cut -c1-20)
+            LABEL="${LABEL}-host-playground00"
           fi
+          echo "label=${LABEL}" >> "$GITHUB_OUTPUT"
+          echo "dotns=${LABEL}${{ matrix.target.suffix }}" >> "$GITHUB_OUTPUT"
 
       - name: Deploy
         id: deploy
@@ -110,8 +118,11 @@ jobs:
             export MNEMONIC='${{ secrets.MNEMONIC }}'
             export IPFS_CID='${{ steps.cached-deploy.outputs.cid }}'
             export NODE_OPTIONS='--max-old-space-size=8192'
+            # The CLI compares the manifest's domain against this argument as
+            # written, so both carry the suffix. A bare label deploys the
+            # content and then fails the manifest publish on the mismatch.
             export MANIFEST_DOMAIN='${{ steps.domain-input.outputs.dotns }}'
-            bulletin-deploy --env ${{ matrix.target.env }} 'out' '${{ steps.domain-input.outputs.dotns }}'
+            bulletin-deploy --env ${{ matrix.target.env }} 'apps/app/out' '${{ steps.domain-input.outputs.dotns }}'
 
       - name: Validate deployment outputs
         if: steps.cache.outputs.cache-hit != 'true'
@@ -129,12 +140,11 @@ jobs:
 
       - name: Persist deployment result
         run: |
+          DOMAIN="${{ steps.domain-input.outputs.dotns }}"
+          LABEL="${{ steps.domain-input.outputs.label }}"
           if [ "${{ steps.cache.outputs.cache-hit }}" == "true" ]; then
-            DOMAIN="${{ steps.domain-input.outputs.dotns }}"
-            DOMAIN="${DOMAIN%.dot}"
             CID="${{ steps.cached-deploy.outputs.cid }}"
           else
-            DOMAIN="${{ steps.deploy.outputs.domain }}"
             CID="${{ steps.deploy.outputs.cid }}"
           fi
           # Translate bulletin-deploy env id → dot.li network name (most match
@@ -144,8 +154,8 @@ jobs:
             *) NETWORK="${{ matrix.target.env }}" ;;
           esac
           mkdir -p .deploy-result
-          printf '{"env":"%s","network":"%s","domain":"%s","cid":"%s"}\n' \
-            "${{ matrix.target.env }}" "$NETWORK" "$DOMAIN" "$CID" \
+          printf '{"env":"%s","network":"%s","domain":"%s","label":"%s","cid":"%s"}\n' \
+            "${{ matrix.target.env }}" "$NETWORK" "$DOMAIN" "$LABEL" "$CID" \
             > .deploy-result/${{ matrix.target.env }}.json
           cat .deploy-result/${{ matrix.target.env }}.json
 
@@ -158,14 +168,15 @@ jobs:
       - name: Deployment summary
         run: |
           DOMAIN=$(jq -r .domain .deploy-result/${{ matrix.target.env }}.json)
+          LABEL=$(jq -r .label .deploy-result/${{ matrix.target.env }}.json)
           NETWORK=$(jq -r .network .deploy-result/${{ matrix.target.env }}.json)
           CID=$(jq -r .cid .deploy-result/${{ matrix.target.env }}.json)
-          URL="https://${DOMAIN}.paseo.li?network=${NETWORK}&chainBackend=rpc-gateway"
+          URL="https://${LABEL}.paseo.li?network=${NETWORK}&chainBackend=rpc-gateway"
           {
-            echo "### ${DOMAIN}.dot — ${{ matrix.target.env }}"
+            echo "### ${DOMAIN} — ${{ matrix.target.env }}"
             echo ""
             echo "Browser &nbsp; ${URL}"
-            echo "Desktop &nbsp; \`${DOMAIN}.dot\`"
+            echo "Desktop &nbsp; \`${DOMAIN}\`"
             echo "CID &nbsp; \`${CID}\`"
           } >> $GITHUB_STEP_SUMMARY
 
@@ -196,15 +207,15 @@ jobs:
               .sort((a, b) => a.env.localeCompare(b.env));
 
             const runUrl = `${process.env.GITHUB_SERVER_URL}/${process.env.GITHUB_REPOSITORY}/actions/runs/${process.env.GITHUB_RUN_ID}`;
-            const dotns = results[0]?.domain ? `${results[0].domain}.dot` : '(no domain)';
+            const label = results[0]?.label ?? '(no domain)';
 
             const lines = [
-              `**${dotns}** · [logs](${runUrl})`,
+              `**${label}** · [logs](${runUrl})`,
               '',
             ];
-            for (const { env, network, domain, cid } of results) {
-              const url = `https://${domain}.paseo.li?network=${network}&chainBackend=rpc-gateway`;
-              lines.push(`- \`${env}\` — ${url} &nbsp; · CID \`${cid}\``);
+            for (const { env, network, domain, label, cid } of results) {
+              const url = `https://${label}.paseo.li?network=${network}&chainBackend=rpc-gateway`;
+              lines.push(`- \`${env}\` — ${domain} — ${url} &nbsp; · CID \`${cid}\``);
             }
 
             const body = lines.join('\n');

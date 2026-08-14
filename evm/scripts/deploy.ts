@@ -14,7 +14,7 @@ async function main() {
 
   const artifact = JSON.parse(
     fs.readFileSync(
-      path.join(OUT_DIR, "HostDemo.sol/HostDemo.json"),
+      path.join(OUT_DIR, "SimpleStore.sol/SimpleStore.json"),
       "utf-8",
     ),
   );
@@ -25,13 +25,13 @@ async function main() {
     artifact.bytecode.object,
   );
 
-  const deployment = { hostApiDemo: address };
+  const deployment = { simpleStore: address };
   fs.writeFileSync(
     DEPLOYMENT_FILE,
     JSON.stringify(deployment, null, 2) + "\n",
   );
 
-  console.log(`\nHostDemo deployed at: ${address}`);
+  console.log(`\nSimpleStore deployed at: ${address}`);
   console.log(`Wrote ${path.relative(EVM_DIR, DEPLOYMENT_FILE)}`);
 }
 

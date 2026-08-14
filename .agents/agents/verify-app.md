@@ -20,7 +20,7 @@ Run in parallel:
 ### 2. Contract (only if `evm/` changed)
 
 - `cd evm && forge build` — must compile
-- `forge test` — the Foundry tests (e.g. `evm/test/HostDemo.t.sol`)
+- `forge test` — the Foundry tests (e.g. `evm/test/SimpleStore.t.sol`)
 
 ### 3. E2E (only when the change plausibly affects the host-API cards)
 
