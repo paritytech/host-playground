@@ -6,9 +6,11 @@
  * dotNS text records on top of the legacy contenthash publish; when
  * missing, the legacy contenthash deploy is the only thing that runs.
  *
- * `domain` MUST match the CLI's deploy domain — for PR-preview deploys we
- * read it from MANIFEST_DOMAIN, falling back to the canonical name for
- * local invocations and pushes to main.
+ * `domain` MUST match the CLI's deploy domain and is validated as a full
+ * dotNS name, suffix included — the bare label the CLI takes on the command
+ * line is rejected here. For PR-preview deploys we read it from
+ * MANIFEST_DOMAIN, which the workflow builds by appending the environment's
+ * suffix; local invocations and pushes to main fall back to the canonical name.
  *
  * Intentionally no `import { defineConfig } from "bulletin-deploy"` —
  * keeps bulletin-deploy out of our local node_modules (the CLI runs from
@@ -18,7 +20,7 @@
  */
 
 export default {
-  domain: process.env.MANIFEST_DOMAIN ?? "host-playground",
+  domain: process.env.MANIFEST_DOMAIN ?? "host-playground.dot",
   displayName: "Host Playground",
   description:
     "Reference playground exercising the @parity/product-sdk Host API surface against a paired Polkadot host.",
