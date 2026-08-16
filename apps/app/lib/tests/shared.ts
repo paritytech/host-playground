@@ -26,6 +26,7 @@ import { createInkSdk } from "@polkadot-api/sdk-ink";
 import { contracts } from "@polkadot-api/descriptors";
 import deployment from "@root/evm/deployment.json";
 import {
+  ACTIVE_CHAIN_ID,
   NETWORKS,
   type ChainConfig,
   type TestLogger,
@@ -150,8 +151,9 @@ export function accountIndex(index: number): DerivationIndex {
   return { tag: "Index", value: index };
 }
 
-/** Product that owns the People Lite ring membership keys. */
-export const PRODUCT_ALIAS_RING_OWNER = "people.dot";
+/** Network-qualified product that owns the well-known personhood ring keys. */
+export const PRODUCT_ALIAS_RING_OWNER =
+  ACTIVE_CHAIN_ID === "PASEO_ASSETHUBNEXTV2" ? "peopl.paseo" : "peopl.dot";
 
 /** Context shared by the alias card and the ring-VRF proof card. Index 0 is the product default account. */
 export const PRODUCT_ALIAS_CONTEXT_SUFFIX = accountIndex(0);

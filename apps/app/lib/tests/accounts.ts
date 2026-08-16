@@ -68,7 +68,7 @@ export const accountTests: TestDefinition[] = [
     id: "accounts-provider-alias",
     name: "Get Product Account Alias",
     description:
-      "Selects people.dot's registered People Lite key and gets this product's contextual alias",
+      "Selects the personhood product's registered People Lite key and gets this product's contextual alias",
     api: "accountsProvider.listRingVrfKeys(owner) → getProductAccountAlias(keyHandle, context, ringLocation)",
     category: "accounts",
     async run() {

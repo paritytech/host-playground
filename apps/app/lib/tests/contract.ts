@@ -211,7 +211,7 @@ export const contractTests: TestDefinition[] = [
     id: "contract-store-value-if-person",
     name: "Contract: Store Value if Person",
     description:
-      "Selects people.dot's registered People Lite key, generates a Ring VRF personhood proof, and calls storeValueIfPerson; the contract verifies it via the individuality precompile (0x…0a010000) and stores the value only for a verified person.",
+      "Selects the personhood product's registered People Lite key, generates a Ring VRF personhood proof, and calls storeValueIfPerson; the contract verifies it via the individuality precompile (0x…0a010000) and stores the value only for a verified person.",
     api: "listRingVrfKeys(owner) → createRingVRFProof(keyHandle, context, location, message) → contract.send('storeValueIfPerson', { _value, request })",
     args: [
       {
