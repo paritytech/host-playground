@@ -1,4 +1,4 @@
-import { navigateTo } from "@parity/product-sdk/host";
+import { navigateTo } from "@host-playground/product-sdk-host";
 import type { TestDefinition, TestResult } from "@/lib/types";
 import { error, success } from "./shared";
 

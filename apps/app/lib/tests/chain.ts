@@ -2,7 +2,7 @@ import {
   broadcastTransaction,
   getChainSpec,
   stopTransaction,
-} from "@parity/product-sdk/host";
+} from "@host-playground/product-sdk-host";
 import { AccountId } from "polkadot-api";
 import type { ChainConfig, TestDefinition, TestResult } from "@/lib/types";
 import {

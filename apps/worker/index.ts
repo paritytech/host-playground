@@ -1,4 +1,4 @@
-import { getChatManager } from "@parity/product-sdk/host";
+import { getChatManager } from "@host-playground/product-sdk-host";
 
 console.log("[echo-bot worker] starting");
 

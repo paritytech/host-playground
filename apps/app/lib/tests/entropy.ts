@@ -1,4 +1,4 @@
-import { deriveEntropy } from "@parity/product-sdk/host";
+import { deriveEntropy } from "@host-playground/product-sdk-host";
 import { toHex } from "polkadot-api/utils";
 import type { TestDefinition } from "@/lib/types";
 import { error, sdkErrorMessage, success } from "./shared";

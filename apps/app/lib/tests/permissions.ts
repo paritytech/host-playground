@@ -1,7 +1,7 @@
 import {
   isChainSupported,
   requestDevicePermission,
-} from "@parity/product-sdk/host";
+} from "@host-playground/product-sdk-host";
 import type { TestDefinition } from "@/lib/types";
 import {
   error,

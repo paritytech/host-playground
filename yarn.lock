@@ -303,6 +303,18 @@
   resolved "https://registry.npmjs.org/@floating-ui/utils/-/utils-0.2.10.tgz"
   integrity sha512-aGTxbpbg8/b5JfU1HXSrbH3wXZuLPJcNEcZQFMxLs3oSzgtVu6nFPkbbGGUvBcUjKV2YyB9Wxxabo+HEH9tcRQ==
 
+"@host-playground/product-sdk-host@file:vendor/product-sdk-host":
+  version "0.15.1-truapi.0.9.0"
+  dependencies:
+    "@parity/product-sdk-errors" "0.2.0"
+    "@parity/product-sdk-logger" "0.1.1"
+    "@parity/result" "0.2.0"
+    "@parity/truapi" "^0.9.0"
+    "@polkadot-api/json-rpc-provider" "^0.2.0"
+    "@polkadot-api/substrate-bindings" "^0.20.3"
+    neverthrow "^8.2.0"
+    polkadot-api "^2.1.6"
+
 "@humanfs/core@^0.19.1":
   version "0.19.1"
   resolved "https://registry.npmjs.org/@humanfs/core/-/core-0.19.1.tgz"
@@ -871,6 +883,15 @@
   version "0.7.0"
   resolved "https://registry.yarnpkg.com/@parity/truapi/-/truapi-0.7.0.tgz#2d456168693434885fd4bc34b9e706436afcf7eb"
   integrity sha512-xBGZP7/l74I0WGUnHgoFNYah+20I3JgykJ5pNUVsw3mQzNoCHuZSVJW6sUq7fzLvRF4wM2glPTPxUOiFKgfE9A==
+  dependencies:
+    "@noble/hashes" "^2.2.0"
+    neverthrow "^8.2.0"
+    scale-ts "^1.6.1"
+
+"@parity/truapi@^0.9.0":
+  version "0.9.0"
+  resolved "https://registry.yarnpkg.com/@parity/truapi/-/truapi-0.9.0.tgz#f59d59f2048a6597412c09fb11e9cb292956f8ee"
+  integrity sha512-mndLyirfLFGYhlMKj10kMvovUk8v5h58z3f4u47yDb6bn5cmYlkf37fIsXC3rXEBGRL78yMv83O0xWrS3K2RVA==
   dependencies:
     "@noble/hashes" "^2.2.0"
     neverthrow "^8.2.0"

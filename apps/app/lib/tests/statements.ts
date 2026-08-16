@@ -1,4 +1,4 @@
-import { createProofAuthorized } from "@parity/product-sdk/host";
+import { createProofAuthorized } from "@host-playground/product-sdk-host";
 import type { TestDefinition } from "@/lib/types";
 import {
   createExpiryFromDuration,

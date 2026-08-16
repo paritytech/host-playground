@@ -1,7 +1,7 @@
 import {
   createHostPreimageManager,
   requestResourceAllocation,
-} from "@parity/product-sdk/host";
+} from "@host-playground/product-sdk-host";
 import {
   calculateCid,
   cidToPreimageKey,

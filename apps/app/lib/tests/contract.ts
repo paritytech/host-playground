@@ -1,4 +1,4 @@
-import { findRingVrfKeyHandle } from "@parity/product-sdk/host";
+import { findRingVrfKeyHandle } from "@host-playground/product-sdk-host";
 import { deriveH160 } from "@parity/product-sdk/address";
 import { fromHex, toHex } from "polkadot-api/utils";
 import { withTrace } from "@/utils/with-trace";

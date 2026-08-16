@@ -1,4 +1,4 @@
-import { createHostLocalStorage } from "@parity/product-sdk/host";
+import { createHostLocalStorage } from "@host-playground/product-sdk-host";
 import { toHex } from "polkadot-api/utils";
 import { getApp } from "@/lib/app";
 import type { TestDefinition } from "@/lib/types";
