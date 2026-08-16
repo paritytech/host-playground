@@ -154,7 +154,7 @@ export function accountIndex(index: number): DerivationIndex {
 export const PRODUCT_ALIAS_CONTEXT_SUFFIX = accountIndex(0);
 
 export const PRODUCT_ALIAS_RING_LOCATION: RingLocation = {
-  chainId: "0x89a63b11fef2c0273fc72c0d864da0793a665dade5db153e0cab995348c5440f",
+  chainId: NETWORKS.PASEO_ASSETHUBNEXTV2.peopleGenesis,
   junctions: [
     { tag: "PalletInstance", value: 67 },
     {
@@ -170,8 +170,14 @@ export const PRODUCT_ALIAS_RING_LOCATION: RingLocation = {
 // paseo_individuality; Previewnet has no published individuality descriptor, so
 // it's intentionally absent — the card reports that rather than signing on the
 // wrong chain.
+const paseoIndividuality = {
+  ...paseo_individuality,
+  // The published descriptor predates the latest Paseo People chain reset.
+  // Metadata remains compatible, but host routing must use the live genesis.
+  genesis: NETWORKS.PASEO_ASSETHUBNEXTV2.peopleGenesis,
+} satisfies typeof paseo_individuality;
 export const PEOPLE_CHAIN_BY_HUB: Record<string, typeof paseo_individuality> = {
-  [NETWORKS.PASEO_ASSETHUBNEXTV2.genesis]: paseo_individuality,
+  [NETWORKS.PASEO_ASSETHUBNEXTV2.genesis]: paseoIndividuality,
 };
 
 // The personhood rings live on the People chain, not the hub, so the ring
@@ -180,7 +186,7 @@ export const PEOPLE_CHAIN_BY_HUB: Record<string, typeof paseo_individuality> = {
 export const ASSETHUB_GENESIS_TO_PEOPLE_GENESIS: Record<string, `0x${string}`> =
   {
     [NETWORKS.PASEO_ASSETHUBNEXTV2.genesis]:
-      "0x89a63b11fef2c0273fc72c0d864da0793a665dade5db153e0cab995348c5440f",
+      NETWORKS.PASEO_ASSETHUBNEXTV2.peopleGenesis,
     [NETWORKS.PREVIEWNET_ASSETHUB.genesis]:
       "0x3138c6d4ce58c760047a413c2a930e919b4673a841ab4890de59aac3bd037f3d",
   };

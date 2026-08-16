@@ -5,6 +5,12 @@ import { defineConfig } from "vitest/config";
 // repo root, so point it back at this directory to keep the suite app-scoped.
 export default defineConfig({
   root: fileURLToPath(new URL(".", import.meta.url)),
+  resolve: {
+    alias: {
+      "@": fileURLToPath(new URL(".", import.meta.url)),
+      "@root": fileURLToPath(new URL("../../", import.meta.url)),
+    },
+  },
   test: {
     include: ["**/*.test.ts"],
   },

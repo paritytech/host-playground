@@ -43,6 +43,7 @@ export interface ChainConfig {
   ss58Prefix: number;
   papiNetworkId?: string;
   peopleWsUrl?: string;
+  peopleGenesis?: `0x${string}`;
   peopleNetworkId?: string;
   bulletinWsUrl?: string;
 }
@@ -86,6 +87,8 @@ export const NETWORKS = {
     wsUrl: "wss://paseo-asset-hub-next-rpc.polkadot.io",
     ss58Prefix: 0,
     peopleWsUrl: "wss://paseo-people-next-system-rpc.polkadot.io",
+    peopleGenesis:
+      "0x89a63b11fef2c0273fc72c0d864da0793a665dade5db153e0cab995348c5440f" as const,
     bulletinWsUrl: "wss://paseo-bulletin-next-rpc.polkadot.io",
   },
   PREVIEWNET_ASSETHUB: {
