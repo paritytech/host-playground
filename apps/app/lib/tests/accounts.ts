@@ -1,3 +1,4 @@
+import { findRingVrfKeyHandle } from "@parity/product-sdk/host";
 import { toHex } from "polkadot-api/utils";
 import type { TestDefinition } from "@/lib/types";
 import {
@@ -5,6 +6,7 @@ import {
   error,
   PRODUCT_ALIAS_CONTEXT_SUFFIX,
   PRODUCT_ALIAS_RING_LOCATION,
+  PRODUCT_ALIAS_RING_OWNER,
   sdkErrorMessage,
   SELF_DOTNS,
   success,
@@ -66,12 +68,31 @@ export const accountTests: TestDefinition[] = [
     id: "accounts-provider-alias",
     name: "Get Product Account Alias",
     description:
-      "Gets this product's contextual account alias from the Paseo Next v2 People Lite ring",
-    api: "accountsProvider.getProductAccountAlias(context, ringLocation)",
+      "Selects people.dot's registered People Lite key and gets this product's contextual alias",
+    api: "accountsProvider.listRingVrfKeys(owner) → getProductAccountAlias(keyHandle, context, ringLocation)",
     category: "accounts",
     async run() {
       const accountsProvider = await accounts();
+      const listed = await accountsProvider
+        .listRingVrfKeys(PRODUCT_ALIAS_RING_OWNER)
+        .match(
+          (keys) => ({
+            ok: true as const,
+            keyHandle: findRingVrfKeyHandle(keys, PRODUCT_ALIAS_RING_LOCATION),
+          }),
+          (err) => ({
+            ok: false as const,
+            result: error(sdkErrorMessage(err), err),
+          }),
+        );
+      if (!listed.ok) return listed.result;
+      if (!listed.keyHandle) {
+        return error(
+          `No ${PRODUCT_ALIAS_RING_OWNER} key is registered for the People Lite ring`,
+        );
+      }
       const result = await accountsProvider.getProductAccountAlias(
+        listed.keyHandle,
         { productId: SELF_DOTNS, suffix: PRODUCT_ALIAS_CONTEXT_SUFFIX },
         PRODUCT_ALIAS_RING_LOCATION,
       );

@@ -147,8 +147,11 @@ export const READ_ORIGIN = "12dCP8UFhSktvmSgJcP93tNPdgVQMdBQqJNcFrZTnDoiBE9Y";
  * escape hatch and no card needs it.
  */
 export function accountIndex(index: number): DerivationIndex {
-  return { tag: "Left", value: index };
+  return { tag: "Index", value: index };
 }
+
+/** Product that owns the People Lite ring membership keys. */
+export const PRODUCT_ALIAS_RING_OWNER = "people.dot";
 
 /** Context shared by the alias card and the ring-VRF proof card. Index 0 is the product default account. */
 export const PRODUCT_ALIAS_CONTEXT_SUFFIX = accountIndex(0);

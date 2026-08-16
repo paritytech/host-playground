@@ -1,3 +1,4 @@
+import { findRingVrfKeyHandle } from "@parity/product-sdk/host";
 import { deriveH160 } from "@parity/product-sdk/address";
 import { fromHex, toHex } from "polkadot-api/utils";
 import { withTrace } from "@/utils/with-trace";
@@ -13,6 +14,7 @@ import {
   personhoodRing,
   prepareSimpleStoreWrite,
   PRODUCT_ALIAS_CONTEXT_SUFFIX,
+  PRODUCT_ALIAS_RING_OWNER,
   productSigner,
   readSimpleStore,
   scaleBytes,
@@ -209,8 +211,8 @@ export const contractTests: TestDefinition[] = [
     id: "contract-store-value-if-person",
     name: "Contract: Store Value if Person",
     description:
-      "Generates a Ring VRF personhood proof (createRingVRFProof) and calls storeValueIfPerson; the contract verifies it via the individuality precompile (0x…0a010000) and stores the value only for a verified person. NOTE: needs an individuality-provisioned network AND a host matching the app's product-sdk — otherwise createRingVRFProof times out or the proof is rejected.",
-    api: "createRingVRFProof(context, location, message) → contract.send('storeValueIfPerson', { _value, request })",
+      "Selects people.dot's registered People Lite key, generates a Ring VRF personhood proof, and calls storeValueIfPerson; the contract verifies it via the individuality precompile (0x…0a010000) and stores the value only for a verified person.",
+    api: "listRingVrfKeys(owner) → createRingVRFProof(keyHandle, context, location, message) → contract.send('storeValueIfPerson', { _value, request })",
     args: [
       {
         name: "value",
@@ -237,16 +239,35 @@ export const contractTests: TestDefinition[] = [
           );
         }
 
-        // createRingVRFProof resolves the ring itself and returns the full
-        // bundle {proof, contextualAlias, ringIndex, ringRevision}.
+        const ring = personhoodRing(peopleGenesis);
+        const listed = await provider
+          .listRingVrfKeys(PRODUCT_ALIAS_RING_OWNER)
+          .match(
+            (keys) => ({
+              ok: true as const,
+              keyHandle: findRingVrfKeyHandle(keys, ring),
+            }),
+            (e) => ({ ok: false as const, reason: e.tag }),
+          );
+        if (!listed.ok) {
+          return error(`listRingVrfKeys ${listed.reason}`);
+        }
+        if (!listed.keyHandle) {
+          return error(
+            `No ${PRODUCT_ALIAS_RING_OWNER} key is registered for the People Lite ring`,
+          );
+        }
+
+        // The proof carries the alias, ring index, and revision required by the contract.
         log("Requesting Ring VRF personhood proof (createRingVRFProof)...");
         const proofResult = await withTrace(
           "createRingVRFProof",
           Promise.race([
             provider
               .createRingVRFProof(
+                listed.keyHandle,
                 { productId: SELF_DOTNS, suffix: PRODUCT_ALIAS_CONTEXT_SUFFIX },
-                personhoodRing(peopleGenesis),
+                ring,
                 message,
               )
               .match(
