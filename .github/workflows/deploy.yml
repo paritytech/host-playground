@@ -209,13 +209,18 @@ jobs:
             const runUrl = `${process.env.GITHUB_SERVER_URL}/${process.env.GITHUB_REPOSITORY}/actions/runs/${process.env.GITHUB_RUN_ID}`;
             const label = results[0]?.label ?? '(no domain)';
 
+            const SHELL = { preview: 'testnet.li', 'paseo-next-v2': 'paseo.li' };
+            const ENV_NAME = { preview: 'Previewnet', 'paseo-next-v2': 'Paseo' };
+
             const lines = [
               `**${label}** · [logs](${runUrl})`,
               '',
+              '| Network | Desktop | Web |',
+              '| :--- | :---: | :---: |',
             ];
-            for (const { env, network, domain, label, cid } of results) {
-              const url = `https://${label}.paseo.li?network=${network}&chainBackend=rpc-gateway`;
-              lines.push(`- \`${env}\` — ${domain} — ${url} &nbsp; · CID \`${cid}\``);
+            for (const { env, domain, label } of results) {
+              const url = `https://${label}.${SHELL[env] ?? 'paseo.li'}`;
+              lines.push(`| ${ENV_NAME[env] ?? env} | \`${domain}\` | ${url} |`);
             }
 
             const body = lines.join('\n');
