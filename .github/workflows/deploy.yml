@@ -209,8 +209,6 @@ jobs:
             const runUrl = `${process.env.GITHUB_SERVER_URL}/${process.env.GITHUB_REPOSITORY}/actions/runs/${process.env.GITHUB_RUN_ID}`;
             const label = results[0]?.label ?? '(no domain)';
 
-            // Each environment is reached through its own dot.li shell, so the
-            // shell hostname carries the network and no query string is needed.
             const SHELL = { preview: 'testnet.li', 'paseo-next-v2': 'paseo.li' };
             const ENV_NAME = { preview: 'preview', 'paseo-next-v2': 'paseo' };
 
