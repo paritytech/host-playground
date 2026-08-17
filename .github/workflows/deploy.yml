@@ -210,15 +210,17 @@ jobs:
             const label = results[0]?.label ?? '(no domain)';
 
             const SHELL = { preview: 'testnet.li', 'paseo-next-v2': 'paseo.li' };
-            const ENV_NAME = { preview: 'preview', 'paseo-next-v2': 'paseo' };
+            const ENV_NAME = { preview: 'Previewnet', 'paseo-next-v2': 'Paseo' };
 
             const lines = [
               `**${label}** · [logs](${runUrl})`,
               '',
+              '| Network | Desktop | Web |',
+              '| --- | --- | --- |',
             ];
             for (const { env, domain, label } of results) {
               const url = `https://${label}.${SHELL[env] ?? 'paseo.li'}`;
-              lines.push(`${ENV_NAME[env] ?? env} · ${domain} · ${url}`, '');
+              lines.push(`| ${ENV_NAME[env] ?? env} | \`${domain}\` | ${url} |`);
             }
 
             const body = lines.join('\n');
