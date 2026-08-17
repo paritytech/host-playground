@@ -49,6 +49,7 @@ export const contractTests: TestDefinition[] = [
     description:
       "Calls storeValue() on the SimpleStore contract (write operation)",
     api: "contract.send('storeValue', { origin, data: { _value } }).signSubmitAndWatch(signer)",
+    timeoutMs: 90_000,
     args: [
       {
         name: "value",
