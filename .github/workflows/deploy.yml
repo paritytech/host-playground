@@ -216,7 +216,7 @@ jobs:
               `**${label}** · [logs](${runUrl})`,
               '',
               '| Network | Desktop | Web |',
-              '| --- | --- | --- |',
+              '| :--- | :---: | :---: |',
             ];
             for (const { env, domain, label } of results) {
               const url = `https://${label}.${SHELL[env] ?? 'paseo.li'}`;
