@@ -10,6 +10,7 @@ import {
   requestResourceAllocation,
   isChainSupported,
   formatHostError,
+  findRingVrfKeyHandle,
   type AccountsProvider,
   type AllocatableResource,
   type DerivationIndex,
@@ -17,6 +18,7 @@ import {
   type HostStatementStore,
   type PreimageManager,
   type RingLocation,
+  type RingVrfKeyHandle,
   type ThemeProvider,
 } from "@parity/product-sdk/host";
 import { paseo_individuality } from "@parity/product-sdk-descriptors/paseo-individuality";
@@ -147,7 +149,7 @@ export const READ_ORIGIN = "12dCP8UFhSktvmSgJcP93tNPdgVQMdBQqJNcFrZTnDoiBE9Y";
  * escape hatch and no card needs it.
  */
 export function accountIndex(index: number): DerivationIndex {
-  return { tag: "Left", value: index };
+  return { tag: "Index", value: index };
 }
 
 /** Context shared by the alias card and the ring-VRF proof card. Index 0 is the product default account. */
@@ -164,6 +166,69 @@ export const PRODUCT_ALIAS_RING_LOCATION: RingLocation = {
     },
   ],
 };
+
+type RingVrfKeyResolution =
+  { ok: true; handle: RingVrfKeyHandle } | { ok: false; result: TestResult };
+
+/**
+ * Resolve the product's key for a ring, registering index 0 on first use.
+ *
+ * Alias and proof requests intentionally accept only opaque handles returned
+ * by the host. Constructing a ProductAccountId locally would bypass the host's
+ * registration and disclosure rules.
+ */
+export async function ensureRingVrfKeyHandle(
+  provider: AccountsProvider,
+  ring: RingLocation,
+): Promise<RingVrfKeyResolution> {
+  const list = async () =>
+    provider.listRingVrfKeys(SELF_DOTNS).match(
+      (keys) => ({ ok: true as const, keys }),
+      (cause) => ({ ok: false as const, cause }),
+    );
+
+  let listed = await list();
+  if (!listed.ok) {
+    return {
+      ok: false,
+      result: error(sdkErrorMessage(listed.cause), listed.cause),
+    };
+  }
+
+  let handle = findRingVrfKeyHandle(listed.keys, ring);
+  if (handle) {
+    return { ok: true, handle };
+  }
+
+  const registered = await provider.registerRingVrfKey(0, ring).match(
+    () => ({ ok: true as const }),
+    (cause) => ({ ok: false as const, cause }),
+  );
+  if (!registered.ok) {
+    return {
+      ok: false,
+      result: error(sdkErrorMessage(registered.cause), registered.cause),
+    };
+  }
+
+  listed = await list();
+  if (!listed.ok) {
+    return {
+      ok: false,
+      result: error(sdkErrorMessage(listed.cause), listed.cause),
+    };
+  }
+
+  handle = findRingVrfKeyHandle(listed.keys, ring);
+  return handle
+    ? { ok: true, handle }
+    : {
+        ok: false,
+        result: error(
+          "The host registered the ring-VRF key but did not return its handle",
+        ),
+      };
+}
 
 // People/Individuality chain descriptor per Asset Hub, for DotNS-identity
 // signing (app.wallet.signMessageWithDotNsIdentity). Paseo pairs with
