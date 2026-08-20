@@ -31,7 +31,7 @@ jobs:
           - env: preview
             display-name: Previewnet
             genesis: "0x4d11c803cc6921429e3876638977ad006ea1bba8cd3976a0bca2f164e7026210"
-            suffix: .dot
+            suffix: .test
           - env: paseo-next-v2
             display-name: Paseo
             genesis: "0x23e730eb1c6fecae09c917439a5038cb6122d0d48980e8b9bbf0ff56f94a2ca6"
@@ -95,7 +95,7 @@ jobs:
         run: |
           # Two forms of the same name. `label` has no TLD and is what the
           # browser URL is built from; `dotns` carries this environment's suffix
-          # (.dot on preview, .paseo on paseo-next-v2) and is what the CLI and
+          # (must match the registry's current tld(); the CLI rejects a stale one) and is what the CLI and
           # the product manifest must both name, spelled identically.
           if [ "${{ github.event_name }}" == "push" ]; then
             LABEL="host-playground"
