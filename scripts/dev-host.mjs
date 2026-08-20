@@ -11,16 +11,24 @@
 //
 // Knobs, all optional:
 //   TRUAPI_HOST_PORT        frame WebSocket port       (default 9955)
-//   TRUAPI_HOST_PRODUCT_ID  product id to serve        (default localhost:<app port>)
+//   TRUAPI_HOST_PRODUCT_ID  product id to act as       (default localhost:<app port>)
 //   TRUAPI_HOST_NETWORK     paseo-next-v2 | previewnet (default paseo-next-v2)
 //   TRUAPI_HOST_SESSION     signer session name        (default the CLI's)
 //
-// The network knob steers BOTH sides: the host gets `--network`, the app gets
-// the matching NEXT_PUBLIC_NETWORK_GENESIS_HASH, so they cannot disagree.
+// The network and product-id knobs each steer BOTH sides, so they cannot
+// disagree: the host gets `--network` / `--product-id`, the app gets the
+// matching NEXT_PUBLIC_NETWORK_GENESIS_HASH / NEXT_PUBLIC_SELF_DOTNS.
 //
 // The product id defaults to `localhost:<port>` because that is what the app
 // derives for itself in dev (lib/dotns.ts) — and the host refuses to *sign*
 // for any product id other than the one it serves, so the two must match.
+// Override it to act as a deployed product from localhost:
+//
+//   TRUAPI_HOST_PRODUCT_ID=dim2.paseo yarn dev:host
+//
+// The signer is still this machine's headless session, so the product account
+// is dim2.paseo *as derived by this signer* — right for local testing, and not
+// the account any real user has on their phone.
 //
 // A host already listening on the port is used as-is, so you can still run one
 // in its own window when you want to watch approvals or type `/session`. First
@@ -60,8 +68,10 @@ const NETWORKS = {
 const PORT = Number(process.env.TRUAPI_HOST_PORT ?? 9955);
 const NETWORK = process.env.TRUAPI_HOST_NETWORK ?? "paseo-next-v2";
 const SESSION = process.env.TRUAPI_HOST_SESSION;
-const PRODUCT_ID =
-  process.env.TRUAPI_HOST_PRODUCT_ID ?? `localhost:${appPort(nextArgs)}`;
+/** Explicit override: the app is told to act as this id too (see below). The
+ * localhost default needs no telling — the app derives it from the URL. */
+const PRODUCT_ID_OVERRIDE = process.env.TRUAPI_HOST_PRODUCT_ID;
+const PRODUCT_ID = PRODUCT_ID_OVERRIDE ?? `localhost:${appPort(nextArgs)}`;
 
 const genesis = NETWORKS[NETWORK];
 if (!genesis) {
@@ -149,6 +159,15 @@ async function reportProductAccount(ws) {
   }
 }
 
+if (PRODUCT_ID_OVERRIDE && !PRODUCT_ID_OVERRIDE.endsWith(".dot")) {
+  log(
+    `NOTE: @parity/product-sdk normalizes wallet names by appending ".dot", so ` +
+      `the app.wallet path will ask for "${PRODUCT_ID_OVERRIDE}.dot" and be ` +
+      `refused, while product-account cards use "${PRODUCT_ID_OVERRIDE}" as-is ` +
+      `and work. Prefer an id ending in .dot for full coverage.`,
+  );
+}
+
 const host = await ensureHost({
   port: PORT,
   productId: PRODUCT_ID,
@@ -169,6 +188,11 @@ const next = spawn("yarn", ["next", "dev", "apps/app", ...nextArgs], {
     ...process.env,
     NEXT_PUBLIC_TRUAPI_HOST_WS: host.ws,
     NEXT_PUBLIC_NETWORK_GENESIS_HASH: genesis,
+    // Only on explicit override — the localhost default is what the app
+    // derives from its URL anyway, and deriving beats duplicating.
+    ...(PRODUCT_ID_OVERRIDE
+      ? { NEXT_PUBLIC_SELF_DOTNS: PRODUCT_ID_OVERRIDE }
+      : {}),
   },
 });
 

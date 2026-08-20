@@ -57,6 +57,13 @@ export function deriveSelfDotNs(input: {
 }
 
 export function getSelfDotNs(): string {
+  // Dev override: act as a specific product (e.g. `dim2.paseo`) while served
+  // from localhost. Only meaningful against a host that serves the same id —
+  // `TRUAPI_HOST_PRODUCT_ID=<id> yarn dev:host` sets both sides at once. The
+  // host scopes signing to its --product-id, so setting only one side means
+  // every signature is refused.
+  const override = process.env.NEXT_PUBLIC_SELF_DOTNS;
+  if (override) return override;
   if (typeof window === "undefined") return HOST_PLAYGROUND_FALLBACK;
   return deriveSelfDotNs({
     hostname: window.location.hostname,

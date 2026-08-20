@@ -85,7 +85,20 @@ How it works, in three pieces:
 The host only signs for the product id it serves, and the app derives its own
 id from the URL (`localhost:<port>` in dev — see
 [`apps/app/lib/dotns.ts`](apps/app/lib/dotns.ts)), so the script keeps the two
-in lock-step, port changes included. `TRUAPI_HOST_NETWORK` (`paseo-next-v2`,
+in lock-step, port changes included. To act as a deployed product instead,
+override the id — the script then tells both sides at once:
+
+```bash
+TRUAPI_HOST_PRODUCT_ID=play.paseo yarn dev:host
+```
+
+The signer stays this machine's headless session, so the product account is
+that product's account *as derived by this signer* — right for local testing,
+not the account any real user holds. One caveat the pre-flight also prints:
+`@parity/product-sdk` normalizes wallet names by appending `.dot`, so with a
+non-`.dot` id the `app.wallet` cards ask the host for `<id>.dot` and get
+refused, while every product-account card uses the id verbatim and works.
+Prefer an id ending in `.dot` when you want full coverage. `TRUAPI_HOST_NETWORK` (`paseo-next-v2`,
 the default, or `previewnet`) steers the host preset and the app's genesis
 hash together — though previewnet was wiped on 2026-08-19 and this repo's
 `NETWORKS` still carries the pre-wipe genesis, so that leg needs a repo-wide
