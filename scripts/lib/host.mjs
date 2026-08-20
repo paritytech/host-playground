@@ -173,7 +173,11 @@ export function startHost({ port, productId, network, session, log }) {
 export async function ensureHost(options) {
   const ws = `ws://127.0.0.1:${options.port}`;
   if (await portIsOpen(options.port)) {
-    options.log?.(`attaching to the host already on ${ws}`);
+    options.log?.(
+      `attaching to the host already on ${ws} — its [host] logs stay in the ` +
+        `terminal that started it, and it may serve a different --product-id ` +
+        `than this app derives. Stop it first to let this command own both.`,
+    );
     return { ws, stop: () => {}, attached: true };
   }
   const started = await startHost(options);

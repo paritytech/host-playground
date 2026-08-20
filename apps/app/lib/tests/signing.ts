@@ -4,6 +4,7 @@ import { getApp } from "@/lib/app";
 import type { TestDefinition, TestResult } from "@/lib/types";
 import {
   accounts,
+  ASSETHUB_GENESIS_TO_PEOPLE_GENESIS,
   error,
   getClient,
   PEOPLE_CHAIN_BY_HUB,
@@ -139,6 +140,73 @@ export const signingTests: TestDefinition[] = [
         preview: `${signedHex.slice(0, 80)}...`,
         length: signedBytes.length,
       });
+    },
+  },
+  {
+    id: "create-transaction-people",
+    name: "Create Transaction on People Chain",
+    description:
+      "Same createTransaction path as the card above, but the System.remark targets the People chain paired with this hub. Hosts differ in which extension pipelines they can authorize — a local truapi-host signs the People pipeline (the one every dim2 flow uses) but refuses the hub's, so this card is the one that succeeds against `yarn dev:host`.",
+    api: "tx.sign(getProductAccountSigner(account)) on the paired People chain",
+    args: [
+      {
+        name: "dotNsIdentifier",
+        label: "DotNS ID",
+        defaultValue: SELF_DOTNS,
+      },
+      {
+        name: "message",
+        label: "Remark",
+        defaultValue: "People-chain remark from Host Playground",
+      },
+    ],
+    category: "signing",
+    async run({ chain, log, args }) {
+      const peopleGenesis = ASSETHUB_GENESIS_TO_PEOPLE_GENESIS[chain.genesis];
+      if (!peopleGenesis) {
+        return error(
+          `No People chain is mapped for hub ${chain.genesis} — see ASSETHUB_GENESIS_TO_PEOPLE_GENESIS`,
+        );
+      }
+
+      log(`Fetching product account for ${args.dotNsIdentifier}...`);
+      const accountsProvider = await accounts();
+      const accountResult = await accountsProvider.getProductAccount(
+        args.dotNsIdentifier,
+        0,
+      );
+      const account = accountResult.match(
+        (a) => a,
+        (err) => {
+          log(`getProductAccount failed: ${sdkErrorMessage(err)}`);
+          return null;
+        },
+      );
+      if (!account) {
+        return error(
+          `No product account for "${args.dotNsIdentifier}" — check that the user is signed in and the DotNS ID is valid`,
+        );
+      }
+
+      const signer = accountsProvider.getProductAccountSigner(account);
+
+      log(`Connecting to People chain ${peopleGenesis.slice(0, 10)}…`);
+      const client = await getClient(peopleGenesis);
+      const api = client.getUnsafeApi();
+      const tx = api.tx.System.remark({
+        remark: Binary.fromText(args.message),
+      });
+
+      log("Signing (createTransaction mode)...");
+      const signedBytes = await tx.sign(signer);
+      const signedHex = toHex(signedBytes);
+      return success(
+        `People-chain transaction signed (${signedBytes.length} bytes)`,
+        {
+          preview: `${signedHex.slice(0, 80)}...`,
+          length: signedBytes.length,
+        },
+      );
     },
   },
   {
