@@ -18,6 +18,7 @@ import {
   readSimpleStore,
   scaleBytes,
   SELF_DOTNS,
+  sdkErrorMessage,
   simpleStore,
   SIMPLE_STORE_ADDRESS,
   success,
@@ -258,7 +259,7 @@ export const contractTests: TestDefinition[] = [
               )
               .match(
                 (p) => ({ ok: true as const, proof: p }),
-                (e) => ({ ok: false as const, reason: e.tag }),
+                (e) => ({ ok: false as const, reason: sdkErrorMessage(e) }),
               ),
             new Promise<{ ok: false; reason: string }>((resolve) =>
               setTimeout(
