@@ -87,17 +87,28 @@ id from the URL (`localhost:<port>` in dev — see
 [`apps/app/lib/dotns.ts`](apps/app/lib/dotns.ts)), so the script keeps the two
 in lock-step, port changes included. `TRUAPI_HOST_NETWORK` (`paseo-next-v2`,
 the default, or `previewnet`) steers the host preset and the app's genesis
-hash together. A host already listening on the port is attached to instead of
+hash together — though previewnet was wiped on 2026-08-19 and this repo's
+`NETWORKS` still carries the pre-wipe genesis, so that leg needs a repo-wide
+refresh first. A host already listening on the port is attached to instead of
 replaced, so you can run one in its own window to watch approvals
-interactively.
+interactively. `TRUAPI_HOST_LOG=debug yarn dev:host` makes the host narrate
+every dispatched request (`sign_raw`, `create_transaction`, chain connects)
+and, crucially, why one failed.
 
-Known gap: cards that talk to the host directly (accounts, raw signing,
-statements, permissions) work end to end. Cards that open a papi client routed
-through the host (`Query Balance`, `Create Transaction`, contracts) currently
-stall until their 30s timeout: the CLI host answers every chainHead operation
-on the wire, but `@parity/product-sdk-host`'s papi provider never finishes
-client initialization against it. Under investigation; it reproduces the same
-way from any product, so the fix belongs in the SDK or the CLI, not here.
+Chain-routed cards need one repair on our side:
+[`apps/app/lib/host-operation-order.ts`](apps/app/lib/host-operation-order.ts)
+re-establishes the chainHead_v1 guarantee that an operation's response arrives
+before its follow events — over the host bridge the two race, and when an
+event wins, papi silently drops it and client initialization hangs forever.
+With the shim, chain reads work end to end (`Query Balance` answers with real
+on-chain state).
+
+What still fails does so for real host reasons, visible in the debug log:
+`Create Transaction` gets refused with "pipeline version 0 does not declare
+VerifyMultiSignature" (the CLI host cannot yet authorize transactions for the
+asset-hub pipeline — People-chain transactions are what it grew up signing),
+and the contract cards need a PGAS allowance the host only grants to a
+personhood ring member, which a fresh headless signer is not.
 
 ## Test
 
