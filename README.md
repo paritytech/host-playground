@@ -94,7 +94,22 @@ TRUAPI_HOST_PRODUCT_ID=play.paseo yarn dev:host
 
 The signer stays this machine's headless session, so the product account is
 that product's account *as derived by this signer* — right for local testing,
-not the account any real user holds. One caveat the pre-flight also prints:
+not the account any real user holds. To demo with a **real identity** instead,
+hand the host a wallet root — your username and accounts then show up
+everywhere:
+
+```bash
+# .env.local (gitignored) — dev:host loads it via node --env-file-if-exists
+TRUAPI_HOST_LOG=debug
+TRUAPI_HOST_PRODUCT_ID=play.paseo
+TRUAPI_HOST_MNEMONIC="… …"
+```
+
+The mnemonic travels as an env var (the CLI's own `HOST_CLI_SIGNER_MNEMONIC`
+works too), never as an argument and never into a log line. It carries its own
+identity, so it cannot be combined with `TRUAPI_HOST_SESSION` — the script
+drops the session and says so. And remember what `--auto-accept` means here:
+the browser tab signs anything as that identity, so testnet keys only. One caveat the pre-flight also prints:
 `@parity/product-sdk` normalizes wallet names by appending `.dot`, so with a
 non-`.dot` id the `app.wallet` cards ask the host for `<id>.dot` and get
 refused, while every product-account card uses the id verbatim and works.

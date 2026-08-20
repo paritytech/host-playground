@@ -102,7 +102,7 @@ export function connectHost(wsUrl) {
  * stopped, so this can supervise it. `--auto-accept` goes with it, because a
  * process with no terminal cannot prompt for confirmations.
  */
-export function startHost({ port, productId, network, session, log }) {
+export function startHost({ port, productId, network, session, mnemonic, log }) {
   const args = [
     "signing-host",
     "--serve",
@@ -115,8 +115,15 @@ export function startHost({ port, productId, network, session, log }) {
   if (network) args.push("--network", network);
   if (session) args.push("--session", session);
 
+  // The mnemonic travels as the env var the CLI reads natively, never as an
+  // argv (visible to every process via `ps`) and never into a log line.
+  const env = mnemonic
+    ? { ...process.env, HOST_CLI_SIGNER_MNEMONIC: mnemonic }
+    : process.env;
+
   const child = spawn("truapi-host", args, {
     stdio: ["ignore", "pipe", "pipe"],
+    env,
   });
   const stop = () => child.kill("SIGTERM");
   const ws = `ws://127.0.0.1:${port}`;

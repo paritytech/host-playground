@@ -7,7 +7,7 @@
     "dev": "next dev apps/app",
     "dev:previewnet": "NEXT_PUBLIC_NETWORK_GENESIS_HASH=0x4d11c803cc6921429e3876638977ad006ea1bba8cd3976a0bca2f164e7026210 next dev apps/app",
     "dev:paseo": "NEXT_PUBLIC_NETWORK_GENESIS_HASH=0x23e730eb1c6fecae09c917439a5038cb6122d0d48980e8b9bbf0ff56f94a2ca6 next dev apps/app",
-    "dev:host": "node scripts/dev-host.mjs",
+    "dev:host": "node --env-file-if-exists=.env.local scripts/dev-host.mjs",
     "start": "npx serve apps/app/out",
     "build": "next build apps/app && vite build --config apps/worker/vite.config.ts",
     "build:previewnet": "NEXT_PUBLIC_NETWORK_GENESIS_HASH=0x4d11c803cc6921429e3876638977ad006ea1bba8cd3976a0bca2f164e7026210 next build apps/app && vite build --config apps/worker/vite.config.ts",

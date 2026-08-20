@@ -14,6 +14,12 @@
 //   TRUAPI_HOST_PRODUCT_ID  product id to act as       (default localhost:<app port>)
 //   TRUAPI_HOST_NETWORK     paseo-next-v2 | previewnet (default paseo-next-v2)
 //   TRUAPI_HOST_SESSION     signer session name        (default the CLI's)
+//   TRUAPI_HOST_MNEMONIC    BIP-39 wallet root — sign as YOUR identity instead
+//                           of the auto-managed headless one, so your real
+//                           username shows up. Bypasses account auto-management
+//                           (the CLI's HOST_CLI_SIGNER_MNEMONIC works too).
+//                           Remember: --auto-accept means the browser tab can
+//                           sign anything as that identity. Testnets only.
 //
 // The network and product-id knobs each steer BOTH sides, so they cannot
 // disagree: the host gets `--network` / `--product-id`, the app gets the
@@ -68,6 +74,7 @@ const NETWORKS = {
 const PORT = Number(process.env.TRUAPI_HOST_PORT ?? 9955);
 const NETWORK = process.env.TRUAPI_HOST_NETWORK ?? "paseo-next-v2";
 const SESSION = process.env.TRUAPI_HOST_SESSION;
+const MNEMONIC = process.env.TRUAPI_HOST_MNEMONIC;
 /** Explicit override: the app is told to act as this id too (see below). The
  * localhost default needs no telling — the app derives it from the URL. */
 const PRODUCT_ID_OVERRIDE = process.env.TRUAPI_HOST_PRODUCT_ID;
@@ -168,13 +175,28 @@ if (PRODUCT_ID_OVERRIDE && !PRODUCT_ID_OVERRIDE.endsWith(".dot")) {
   );
 }
 
+// A mnemonic IS the identity — the CLI refuses --session next to it.
+if (MNEMONIC && SESSION) {
+  log(
+    `TRUAPI_HOST_SESSION="${SESSION}" is ignored: a mnemonic carries its own ` +
+      "identity, and the CLI refuses --session alongside it.",
+  );
+}
+
 const host = await ensureHost({
   port: PORT,
   productId: PRODUCT_ID,
   network: NETWORK,
-  session: SESSION,
+  session: MNEMONIC ? undefined : SESSION,
+  mnemonic: MNEMONIC,
   log: (line) => console.log(`[host] ${line}`),
 });
+if (MNEMONIC && host.attached) {
+  log(
+    "TRUAPI_HOST_MNEMONIC is set but an already-running host was attached — " +
+      "it keeps whatever identity it started with. Stop it to sign as yours.",
+  );
+}
 if (!host.attached) log(`started a host on ${host.ws}`);
 
 const username = await waitForSigner(host.ws);
