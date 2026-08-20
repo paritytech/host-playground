@@ -6,8 +6,8 @@
  * (packages/config/src/config.ts) inverted: the shell takes the last two
  * segments of the hostname as the registrable root (dot.li, paseo.li,
  * paseoli.dev, ephemeral previews, ...) so the *label* is everything before
- * it. Appending ".dot" gives the canonical DotNS identifier that's stable
- * across shell deployments.
+ * it. Appending the network's suffix gives the canonical DotNS identifier
+ * that's stable across shell deployments.
  *
  * Cases:
  *   - <name>.<suffix>                  → use as-is
