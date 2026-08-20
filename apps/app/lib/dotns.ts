@@ -2,16 +2,18 @@
  * Derive the DotNS identifier the host bound this product under. The desktop's
  * handleCreateTransaction gate rejects with PermissionDenied when the signer's
  * dotNsIdentifier doesn't match the binding identifier — and that identifier
- * comes from the URL. We mirror the dotli shell's BASE_DOMAIN rule
- * (packages/config/src/config.ts) inverted: the shell takes the last two
- * segments of the hostname as the registrable root (dot.li, paseo.li,
- * paseoli.dev, ephemeral previews, ...) so the *label* is everything before
- * it. Appending the network's suffix gives the canonical DotNS identifier
- * that's stable across shell deployments.
+ * comes from the URL. Native `dot:` containers already expose the exact
+ * environment-qualified binding identifier, so they use the hostname as-is.
+ * Web shells use the dotli BASE_DOMAIN rule (packages/config/src/config.ts)
+ * inverted: the shell takes the last two segments of the hostname as the
+ * registrable root (dot.li, paseo.li, paseoli.dev, ephemeral previews, ...),
+ * so the *label* is everything before it. Appending the network's suffix gives
+ * the canonical DotNS identifier used by those web deployments.
  *
  * Cases:
- *   - <name>.<suffix>                  → use as-is
- *   - app.<name>.<suffix>              → <name>.<suffix> (bulletin-deploy publishes
+ *   - dot://<name>.<environment>/       → <name>.<environment> (exact native binding)
+ *   - <name>.<suffix>                   → use as-is
+ *   - app.<name>.<suffix>               → <name>.<suffix> (bulletin-deploy publishes
  *     <sub>.<name>.dot                   each executable under its `kind`
  *                                        subdomain; the binding identifier is
  *                                        the registrable root)
@@ -34,10 +36,14 @@ export function hostPlaygroundFallback(suffix: string): string {
 export function deriveSelfDotNs(input: {
   hostname: string;
   host: string;
+  protocol?: string;
   suffix?: string;
 }): string {
   const hostname = input.hostname.toLowerCase();
   const suffix = input.suffix ?? ACTIVE_CHAIN.dotNsSuffix;
+  if (input.protocol === "dot:") {
+    return hostname;
+  }
   if (
     hostname.endsWith(".app.localhost") ||
     hostname.endsWith(`.app.${suffix}`)
@@ -71,5 +77,6 @@ export function getSelfDotNs(): string {
   return deriveSelfDotNs({
     hostname: window.location.hostname,
     host: window.location.host,
+    protocol: window.location.protocol,
   });
 }
