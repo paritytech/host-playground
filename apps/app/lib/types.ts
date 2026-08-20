@@ -41,6 +41,7 @@ export interface ChainConfig {
   genesis: `0x${string}`;
   wsUrl: string;
   ss58Prefix: number;
+  dotNsSuffix: string;
   papiNetworkId?: string;
   peopleWsUrl?: string;
   peopleNetworkId?: string;
@@ -85,6 +86,7 @@ export const NETWORKS = {
       "0x23e730eb1c6fecae09c917439a5038cb6122d0d48980e8b9bbf0ff56f94a2ca6" as const,
     wsUrl: "wss://paseo-asset-hub-next-rpc.polkadot.io",
     ss58Prefix: 0,
+    dotNsSuffix: "paseo",
     peopleWsUrl: "wss://paseo-people-next-system-rpc.polkadot.io",
     bulletinWsUrl: "wss://paseo-bulletin-next-rpc.polkadot.io",
   },
@@ -95,6 +97,7 @@ export const NETWORKS = {
       "0x4d11c803cc6921429e3876638977ad006ea1bba8cd3976a0bca2f164e7026210" as const,
     wsUrl: "wss://previewnet.substrate.dev/asset-hub",
     ss58Prefix: 0,
+    dotNsSuffix: "dot",
     peopleWsUrl: "wss://previewnet.substrate.dev/people",
     bulletinWsUrl: "wss://previewnet.substrate.dev/bulletin",
   },
