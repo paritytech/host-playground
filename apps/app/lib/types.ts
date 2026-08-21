@@ -102,6 +102,8 @@ export const NETWORKS = {
     ss58Prefix: 0,
     dotNsSuffix: "test",
     peopleWsUrl: "wss://previewnet.substrate.dev/people",
+    peopleGenesis:
+      "0x3138c6d4ce58c760047a413c2a930e919b4673a841ab4890de59aac3bd037f3d" as const,
     bulletinWsUrl: "wss://previewnet.substrate.dev/bulletin",
   },
 } as const;

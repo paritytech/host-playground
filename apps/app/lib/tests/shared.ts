@@ -159,7 +159,7 @@ export const PRODUCT_ALIAS_RING_OWNER =
 export const PRODUCT_ALIAS_CONTEXT_SUFFIX = accountIndex(0);
 
 export const PRODUCT_ALIAS_RING_LOCATION: RingLocation = {
-  chainId: NETWORKS.PASEO_ASSETHUBNEXTV2.peopleGenesis,
+  chainId: NETWORKS[ACTIVE_CHAIN_ID].peopleGenesis,
   junctions: [
     { tag: "PalletInstance", value: 67 },
     {
@@ -193,7 +193,7 @@ export const ASSETHUB_GENESIS_TO_PEOPLE_GENESIS: Record<string, `0x${string}`> =
     [NETWORKS.PASEO_ASSETHUBNEXTV2.genesis]:
       NETWORKS.PASEO_ASSETHUBNEXTV2.peopleGenesis,
     [NETWORKS.PREVIEWNET_ASSETHUB.genesis]:
-      "0x3138c6d4ce58c760047a413c2a930e919b4673a841ab4890de59aac3bd037f3d",
+      NETWORKS.PREVIEWNET_ASSETHUB.peopleGenesis,
   };
 
 // Collection ids are fixed 32-byte ASCII tags from the individuality reality
