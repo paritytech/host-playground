@@ -178,7 +178,7 @@ export function personhoodRing(peopleGenesis: `0x${string}`): RingLocation {
 
 /** Network-qualified product that owns the well-known personhood ring keys. */
 export const PRODUCT_ALIAS_RING_OWNER =
-  ACTIVE_CHAIN_ID === "PASEO_ASSETHUBNEXTV2" ? "peopl.paseo" : "peopl.dot";
+  NETWORKS[ACTIVE_CHAIN_ID].personhoodRingOwner;
 
 /** Context shared by the alias card and the ring-VRF proof card. Index 0 is the product default account. */
 export const PRODUCT_ALIAS_CONTEXT_SUFFIX = accountIndex(0);
@@ -212,7 +212,11 @@ export async function findRegisteredRingVrfKeyHandle(
     ? { ok: true, handle }
     : {
         ok: false,
-        result: error(`No ${owner} key is registered for the People Lite ring`),
+        result: error(
+          `No ${owner} key is registered for the People Lite ring`,
+          undefined,
+          "precondition-missing",
+        ),
       };
 }
 

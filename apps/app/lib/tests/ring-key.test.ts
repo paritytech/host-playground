@@ -71,6 +71,7 @@ describe("findRegisteredRingVrfKeyHandle", () => {
       ok: false,
       result: {
         message: `No ${PRODUCT_ALIAS_RING_OWNER} key is registered for the People Lite ring`,
+        outcome: "precondition-missing",
       },
     });
     expect(provider.listRingVrfKeys).toHaveBeenCalledWith(

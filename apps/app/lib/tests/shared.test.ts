@@ -4,6 +4,7 @@ import {
   ASSETHUB_GENESIS_TO_PEOPLE_GENESIS,
   PEOPLE_CHAIN_BY_HUB,
   PRODUCT_ALIAS_RING_LOCATION,
+  PRODUCT_ALIAS_RING_OWNER,
 } from "./shared";
 
 describe("People chain configuration", () => {
@@ -20,8 +21,13 @@ describe("People chain configuration", () => {
     expect(ASSETHUB_GENESIS_TO_PEOPLE_GENESIS[preview.genesis]).toBe(
       preview.peopleGenesis,
     );
+    expect(paseo.personhoodRingOwner).toBe("peopl.paseo");
+    expect(preview.personhoodRingOwner).toBe("peopl.dot");
     expect(PRODUCT_ALIAS_RING_LOCATION.chainId).toBe(
       NETWORKS[ACTIVE_CHAIN_ID].peopleGenesis,
+    );
+    expect(PRODUCT_ALIAS_RING_OWNER).toBe(
+      NETWORKS[ACTIVE_CHAIN_ID].personhoodRingOwner,
     );
   });
 });

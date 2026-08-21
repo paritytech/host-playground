@@ -54,6 +54,7 @@ export interface ChainConfig {
   papiNetworkId?: string;
   peopleWsUrl?: string;
   peopleGenesis?: `0x${string}`;
+  personhoodRingOwner?: string;
   peopleNetworkId?: string;
   bulletinWsUrl?: string;
 }
@@ -100,6 +101,7 @@ export const NETWORKS = {
     peopleWsUrl: "wss://paseo-people-next-system-rpc.polkadot.io",
     peopleGenesis:
       "0x89a63b11fef2c0273fc72c0d864da0793a665dade5db153e0cab995348c5440f" as const,
+    personhoodRingOwner: "peopl.paseo",
     bulletinWsUrl: "wss://paseo-bulletin-next-rpc.polkadot.io",
   },
   PREVIEWNET_ASSETHUB: {
@@ -113,6 +115,7 @@ export const NETWORKS = {
     peopleWsUrl: "wss://previewnet.substrate.dev/people",
     peopleGenesis:
       "0x3138c6d4ce58c760047a413c2a930e919b4673a841ab4890de59aac3bd037f3d" as const,
+    personhoodRingOwner: "peopl.dot",
     bulletinWsUrl: "wss://previewnet.substrate.dev/bulletin",
   },
 } as const;
