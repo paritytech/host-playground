@@ -466,9 +466,17 @@ export async function ensureSmartContractAllowance(
       return null;
     }
     if (outcome === "Rejected") {
-      return error("User rejected SmartContractAllowance");
+      return error(
+        "User rejected SmartContractAllowance",
+        outcome,
+        "permission-denied",
+      );
     }
-    return error(`SmartContractAllowance unavailable: ${outcome}`);
+    return error(
+      `SmartContractAllowance unavailable: ${outcome}`,
+      outcome,
+      "unavailable",
+    );
   } catch (err) {
     const e = err as { name?: string };
     return error(e.name ?? String(err), err);
