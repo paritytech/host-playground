@@ -70,14 +70,19 @@ export const notificationTests: TestDefinition[] = [
     id: "cancel-notification",
     name: "Cancel Notification",
     description:
-      "Cancel a scheduled notification by its id (the number returned by Push Notification). Cancelling is idempotent: an unknown or already-fired id is a no-op.",
+      "Cancel a scheduled notification by its id. Leave the id empty to schedule and immediately cancel a test notification.",
     api: "getNotificationManager().cancel(id)",
-    args: [{ name: "id", label: "Notification id", defaultValue: "" }],
+    args: [
+      { name: "id", label: "Notification id (optional)", defaultValue: "" },
+    ],
     category: "notifications",
     async run({ args }) {
       const rawId = args.id.trim();
-      const id = Number(rawId);
-      if (rawId === "" || !Number.isInteger(id) || id <= 0) {
+      const requestedId = Number(rawId);
+      if (
+        rawId !== "" &&
+        (!Number.isInteger(requestedId) || requestedId <= 0)
+      ) {
         return error(
           "Invalid id",
           `"Notification id" must be a positive integer, got "${rawId}"`,
@@ -91,8 +96,15 @@ export const notificationTests: TestDefinition[] = [
         );
 
       try {
+        const id =
+          rawId === ""
+            ? await nm.push({
+                text: "Cancel notification test",
+                scheduledAt: BigInt(Date.now() + 60 * 60 * 1000),
+              })
+            : requestedId;
         await nm.cancel(id);
-        return success(`Cancel requested for notification #${String(id)}`);
+        return success(`Cancelled notification #${String(id)}`);
       } catch (err) {
         return notificationError(err);
       }

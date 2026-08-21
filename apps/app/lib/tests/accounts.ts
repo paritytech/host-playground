@@ -1,9 +1,9 @@
-import { findRingVrfKeyHandle } from "@parity/product-sdk/host";
 import { toHex } from "polkadot-api/utils";
 import type { TestDefinition } from "@/lib/types";
 import {
   accounts,
   error,
+  findRegisteredRingVrfKeyHandle,
   PRODUCT_ALIAS_CONTEXT_SUFFIX,
   PRODUCT_ALIAS_RING_LOCATION,
   PRODUCT_ALIAS_RING_OWNER,
@@ -73,26 +73,14 @@ export const accountTests: TestDefinition[] = [
     category: "accounts",
     async run() {
       const accountsProvider = await accounts();
-      const listed = await accountsProvider
-        .listRingVrfKeys(PRODUCT_ALIAS_RING_OWNER)
-        .match(
-          (keys) => ({
-            ok: true as const,
-            keyHandle: findRingVrfKeyHandle(keys, PRODUCT_ALIAS_RING_LOCATION),
-          }),
-          (err) => ({
-            ok: false as const,
-            result: error(sdkErrorMessage(err), err),
-          }),
-        );
-      if (!listed.ok) return listed.result;
-      if (!listed.keyHandle) {
-        return error(
-          `No ${PRODUCT_ALIAS_RING_OWNER} key is registered for the People Lite ring`,
-        );
-      }
+      const key = await findRegisteredRingVrfKeyHandle(
+        accountsProvider,
+        PRODUCT_ALIAS_RING_OWNER,
+        PRODUCT_ALIAS_RING_LOCATION,
+      );
+      if (!key.ok) return key.result;
       const result = await accountsProvider.getProductAccountAlias(
-        listed.keyHandle,
+        key.handle,
         { productId: SELF_DOTNS, suffix: PRODUCT_ALIAS_CONTEXT_SUFFIX },
         PRODUCT_ALIAS_RING_LOCATION,
       );

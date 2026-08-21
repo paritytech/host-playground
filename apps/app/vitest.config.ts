@@ -6,10 +6,16 @@ import { defineConfig } from "vitest/config";
 export default defineConfig({
   root: fileURLToPath(new URL(".", import.meta.url)),
   resolve: {
-    alias: {
-      "@": fileURLToPath(new URL(".", import.meta.url)),
-      "@root": fileURLToPath(new URL("../../", import.meta.url)),
-    },
+    alias: [
+      {
+        find: "@root",
+        replacement: fileURLToPath(new URL("../..", import.meta.url)),
+      },
+      {
+        find: "@",
+        replacement: fileURLToPath(new URL(".", import.meta.url)),
+      },
+    ],
   },
   test: {
     include: ["**/*.test.ts"],

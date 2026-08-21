@@ -10,6 +10,7 @@ import {
   requestResourceAllocation,
   isChainSupported,
   formatHostError,
+  findRingVrfKeyHandle,
   type AccountsProvider,
   type AllocatableResource,
   type DerivationIndex,
@@ -17,6 +18,7 @@ import {
   type HostStatementStore,
   type PreimageManager,
   type RingLocation,
+  type RingVrfKeyHandle,
   type ThemeProvider,
 } from "@parity/product-sdk/host";
 import { paseo_individuality } from "@parity/product-sdk-descriptors/paseo-individuality";
@@ -30,16 +32,21 @@ import {
   NETWORKS,
   type ChainConfig,
   type TestLogger,
+  type TestOutcome,
   type TestResult,
 } from "@/lib/types";
 import { getSelfDotNs } from "@/lib/dotns";
 
 export function success(message: string, details?: unknown): TestResult {
-  return { success: true, message, details };
+  return { success: true, message, details, outcome: "supported" };
 }
 
-export function error(message: string, details?: unknown): TestResult {
-  return { success: false, message, details };
+export function error(
+  message: string,
+  details?: unknown,
+  outcome: TestOutcome = "failed",
+): TestResult {
+  return { success: false, message, details, outcome };
 }
 
 // formatHostError with versioned-envelope unwrapping: neverthrow accounts APIs
@@ -180,19 +187,48 @@ export const PRODUCT_ALIAS_RING_LOCATION = personhoodRing(
   NETWORKS[ACTIVE_CHAIN_ID].peopleGenesis,
 );
 
+type RingVrfKeyResolution =
+  { ok: true; handle: RingVrfKeyHandle } | { ok: false; result: TestResult };
+
+/** Resolve a host-issued handle for an owner's already-registered ring key. */
+export async function findRegisteredRingVrfKeyHandle(
+  provider: AccountsProvider,
+  owner: string,
+  ring: RingLocation,
+): Promise<RingVrfKeyResolution> {
+  const listed = await provider.listRingVrfKeys(owner).match(
+    (keys) => ({ ok: true as const, keys }),
+    (cause) => ({ ok: false as const, cause }),
+  );
+  if (!listed.ok) {
+    return {
+      ok: false,
+      result: error(sdkErrorMessage(listed.cause), listed.cause),
+    };
+  }
+
+  const handle = findRingVrfKeyHandle(listed.keys, ring);
+  return handle
+    ? { ok: true, handle }
+    : {
+        ok: false,
+        result: error(`No ${owner} key is registered for the People Lite ring`),
+      };
+}
+
 // People/Individuality chain descriptor per Asset Hub, for DotNS-identity
 // signing (app.wallet.signMessageWithDotNsIdentity). Paseo pairs with
 // paseo_individuality; Previewnet has no published individuality descriptor, so
 // it's intentionally absent — the card reports that rather than signing on the
 // wrong chain.
-const paseoIndividuality = {
+export const PASEO_NEXT_INDIVIDUALITY = {
   ...paseo_individuality,
   // The published descriptor predates the latest Paseo People chain reset.
   // Metadata remains compatible, but host routing must use the live genesis.
   genesis: NETWORKS.PASEO_ASSETHUBNEXTV2.peopleGenesis,
 } satisfies typeof paseo_individuality;
 export const PEOPLE_CHAIN_BY_HUB: Record<string, typeof paseo_individuality> = {
-  [NETWORKS.PASEO_ASSETHUBNEXTV2.genesis]: paseoIndividuality,
+  [NETWORKS.PASEO_ASSETHUBNEXTV2.genesis]: PASEO_NEXT_INDIVIDUALITY,
 };
 
 // The personhood rings live on the People chain, not the hub, so the ring
@@ -284,9 +320,10 @@ export async function reportPermission(
 ): Promise<TestResult> {
   try {
     const result = await request();
-    return result.ok
-      ? success(`${label}: ${result.value ? "granted" : "denied"}`)
-      : error(sdkErrorMessage(result.error), result.error);
+    if (!result.ok) return error(sdkErrorMessage(result.error), result.error);
+    return result.value
+      ? success(`${label}: granted`)
+      : error(`${label}: denied`, result.value, "permission-denied");
   } catch (err) {
     return error(sdkErrorMessage(err), err);
   }
@@ -314,7 +351,17 @@ export async function runResourceAllocation(
       resource: resources[i].tag,
       outcome,
     }));
-    return success(`Received ${outcomes.length} outcome(s)`, outcomes);
+    if (outcomes.every(({ outcome }) => outcome === "Allocated")) {
+      return success(`Allocated ${outcomes.length} resource(s)`, outcomes);
+    }
+    if (outcomes.some(({ outcome }) => outcome === "Rejected")) {
+      return error(
+        "Resource allocation rejected",
+        outcomes,
+        "permission-denied",
+      );
+    }
+    return error("Requested resource is unavailable", outcomes, "unavailable");
   } catch (err) {
     const e = err as { name?: string };
     return error(e.name ?? String(err), err);
@@ -384,9 +431,17 @@ export async function ensureSmartContractAllowance(
       return null;
     }
     if (outcome === "Rejected") {
-      return error("User rejected SmartContractAllowance");
+      return error(
+        "User rejected SmartContractAllowance",
+        outcome,
+        "permission-denied",
+      );
     }
-    return error(`SmartContractAllowance unavailable: ${outcome}`);
+    return error(
+      `SmartContractAllowance unavailable: ${outcome}`,
+      outcome,
+      "unavailable",
+    );
   } catch (err) {
     const e = err as { name?: string };
     return error(e.name ?? String(err), err);

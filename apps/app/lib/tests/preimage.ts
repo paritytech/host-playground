@@ -21,6 +21,7 @@ export const preimageTests: TestDefinition[] = [
     description: "Submits a preimage and gets its hash back",
     api: "getPreimageManager().submit(data)",
     category: "preimage",
+    timeoutMs: 90_000,
     async run() {
       const data = new TextEncoder().encode(`preimage_${Date.now()}`);
       const hash = await (await pm()).submit(data);

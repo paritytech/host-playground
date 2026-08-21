@@ -1,4 +1,3 @@
-import { findRingVrfKeyHandle } from "@parity/product-sdk/host";
 import { deriveH160 } from "@parity/product-sdk/address";
 import { fromHex, toHex } from "polkadot-api/utils";
 import { withTrace } from "@/utils/with-trace";
@@ -7,6 +6,7 @@ import {
   ASSETHUB_GENESIS_TO_PEOPLE_GENESIS,
   ensureSmartContractAllowance,
   error,
+  findRegisteredRingVrfKeyHandle,
   EVM_DECIMALS,
   formatUnits,
   NATIVE_DECIMALS,
@@ -19,6 +19,7 @@ import {
   readSimpleStore,
   scaleBytes,
   SELF_DOTNS,
+  sdkErrorMessage,
   simpleStore,
   SIMPLE_STORE_ADDRESS,
   success,
@@ -241,23 +242,12 @@ export const contractTests: TestDefinition[] = [
         }
 
         const ring = personhoodRing(peopleGenesis);
-        const listed = await provider
-          .listRingVrfKeys(PRODUCT_ALIAS_RING_OWNER)
-          .match(
-            (keys) => ({
-              ok: true as const,
-              keyHandle: findRingVrfKeyHandle(keys, ring),
-            }),
-            (e) => ({ ok: false as const, reason: e.tag }),
-          );
-        if (!listed.ok) {
-          return error(`listRingVrfKeys ${listed.reason}`);
-        }
-        if (!listed.keyHandle) {
-          return error(
-            `No ${PRODUCT_ALIAS_RING_OWNER} key is registered for the People Lite ring`,
-          );
-        }
+        const key = await findRegisteredRingVrfKeyHandle(
+          provider,
+          PRODUCT_ALIAS_RING_OWNER,
+          ring,
+        );
+        if (!key.ok) return key.result;
 
         // The proof carries the alias, ring index, and revision required by the contract.
         log("Requesting Ring VRF personhood proof (createRingVRFProof)...");
@@ -266,14 +256,14 @@ export const contractTests: TestDefinition[] = [
           Promise.race([
             provider
               .createRingVRFProof(
-                listed.keyHandle,
+                key.handle,
                 { productId: SELF_DOTNS, suffix: PRODUCT_ALIAS_CONTEXT_SUFFIX },
                 ring,
                 message,
               )
               .match(
                 (p) => ({ ok: true as const, proof: p }),
-                (e) => ({ ok: false as const, reason: e.tag }),
+                (e) => ({ ok: false as const, reason: sdkErrorMessage(e) }),
               ),
             new Promise<{ ok: false; reason: string }>((resolve) =>
               setTimeout(
