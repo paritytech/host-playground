@@ -1,31 +1,70 @@
 # Host Playground
 
-An interactive playground for testing `@parity/product-sdk`. Designed to run exclusively within the Host webview environment to validate functionality across `product-sdk`, Host, and the Polkadot App.
+Every TrUAPI, one click away.
 
-## How to Open
+Host Playground is a product for developers that puts a button behind every host API that `@parity/product-sdk`
+exposes.
 
-### Web Host
+## Access
 
-Open the app directly
+#### Browser
 
-https://host-playground.dot.li
+| Network    | Link                               |
+| ---------- | ---------------------------------- |
+| Paseo      | https://host-playground.paseo.li   |
+| Previewnet | https://host-playground.testnet.li |
 
-### Desktop Host
+#### Desktop
 
-1. Download the Polkadot Browser from https://polkadotbrowser.novasama-technologies.workers.dev/
-2. Install and launch the application
-3. In the search bar, type `host-playground.dot`
+1. Download the Polkadot Desktop from https://polkadotbrowser.novasama-technologies.workers.dev/.
+2. Install.
+3. Search for the domain.
+
+| Network    | Domain                |
+| ---------- | --------------------- |
+| Paseo      | host-playground.paseo |
+| Previewnet | host-playground.dot   |
+
+#### Mobile
+
+1. Search for the domain.
+
+| Network    | Domain                |
+| ---------- | --------------------- |
+| Paseo      | host-playground.paseo |
+| Previewnet | host-playground.dot   |
 
 ## Development
 
 ```bash
 yarn install --immutable
-yarn dev
+yarn dev              # Previewnet, the default
+yarn dev:paseo        # Paseo
 ```
 
-The target network is baked at build/dev time via
-`NEXT_PUBLIC_NETWORK_GENESIS_HASH`.
+## Test
+
+```bash
+yarn typecheck
+yarn lint
+yarn test:e2e         # Playwright against a mock Host
+```
+
+The E2E suite drives the real cards through `@parity/host-api-test-sdk`, so it
+runs without a Host of its own.
 
 ## Deployment
 
-The app is deployed automatically via GitHub Actions on push to `main`.
+Pushing to `main` deploys to Previewnet and Paseo through GitHub Actions.
+
+Every pull request gets its own preview domain, posted back as a comment on the
+pull request.
+
+## Contribute
+
+[CONTRIBUTING.md](CONTRIBUTING.md) covers documentation and test style.
+[AGENTS.md](AGENTS.md) maps the repo, one line per directory, and lists the
+gotchas worth knowing before a first change. New cards go in
+[apps/app/lib/tests/](apps/app/lib/tests/), one file per category.
+
+## Happy Building! 💻💻

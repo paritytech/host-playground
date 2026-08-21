@@ -371,10 +371,9 @@ export async function ensureSmartContractAllowance(
       address,
     );
     const balance = BigInt(acct?.balance ?? 0);
+    log(`Address ${address} holds ${balance} of PGAS asset ${pgasAssetId}`);
     if (balance > BigInt(0)) {
-      log(
-        `SmartContractAllowance(${derivationIndex}) already provisioned (PGAS asset=${pgasAssetId}, balance=${balance})`,
-      );
+      log(`SmartContractAllowance(${derivationIndex}) already provisioned`);
       return null;
     }
   } catch (e) {
