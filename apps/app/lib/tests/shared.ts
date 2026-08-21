@@ -151,6 +151,24 @@ export function accountIndex(index: number): DerivationIndex {
   return { tag: "Index", value: index };
 }
 
+// Collection ids are fixed 32-byte ASCII tags from the individuality reality
+// traits, space padded when shorter.
+const PEOPLE_LITE_COLLECTION = "pop:polkadot.network/people-lite";
+const MEMBERS_PALLET_INSTANCE = 67;
+
+export function personhoodRing(peopleGenesis: `0x${string}`): RingLocation {
+  return {
+    chainId: peopleGenesis,
+    junctions: [
+      { tag: "PalletInstance", value: MEMBERS_PALLET_INSTANCE },
+      {
+        tag: "CollectionId",
+        value: toHexString(new TextEncoder().encode(PEOPLE_LITE_COLLECTION)),
+      },
+    ],
+  };
+}
+
 /** Network-qualified product that owns the well-known personhood ring keys. */
 export const PRODUCT_ALIAS_RING_OWNER =
   ACTIVE_CHAIN_ID === "PASEO_ASSETHUBNEXTV2" ? "peopl.paseo" : "peopl.dot";
@@ -158,17 +176,9 @@ export const PRODUCT_ALIAS_RING_OWNER =
 /** Context shared by the alias card and the ring-VRF proof card. Index 0 is the product default account. */
 export const PRODUCT_ALIAS_CONTEXT_SUFFIX = accountIndex(0);
 
-export const PRODUCT_ALIAS_RING_LOCATION: RingLocation = {
-  chainId: NETWORKS[ACTIVE_CHAIN_ID].peopleGenesis,
-  junctions: [
-    { tag: "PalletInstance", value: 67 },
-    {
-      tag: "CollectionId",
-      value:
-        "0x706f703a706f6c6b61646f742e6e6574776f726b2f70656f706c652d6c697465",
-    },
-  ],
-};
+export const PRODUCT_ALIAS_RING_LOCATION = personhoodRing(
+  NETWORKS[ACTIVE_CHAIN_ID].peopleGenesis,
+);
 
 // People/Individuality chain descriptor per Asset Hub, for DotNS-identity
 // signing (app.wallet.signMessageWithDotNsIdentity). Paseo pairs with
@@ -195,24 +205,6 @@ export const ASSETHUB_GENESIS_TO_PEOPLE_GENESIS: Record<string, `0x${string}`> =
     [NETWORKS.PREVIEWNET_ASSETHUB.genesis]:
       NETWORKS.PREVIEWNET_ASSETHUB.peopleGenesis,
   };
-
-// Collection ids are fixed 32-byte ASCII tags from the individuality reality
-// traits, space padded when shorter.
-const PEOPLE_LITE_COLLECTION = "pop:polkadot.network/people-lite";
-const MEMBERS_PALLET_INSTANCE = 67;
-
-export function personhoodRing(peopleGenesis: `0x${string}`): RingLocation {
-  return {
-    chainId: peopleGenesis,
-    junctions: [
-      { tag: "PalletInstance", value: MEMBERS_PALLET_INSTANCE },
-      {
-        tag: "CollectionId",
-        value: toHexString(new TextEncoder().encode(PEOPLE_LITE_COLLECTION)),
-      },
-    ],
-  };
-}
 
 export function toHexString(value: Uint8Array): `0x${string}` {
   return toHex(value) as `0x${string}`;
