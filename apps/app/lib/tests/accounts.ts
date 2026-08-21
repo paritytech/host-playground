@@ -1,4 +1,4 @@
-import { findRingVrfKeyHandle } from "@host-playground/product-sdk-host";
+import { findRingVrfKeyHandle } from "@parity/product-sdk/host";
 import { toHex } from "polkadot-api/utils";
 import type { TestDefinition } from "@/lib/types";
 import {

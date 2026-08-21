@@ -18,7 +18,7 @@ import {
   type PreimageManager,
   type RingLocation,
   type ThemeProvider,
-} from "@host-playground/product-sdk-host";
+} from "@parity/product-sdk/host";
 import { paseo_individuality } from "@parity/product-sdk-descriptors/paseo-individuality";
 import { AccountId, createClient, type PolkadotClient } from "polkadot-api";
 import { toHex } from "polkadot-api/utils";

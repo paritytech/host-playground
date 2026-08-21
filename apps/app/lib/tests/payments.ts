@@ -1,4 +1,4 @@
-import { getPaymentManager } from "@host-playground/product-sdk-host";
+import { getPaymentManager } from "@parity/product-sdk/host";
 import type { TestDefinition } from "@/lib/types";
 import { error, success } from "./shared";
 
