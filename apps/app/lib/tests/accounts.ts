@@ -3,9 +3,10 @@ import type { TestDefinition } from "@/lib/types";
 import {
   accounts,
   error,
-  ensureRingVrfKeyHandle,
+  findRegisteredRingVrfKeyHandle,
   PRODUCT_ALIAS_CONTEXT_SUFFIX,
   PRODUCT_ALIAS_RING_LOCATION,
+  PRODUCT_ALIAS_RING_OWNER,
   sdkErrorMessage,
   SELF_DOTNS,
   success,
@@ -67,13 +68,14 @@ export const accountTests: TestDefinition[] = [
     id: "accounts-provider-alias",
     name: "Get Product Account Alias",
     description:
-      "Registers or resolves this product's ring-VRF key, then gets its contextual alias from the Paseo Next v2 People Lite ring",
-    api: "accountsProvider.getProductAccountAlias(keyHandle, context, ringLocation)",
+      "Selects the personhood product's registered People Lite key and gets this product's contextual alias",
+    api: "accountsProvider.listRingVrfKeys(owner) → getProductAccountAlias(keyHandle, context, ringLocation)",
     category: "accounts",
     async run() {
       const accountsProvider = await accounts();
-      const key = await ensureRingVrfKeyHandle(
+      const key = await findRegisteredRingVrfKeyHandle(
         accountsProvider,
+        PRODUCT_ALIAS_RING_OWNER,
         PRODUCT_ALIAS_RING_LOCATION,
       );
       if (!key.ok) return key.result;

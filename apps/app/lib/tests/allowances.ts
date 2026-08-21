@@ -32,7 +32,7 @@ export const allowancesTests: TestDefinition[] = [
     name: "Allocate SmartContract Allowance",
     description:
       "Requests a smart-contract allowance for a derivation index (RFC-0010)",
-    api: 'requestResourceAllocation([{ tag: "SmartContractAllowance", value: { tag: "Left", value: derivationIndex } }])',
+    api: 'requestResourceAllocation([{ tag: "SmartContractAllowance", value: { tag: "Index", value: derivationIndex } }])',
     args: [
       {
         name: "derivationIndex",

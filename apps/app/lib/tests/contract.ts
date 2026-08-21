@@ -6,7 +6,7 @@ import {
   ASSETHUB_GENESIS_TO_PEOPLE_GENESIS,
   ensureSmartContractAllowance,
   error,
-  ensureRingVrfKeyHandle,
+  findRegisteredRingVrfKeyHandle,
   EVM_DECIMALS,
   formatUnits,
   NATIVE_DECIMALS,
@@ -14,6 +14,7 @@ import {
   personhoodRing,
   prepareSimpleStoreWrite,
   PRODUCT_ALIAS_CONTEXT_SUFFIX,
+  PRODUCT_ALIAS_RING_OWNER,
   productSigner,
   readSimpleStore,
   scaleBytes,
@@ -212,8 +213,8 @@ export const contractTests: TestDefinition[] = [
     id: "contract-store-value-if-person",
     name: "Contract: Store Value if Person",
     description:
-      "Generates a Ring VRF personhood proof (createRingVRFProof) and calls storeValueIfPerson; the contract verifies it via the individuality precompile (0x…0a010000) and stores the value only for a verified person. NOTE: needs an individuality-provisioned network AND a host matching the app's product-sdk — otherwise createRingVRFProof times out or the proof is rejected.",
-    api: "createRingVRFProof(context, location, message) → contract.send('storeValueIfPerson', { _value, request })",
+      "Selects the personhood product's registered People Lite key, generates a Ring VRF personhood proof, and calls storeValueIfPerson; the contract verifies it via the individuality precompile (0x…0a010000) and stores the value only for a verified person.",
+    api: "listRingVrfKeys(owner) → createRingVRFProof(keyHandle, context, location, message) → contract.send('storeValueIfPerson', { _value, request })",
     args: [
       {
         name: "value",
@@ -241,11 +242,14 @@ export const contractTests: TestDefinition[] = [
         }
 
         const ring = personhoodRing(peopleGenesis);
-        const key = await ensureRingVrfKeyHandle(provider, ring);
+        const key = await findRegisteredRingVrfKeyHandle(
+          provider,
+          PRODUCT_ALIAS_RING_OWNER,
+          ring,
+        );
         if (!key.ok) return key.result;
 
-        // createRingVRFProof resolves the ring itself and returns the full
-        // bundle {proof, contextualAlias, ringIndex, ringRevision}.
+        // The proof carries the alias, ring index, and revision required by the contract.
         log("Requesting Ring VRF personhood proof (createRingVRFProof)...");
         const proofResult = await withTrace(
           "createRingVRFProof",

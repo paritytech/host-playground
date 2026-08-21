@@ -28,6 +28,7 @@ import { createInkSdk } from "@polkadot-api/sdk-ink";
 import { contracts } from "@polkadot-api/descriptors";
 import deployment from "@root/evm/deployment.json";
 import {
+  ACTIVE_CHAIN_ID,
   NETWORKS,
   type ChainConfig,
   type TestLogger,
@@ -157,108 +158,6 @@ export function accountIndex(index: number): DerivationIndex {
   return { tag: "Index", value: index };
 }
 
-/** Context shared by the alias card and the ring-VRF proof card. Index 0 is the product default account. */
-export const PRODUCT_ALIAS_CONTEXT_SUFFIX = accountIndex(0);
-
-export const PRODUCT_ALIAS_RING_LOCATION: RingLocation = {
-  chainId: "0x89a63b11fef2c0273fc72c0d864da0793a665dade5db153e0cab995348c5440f",
-  junctions: [
-    { tag: "PalletInstance", value: 67 },
-    {
-      tag: "CollectionId",
-      value:
-        "0x706f703a706f6c6b61646f742e6e6574776f726b2f70656f706c652d6c697465",
-    },
-  ],
-};
-
-type RingVrfKeyResolution =
-  { ok: true; handle: RingVrfKeyHandle } | { ok: false; result: TestResult };
-
-/**
- * Resolve the product's key for a ring, registering index 0 on first use.
- *
- * Alias and proof requests intentionally accept only opaque handles returned
- * by the host. Constructing a ProductAccountId locally would bypass the host's
- * registration and disclosure rules.
- */
-export async function ensureRingVrfKeyHandle(
-  provider: AccountsProvider,
-  ring: RingLocation,
-): Promise<RingVrfKeyResolution> {
-  const list = async () =>
-    provider.listRingVrfKeys(SELF_DOTNS).match(
-      (keys) => ({ ok: true as const, keys }),
-      (cause) => ({ ok: false as const, cause }),
-    );
-
-  let listed = await list();
-  if (!listed.ok) {
-    return {
-      ok: false,
-      result: error(sdkErrorMessage(listed.cause), listed.cause),
-    };
-  }
-
-  let handle = findRingVrfKeyHandle(listed.keys, ring);
-  if (handle) {
-    return { ok: true, handle };
-  }
-
-  const registered = await provider.registerRingVrfKey(0, ring).match(
-    () => ({ ok: true as const }),
-    (cause) => ({ ok: false as const, cause }),
-  );
-  if (!registered.ok) {
-    return {
-      ok: false,
-      result: error(sdkErrorMessage(registered.cause), registered.cause),
-    };
-  }
-
-  listed = await list();
-  if (!listed.ok) {
-    return {
-      ok: false,
-      result: error(sdkErrorMessage(listed.cause), listed.cause),
-    };
-  }
-
-  handle = findRingVrfKeyHandle(listed.keys, ring);
-  return handle
-    ? { ok: true, handle }
-    : {
-        ok: false,
-        result: error(
-          "The host registered the ring-VRF key but did not return its handle",
-        ),
-      };
-}
-
-// The personhood rings live on the People chain, not the hub, so the ring
-// location passed to createRingVRFProof names the People chain genesis plus the
-// Members pallet and collection junctions.
-export const ASSETHUB_GENESIS_TO_PEOPLE_GENESIS: Record<string, `0x${string}`> =
-  {
-    [NETWORKS.PASEO_ASSETHUBNEXTV2.genesis]:
-      "0x89a63b11fef2c0273fc72c0d864da0793a665dade5db153e0cab995348c5440f",
-    [NETWORKS.PREVIEWNET_ASSETHUB.genesis]:
-      "0x3138c6d4ce58c760047a413c2a930e919b4673a841ab4890de59aac3bd037f3d",
-  };
-// The published Paseo Individuality descriptor carries the previous chain's
-// genesis. Paseo Asset Hub Next uses the same generated calls against the
-// current People chain, so preserve the descriptor metadata while binding it to
-// the current genesis used by the host and wallet authorization scope.
-export const PASEO_NEXT_INDIVIDUALITY = {
-  ...paseo_individuality,
-  genesis:
-    ASSETHUB_GENESIS_TO_PEOPLE_GENESIS[NETWORKS.PASEO_ASSETHUBNEXTV2.genesis],
-};
-
-export const PEOPLE_CHAIN_BY_HUB: Record<string, typeof paseo_individuality> = {
-  [NETWORKS.PASEO_ASSETHUBNEXTV2.genesis]: PASEO_NEXT_INDIVIDUALITY,
-};
-
 // Collection ids are fixed 32-byte ASCII tags from the individuality reality
 // traits, space padded when shorter.
 const PEOPLE_LITE_COLLECTION = "pop:polkadot.network/people-lite";
@@ -276,6 +175,76 @@ export function personhoodRing(peopleGenesis: `0x${string}`): RingLocation {
     ],
   };
 }
+
+/** Network-qualified product that owns the well-known personhood ring keys. */
+export const PRODUCT_ALIAS_RING_OWNER =
+  NETWORKS[ACTIVE_CHAIN_ID].personhoodRingOwner;
+
+/** Context shared by the alias card and the ring-VRF proof card. Index 0 is the product default account. */
+export const PRODUCT_ALIAS_CONTEXT_SUFFIX = accountIndex(0);
+
+export const PRODUCT_ALIAS_RING_LOCATION = personhoodRing(
+  NETWORKS[ACTIVE_CHAIN_ID].peopleGenesis,
+);
+
+type RingVrfKeyResolution =
+  { ok: true; handle: RingVrfKeyHandle } | { ok: false; result: TestResult };
+
+/** Resolve a host-issued handle for an owner's already-registered ring key. */
+export async function findRegisteredRingVrfKeyHandle(
+  provider: AccountsProvider,
+  owner: string,
+  ring: RingLocation,
+): Promise<RingVrfKeyResolution> {
+  const listed = await provider.listRingVrfKeys(owner).match(
+    (keys) => ({ ok: true as const, keys }),
+    (cause) => ({ ok: false as const, cause }),
+  );
+  if (!listed.ok) {
+    return {
+      ok: false,
+      result: error(sdkErrorMessage(listed.cause), listed.cause),
+    };
+  }
+
+  const handle = findRingVrfKeyHandle(listed.keys, ring);
+  return handle
+    ? { ok: true, handle }
+    : {
+        ok: false,
+        result: error(
+          `No ${owner} key is registered for the People Lite ring`,
+          undefined,
+          "precondition-missing",
+        ),
+      };
+}
+
+// People/Individuality chain descriptor per Asset Hub, for DotNS-identity
+// signing (app.wallet.signMessageWithDotNsIdentity). Paseo pairs with
+// paseo_individuality; Previewnet has no published individuality descriptor, so
+// it's intentionally absent — the card reports that rather than signing on the
+// wrong chain.
+export const PASEO_NEXT_INDIVIDUALITY = {
+  ...paseo_individuality,
+  // The published descriptor predates the latest Paseo People chain reset.
+  // Metadata remains compatible, but host routing must use the live genesis.
+  genesis: NETWORKS.PASEO_ASSETHUBNEXTV2.peopleGenesis,
+} satisfies typeof paseo_individuality;
+export const PEOPLE_CHAIN_BY_HUB: Record<string, typeof paseo_individuality> = {
+  [NETWORKS.PASEO_ASSETHUBNEXTV2.genesis]: PASEO_NEXT_INDIVIDUALITY,
+};
+
+// The personhood rings live on the People chain, not the hub, so the ring
+// location passed to createRingVRFProof names the People chain genesis plus the
+// Members pallet and collection junctions.
+export const ASSETHUB_GENESIS_TO_PEOPLE_GENESIS: Record<string, `0x${string}`> =
+  {
+    [NETWORKS.PASEO_ASSETHUBNEXTV2.genesis]:
+      NETWORKS.PASEO_ASSETHUBNEXTV2.peopleGenesis,
+    [NETWORKS.PREVIEWNET_ASSETHUB.genesis]:
+      NETWORKS.PREVIEWNET_ASSETHUB.peopleGenesis,
+  };
 
 export function toHexString(value: Uint8Array): `0x${string}` {
   return toHex(value) as `0x${string}`;

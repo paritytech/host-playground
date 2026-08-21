@@ -1,9 +1,9 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { findRingVrfKeyHandle } from "@parity/product-sdk/host";
 import {
-  ensureRingVrfKeyHandle,
+  findRegisteredRingVrfKeyHandle,
   PRODUCT_ALIAS_RING_LOCATION,
-  SELF_DOTNS,
+  PRODUCT_ALIAS_RING_OWNER,
 } from "./shared";
 
 vi.mock("@parity/product-sdk/host", () => ({
@@ -27,36 +27,12 @@ function ok<T>(value: T) {
   };
 }
 
-describe("ensureRingVrfKeyHandle", () => {
+describe("findRegisteredRingVrfKeyHandle", () => {
   beforeEach(() => {
     vi.clearAllMocks();
   });
 
-  it("registers index zero and returns the host-issued handle", async () => {
-    const handle = { opaque: true };
-    vi.mocked(findRingVrfKeyHandle)
-      .mockReturnValueOnce(undefined)
-      .mockReturnValueOnce(handle as never);
-    const provider = {
-      listRingVrfKeys: vi.fn(() => ok([])),
-      registerRingVrfKey: vi.fn(() => ok(undefined)),
-    };
-
-    const result = await ensureRingVrfKeyHandle(
-      provider as never,
-      PRODUCT_ALIAS_RING_LOCATION,
-    );
-
-    expect(result).toEqual({ ok: true, handle });
-    expect(provider.listRingVrfKeys).toHaveBeenCalledTimes(2);
-    expect(provider.listRingVrfKeys).toHaveBeenCalledWith(SELF_DOTNS);
-    expect(provider.registerRingVrfKey).toHaveBeenCalledWith(
-      0,
-      PRODUCT_ALIAS_RING_LOCATION,
-    );
-  });
-
-  it("does not register when the host already exposes a matching handle", async () => {
+  it("returns the host-issued handle registered by the owner", async () => {
     const handle = { opaque: true };
     vi.mocked(findRingVrfKeyHandle).mockReturnValue(handle as never);
     const provider = {
@@ -64,12 +40,43 @@ describe("ensureRingVrfKeyHandle", () => {
       registerRingVrfKey: vi.fn(),
     };
 
-    const result = await ensureRingVrfKeyHandle(
+    const result = await findRegisteredRingVrfKeyHandle(
       provider as never,
+      PRODUCT_ALIAS_RING_OWNER,
       PRODUCT_ALIAS_RING_LOCATION,
     );
 
     expect(result).toEqual({ ok: true, handle });
+    expect(provider.listRingVrfKeys).toHaveBeenCalledOnce();
+    expect(provider.listRingVrfKeys).toHaveBeenCalledWith(
+      PRODUCT_ALIAS_RING_OWNER,
+    );
+    expect(provider.registerRingVrfKey).not.toHaveBeenCalled();
+  });
+
+  it("does not register a product-owned replacement when the key is missing", async () => {
+    vi.mocked(findRingVrfKeyHandle).mockReturnValue(undefined);
+    const provider = {
+      listRingVrfKeys: vi.fn(() => ok([])),
+      registerRingVrfKey: vi.fn(),
+    };
+
+    const result = await findRegisteredRingVrfKeyHandle(
+      provider as never,
+      PRODUCT_ALIAS_RING_OWNER,
+      PRODUCT_ALIAS_RING_LOCATION,
+    );
+
+    expect(result).toMatchObject({
+      ok: false,
+      result: {
+        message: `No ${PRODUCT_ALIAS_RING_OWNER} key is registered for the People Lite ring`,
+        outcome: "precondition-missing",
+      },
+    });
+    expect(provider.listRingVrfKeys).toHaveBeenCalledWith(
+      PRODUCT_ALIAS_RING_OWNER,
+    );
     expect(provider.registerRingVrfKey).not.toHaveBeenCalled();
   });
 });

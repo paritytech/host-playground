@@ -3,15 +3,16 @@ import type { TestContext } from "../types";
 import { accountTests } from "./accounts";
 import {
   accounts,
-  ensureRingVrfKeyHandle,
+  findRegisteredRingVrfKeyHandle,
   PRODUCT_ALIAS_CONTEXT_SUFFIX,
   PRODUCT_ALIAS_RING_LOCATION,
+  PRODUCT_ALIAS_RING_OWNER,
   SELF_DOTNS,
 } from "./shared";
 
 vi.mock("./shared", () => ({
   accounts: vi.fn(),
-  ensureRingVrfKeyHandle: vi.fn(),
+  findRegisteredRingVrfKeyHandle: vi.fn(),
   error: (message: string, details?: unknown) => ({
     success: false,
     message,
@@ -22,6 +23,7 @@ vi.mock("./shared", () => ({
     chainId: "0x01",
     junctions: [{ tag: "PalletInstance", value: 67 }],
   },
+  PRODUCT_ALIAS_RING_OWNER: "peopl.dot",
   sdkErrorMessage: (value: unknown) => String(value),
   SELF_DOTNS: "host-playground.dot",
   success: (message: string, details?: unknown) => ({
@@ -62,7 +64,7 @@ describe("accounts-provider-alias", () => {
     vi.mocked(accounts).mockResolvedValue({
       getProductAccountAlias,
     } as never);
-    vi.mocked(ensureRingVrfKeyHandle).mockResolvedValue({
+    vi.mocked(findRegisteredRingVrfKeyHandle).mockResolvedValue({
       ok: true,
       handle,
     } as never);
@@ -70,8 +72,9 @@ describe("accounts-provider-alias", () => {
     const result = await aliasTest.run(context);
 
     expect(result.success).toBe(true);
-    expect(ensureRingVrfKeyHandle).toHaveBeenCalledWith(
+    expect(findRegisteredRingVrfKeyHandle).toHaveBeenCalledWith(
       expect.anything(),
+      PRODUCT_ALIAS_RING_OWNER,
       PRODUCT_ALIAS_RING_LOCATION,
     );
     expect(getProductAccountAlias).toHaveBeenCalledWith(
