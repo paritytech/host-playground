@@ -31,16 +31,21 @@ import {
   NETWORKS,
   type ChainConfig,
   type TestLogger,
+  type TestOutcome,
   type TestResult,
 } from "@/lib/types";
 import { getSelfDotNs } from "@/lib/dotns";
 
 export function success(message: string, details?: unknown): TestResult {
-  return { success: true, message, details };
+  return { success: true, message, details, outcome: "supported" };
 }
 
-export function error(message: string, details?: unknown): TestResult {
-  return { success: false, message, details };
+export function error(
+  message: string,
+  details?: unknown,
+  outcome: TestOutcome = "failed",
+): TestResult {
+  return { success: false, message, details, outcome };
 }
 
 // formatHostError with versioned-envelope unwrapping: neverthrow accounts APIs
@@ -230,15 +235,6 @@ export async function ensureRingVrfKeyHandle(
       };
 }
 
-// People/Individuality chain descriptor per Asset Hub, for DotNS-identity
-// signing (app.wallet.signMessageWithDotNsIdentity). Paseo pairs with
-// paseo_individuality; Previewnet has no published individuality descriptor, so
-// it's intentionally absent — the card reports that rather than signing on the
-// wrong chain.
-export const PEOPLE_CHAIN_BY_HUB: Record<string, typeof paseo_individuality> = {
-  [NETWORKS.PASEO_ASSETHUBNEXTV2.genesis]: paseo_individuality,
-};
-
 // The personhood rings live on the People chain, not the hub, so the ring
 // location passed to createRingVRFProof names the People chain genesis plus the
 // Members pallet and collection junctions.
@@ -249,6 +245,19 @@ export const ASSETHUB_GENESIS_TO_PEOPLE_GENESIS: Record<string, `0x${string}`> =
     [NETWORKS.PREVIEWNET_ASSETHUB.genesis]:
       "0x3138c6d4ce58c760047a413c2a930e919b4673a841ab4890de59aac3bd037f3d",
   };
+// The published Paseo Individuality descriptor carries the previous chain's
+// genesis. Paseo Asset Hub Next uses the same generated calls against the
+// current People chain, so preserve the descriptor metadata while binding it to
+// the current genesis used by the host and wallet authorization scope.
+export const PASEO_NEXT_INDIVIDUALITY = {
+  ...paseo_individuality,
+  genesis:
+    ASSETHUB_GENESIS_TO_PEOPLE_GENESIS[NETWORKS.PASEO_ASSETHUBNEXTV2.genesis],
+};
+
+export const PEOPLE_CHAIN_BY_HUB: Record<string, typeof paseo_individuality> = {
+  [NETWORKS.PASEO_ASSETHUBNEXTV2.genesis]: PASEO_NEXT_INDIVIDUALITY,
+};
 
 // Collection ids are fixed 32-byte ASCII tags from the individuality reality
 // traits, space padded when shorter.
@@ -346,9 +355,10 @@ export async function reportPermission(
 ): Promise<TestResult> {
   try {
     const result = await request();
-    return result.ok
-      ? success(`${label}: ${result.value ? "granted" : "denied"}`)
-      : error(sdkErrorMessage(result.error), result.error);
+    if (!result.ok) return error(sdkErrorMessage(result.error), result.error);
+    return result.value
+      ? success(`${label}: granted`)
+      : error(`${label}: denied`, result.value, "permission-denied");
   } catch (err) {
     return error(sdkErrorMessage(err), err);
   }
@@ -376,7 +386,17 @@ export async function runResourceAllocation(
       resource: resources[i].tag,
       outcome,
     }));
-    return success(`Received ${outcomes.length} outcome(s)`, outcomes);
+    if (outcomes.every(({ outcome }) => outcome === "Allocated")) {
+      return success(`Allocated ${outcomes.length} resource(s)`, outcomes);
+    }
+    if (outcomes.some(({ outcome }) => outcome === "Rejected")) {
+      return error(
+        "Resource allocation rejected",
+        outcomes,
+        "permission-denied",
+      );
+    }
+    return error("Requested resource is unavailable", outcomes, "unavailable");
   } catch (err) {
     const e = err as { name?: string };
     return error(e.name ?? String(err), err);

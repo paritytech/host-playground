@@ -23,14 +23,21 @@ function draftStatement() {
   };
 }
 
-/** Host statement rejections carry the reason in a payload, not the message. */
-function statementError(e: unknown) {
-  const err = e as { name?: string; payload?: { reason?: string } };
-  return error(
-    err.name
-      ? `${err.name}${err.payload?.reason ? ` - ${err.payload.reason}` : ""}`
-      : String(e),
-  );
+/** Preserve the nested host reason; Error.name alone is often just GenericError. */
+function statementError(value: unknown) {
+  const err = value as {
+    name?: string;
+    message?: string;
+    payload?: unknown;
+    cause?: unknown;
+  };
+  const detailSource = err.payload ?? err.cause ?? value;
+  const detail = sdkErrorMessage(detailSource);
+  const prefix =
+    err.name && err.name !== "Error" && err.name !== detail
+      ? `${err.name}: `
+      : "";
+  return error(`${prefix}${detail}`, value);
 }
 
 /** A proof is either signed off-chain or anchored on it. */
@@ -78,8 +85,7 @@ export const statementTests: TestDefinition[] = [
           `Proof type: ${proof.tag}, sig: ${proofSignature(proof)}...`,
         );
       } catch (err) {
-        const e = err as { payload?: unknown };
-        return error(String(err), e.payload);
+        return statementError(err);
       }
     },
   },

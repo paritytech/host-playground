@@ -157,15 +157,18 @@ export default function Home() {
           test.timeoutMs ?? TEST_TIMEOUT_MS,
           test.name,
         );
+        const outcome =
+          result.outcome ?? (result.success ? "supported" : "failed");
         updateLog(
           logId,
           result.success ? "success" : "error",
           result.message,
           result.details ? stringify(result.details) : undefined,
+          outcome,
         );
       } catch (e: unknown) {
         const message = e instanceof Error ? e.message : JSON.stringify(e);
-        updateLog(logId, "error", message);
+        updateLog(logId, "error", message, undefined, "failed");
       } finally {
         setRunningTest(null);
       }

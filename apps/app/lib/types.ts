@@ -1,4 +1,11 @@
 export type LogStatus = "success" | "error" | "info" | "pending";
+export type TestOutcome =
+  | "supported"
+  | "unavailable"
+  | "permission-denied"
+  | "unsupported"
+  | "precondition-missing"
+  | "failed";
 
 export interface LogEntry {
   id: string;
@@ -7,12 +14,14 @@ export interface LogEntry {
   status: LogStatus;
   message: string;
   details?: string;
+  outcome?: TestOutcome;
 }
 
 export interface TestResult {
   success: boolean;
   message: string;
   details?: unknown;
+  outcome?: TestOutcome;
 }
 
 export type TestLogger = (message: string) => void;
