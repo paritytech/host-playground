@@ -133,12 +133,21 @@ export const signingTests: TestDefinition[] = [
       });
 
       log("Signing (createTransaction mode)...");
-      const signedBytes = await tx.sign(signer);
-      const signedHex = toHex(signedBytes);
-      return success(`Transaction signed (${signedBytes.length} bytes)`, {
-        preview: `${signedHex.slice(0, 80)}...`,
-        length: signedBytes.length,
-      });
+      try {
+        const signedBytes = await tx.sign(signer);
+        const signedHex = toHex(signedBytes);
+        return success(`Transaction signed (${signedBytes.length} bytes)`, {
+          preview: `${signedHex.slice(0, 80)}...`,
+          length: signedBytes.length,
+        });
+      } catch (err) {
+        const message = sdkErrorMessage(err);
+        const outcome =
+          /NotSupported|does not declare VerifyMultiSignature/.test(message)
+            ? "unsupported"
+            : "failed";
+        return error(message, err, outcome);
+      }
     },
   },
   {

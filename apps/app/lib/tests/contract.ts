@@ -6,6 +6,7 @@ import {
   ASSETHUB_GENESIS_TO_PEOPLE_GENESIS,
   ensureSmartContractAllowance,
   error,
+  ensureRingVrfKeyHandle,
   EVM_DECIMALS,
   formatUnits,
   NATIVE_DECIMALS,
@@ -17,6 +18,7 @@ import {
   readSimpleStore,
   scaleBytes,
   SELF_DOTNS,
+  sdkErrorMessage,
   simpleStore,
   SIMPLE_STORE_ADDRESS,
   success,
@@ -238,6 +240,10 @@ export const contractTests: TestDefinition[] = [
           );
         }
 
+        const ring = personhoodRing(peopleGenesis);
+        const key = await ensureRingVrfKeyHandle(provider, ring);
+        if (!key.ok) return key.result;
+
         // createRingVRFProof resolves the ring itself and returns the full
         // bundle {proof, contextualAlias, ringIndex, ringRevision}.
         log("Requesting Ring VRF personhood proof (createRingVRFProof)...");
@@ -246,13 +252,14 @@ export const contractTests: TestDefinition[] = [
           Promise.race([
             provider
               .createRingVRFProof(
+                key.handle,
                 { productId: SELF_DOTNS, suffix: PRODUCT_ALIAS_CONTEXT_SUFFIX },
-                personhoodRing(peopleGenesis),
+                ring,
                 message,
               )
               .match(
                 (p) => ({ ok: true as const, proof: p }),
-                (e) => ({ ok: false as const, reason: e.tag }),
+                (e) => ({ ok: false as const, reason: sdkErrorMessage(e) }),
               ),
             new Promise<{ ok: false; reason: string }>((resolve) =>
               setTimeout(

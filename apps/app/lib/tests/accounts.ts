@@ -3,6 +3,7 @@ import type { TestDefinition } from "@/lib/types";
 import {
   accounts,
   error,
+  ensureRingVrfKeyHandle,
   PRODUCT_ALIAS_CONTEXT_SUFFIX,
   PRODUCT_ALIAS_RING_LOCATION,
   sdkErrorMessage,
@@ -66,12 +67,18 @@ export const accountTests: TestDefinition[] = [
     id: "accounts-provider-alias",
     name: "Get Product Account Alias",
     description:
-      "Gets this product's contextual account alias from the Paseo Next v2 People Lite ring",
-    api: "accountsProvider.getProductAccountAlias(context, ringLocation)",
+      "Registers or resolves this product's ring-VRF key, then gets its contextual alias from the Paseo Next v2 People Lite ring",
+    api: "accountsProvider.getProductAccountAlias(keyHandle, context, ringLocation)",
     category: "accounts",
     async run() {
       const accountsProvider = await accounts();
+      const key = await ensureRingVrfKeyHandle(
+        accountsProvider,
+        PRODUCT_ALIAS_RING_LOCATION,
+      );
+      if (!key.ok) return key.result;
       const result = await accountsProvider.getProductAccountAlias(
+        key.handle,
         { productId: SELF_DOTNS, suffix: PRODUCT_ALIAS_CONTEXT_SUFFIX },
         PRODUCT_ALIAS_RING_LOCATION,
       );

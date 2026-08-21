@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useState } from "react";
-import type { LogEntry, LogStatus } from "@/lib/types";
+import type { LogEntry, LogStatus, TestOutcome } from "@/lib/types";
 
 const MAX_LOGS = 100;
 
@@ -29,10 +29,18 @@ export function useLogs() {
   );
 
   const updateLog = useCallback(
-    (id: string, status: LogStatus, message: string, details?: string) => {
+    (
+      id: string,
+      status: LogStatus,
+      message: string,
+      details?: string,
+      outcome?: TestOutcome,
+    ) => {
       setLogs((prev) =>
         prev.map((entry) =>
-          entry.id === id ? { ...entry, status, message, details } : entry,
+          entry.id === id
+            ? { ...entry, status, message, details, outcome }
+            : entry,
         ),
       );
     },
@@ -50,6 +58,7 @@ export function useLogs() {
       status: entry.status,
       message: entry.message,
       details: entry.details,
+      outcome: entry.outcome,
     }));
 
     const blob = new Blob([JSON.stringify(data, null, 2)], {

@@ -52,4 +52,16 @@ test.describe("Notifications", () => {
     const afterCancel = await testHost.getNotificationLog();
     expect(afterCancel.find((e) => e.id === entry.id)?.cancelled).toBe(true);
   });
+
+  test("cancel with default fixture", async ({ testHost }) => {
+    const frame = await waitForAppReady(testHost);
+
+    const result = await runTest(frame, "cancel-notification");
+    expect(result).toBe("success");
+
+    const log = await testHost.getNotificationLog();
+    const entry = log[log.length - 1];
+    expect(entry.text).toBe("Cancel notification test");
+    expect(entry.cancelled).toBe(true);
+  });
 });

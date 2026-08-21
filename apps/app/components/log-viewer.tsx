@@ -74,6 +74,7 @@ export function LogViewer({
                   key={entry.id}
                   data-testid="log-entry"
                   data-status={entry.status}
+                  data-outcome={entry.outcome}
                   className="border-b border-border/40 pb-3 last:border-0 last:pb-0"
                 >
                   <div className="flex items-start gap-2 flex-wrap">
