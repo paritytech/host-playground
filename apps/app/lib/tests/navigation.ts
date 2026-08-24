@@ -31,7 +31,13 @@ export const navigationTests: TestDefinition[] = [
     name: "Navigate to Polkadot URL",
     description: "Navigates to a host-compatible URL via hostApi",
     api: "navigateTo(url)",
-    args: [{ name: "url", label: "URL", defaultValue: "https://search.dot" }],
+    args: [
+      {
+        name: "url",
+        label: "URL",
+        defaultValue: "https://truapi-playground.paseo",
+      },
+    ],
     category: "navigation",
     async run({ args }) {
       return navigateViaHost(args.url);
