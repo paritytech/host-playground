@@ -107,7 +107,13 @@ const CHAIN_ID_BY_GENESIS = Object.fromEntries(
 ) as Record<string, ChainId>;
 
 export const ACTIVE_CHAIN_ID: ChainId =
-  CHAIN_ID_BY_GENESIS[process.env.NEXT_PUBLIC_NETWORK_GENESIS_HASH ?? ""] ??
-  "PREVIEWNET_ASSETHUB";
+  // The truapi-dev-host launcher injects the genesis of the network its host
+  // runs against, so one knob steers both sides; the plain variable remains
+  // for the dev:/build: scripts.
+  CHAIN_ID_BY_GENESIS[
+    process.env.NEXT_PUBLIC_TRUAPI_HOST_GENESIS_HASH ??
+      process.env.NEXT_PUBLIC_NETWORK_GENESIS_HASH ??
+      ""
+  ] ?? "PREVIEWNET_ASSETHUB";
 
 export const ACTIVE_CHAIN: ChainConfig = NETWORKS[ACTIVE_CHAIN_ID];

@@ -32,6 +32,7 @@ import {
   type TestResult,
 } from "@/lib/types";
 import { getSelfDotNs } from "@/lib/dotns";
+import { withOperationEventOrder } from "@/lib/host-operation-order";
 
 export function success(message: string, details?: unknown): TestResult {
   return { success: true, message, details };
@@ -83,7 +84,7 @@ export async function getClient(
         "getHostProvider returned null - not inside a host container",
       );
     }
-    client = createClient(provider);
+    client = createClient(withOperationEventOrder(provider));
     clientCache.set(genesis, client);
   }
   return client;

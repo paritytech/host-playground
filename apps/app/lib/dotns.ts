@@ -57,6 +57,13 @@ export function deriveSelfDotNs(input: {
 }
 
 export function getSelfDotNs(): string {
+  // Dev override: act as a specific product (e.g. `dim2.paseo`) while served
+  // from localhost. The truapi-dev-host launcher injects it only when a
+  // product id was set explicitly, and configures its host with the same id —
+  // the host scopes signing to its --product-id, so setting only one side
+  // means every signature is refused.
+  const override = process.env.NEXT_PUBLIC_TRUAPI_HOST_PRODUCT_ID;
+  if (override) return override;
   if (typeof window === "undefined") return HOST_PLAYGROUND_FALLBACK;
   return deriveSelfDotNs({
     hostname: window.location.hostname,

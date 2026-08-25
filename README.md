@@ -40,7 +40,20 @@ exposes.
 yarn install --immutable
 yarn dev              # Previewnet, the default
 yarn dev:paseo        # Paseo
+yarn dev:host         # Paseo Next v2 behind a local CLI signing host
 ```
+
+### Local CLI host
+
+`yarn dev:host` runs the app against a real `truapi-host signing-host` on
+this machine via [`@parity/truapi-dev-host`](https://github.com/paritytech/host-rust-core/issues/462),
+so hosted-mode code paths (product account, signing, chain access) work in a
+plain browser tab. The package is consumed as a `file:` dependency from a
+sibling checkout of that repo's `feat/truapi-dev-host` branch until it is
+merged and published — adjust the path in `package.json` if your checkout
+lives elsewhere. It needs a `truapi-host` binary (`TRUAPI_HOST_BIN`, a cargo
+build in the checkout, or one on PATH); configuration knobs live in
+`.env.local` and are documented in the package README.
 
 ## Test
 

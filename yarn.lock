@@ -867,6 +867,12 @@
   resolved "https://registry.yarnpkg.com/@parity/result/-/result-0.2.0.tgz#cc9ea4cf876af7e06b504f66a3aabbfa408d7e22"
   integrity sha512-QCrhYPeVVaPIjnlsfBIk5GHPRqfuCjy6MjqKkoCP4kwS1LIo5YtJCSFeB5mGtvMG7hiaRNl4lHQcd5YqDfJ1tQ==
 
+"@parity/truapi-dev-host@file:../../../truapi/.worktrees/dev-host/js/packages/truapi-dev-host":
+  version "0.1.0"
+  dependencies:
+    "@noble/hashes" "^2.2.0"
+    "@parity/truapi" "^0.7.0"
+
 "@parity/truapi@^0.7.0":
   version "0.7.0"
   resolved "https://registry.yarnpkg.com/@parity/truapi/-/truapi-0.7.0.tgz#2d456168693434885fd4bc34b9e706436afcf7eb"
