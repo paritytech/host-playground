@@ -102,7 +102,15 @@ export function connectHost(wsUrl) {
  * stopped, so this can supervise it. `--auto-accept` goes with it, because a
  * process with no terminal cannot prompt for confirmations.
  */
-export function startHost({ port, productId, network, session, mnemonic, log }) {
+export function startHost({
+  port,
+  productId,
+  network,
+  session,
+  mnemonic,
+  binary = "truapi-host",
+  log,
+}) {
   const args = [
     "signing-host",
     "--serve",
@@ -121,7 +129,7 @@ export function startHost({ port, productId, network, session, mnemonic, log }) 
     ? { ...process.env, HOST_CLI_SIGNER_MNEMONIC: mnemonic }
     : process.env;
 
-  const child = spawn("truapi-host", args, {
+  const child = spawn(binary, args, {
     stdio: ["ignore", "pipe", "pipe"],
     env,
   });
@@ -131,11 +139,19 @@ export function startHost({ port, productId, network, session, mnemonic, log }) 
   return new Promise((resolve, reject) => {
     let ready = false;
     let tail = "";
+    let announcedFrameEndpoint = false;
 
     const onLine = (line) => {
       // The CLI colours its output; strip so the ready check is on the text.
       const clean = line.replace(/\x1b\[[0-9;]*m/g, "").trim();
       if (!clean) return;
+      // `signing-host --serve` prints the frame endpoint after both its
+      // "listening" and "serving" lifecycle messages. It is one endpoint, so
+      // retain the first occurrence and keep the startup transcript compact.
+      if (clean === ws) {
+        if (announcedFrameEndpoint) return;
+        announcedFrameEndpoint = true;
+      }
       tail = `${tail}\n${clean}`.split("\n").slice(-12).join("\n");
       log?.(clean);
       if (!ready && clean.includes(READY_LINE)) {
@@ -157,7 +173,11 @@ export function startHost({ port, productId, network, session, mnemonic, log }) 
     pump(child.stderr);
 
     child.once("error", (error) => {
-      reject(error.code === "ENOENT" ? new Error(INSTALL_HELP) : error);
+      reject(
+        error.code === "ENOENT" && binary === "truapi-host"
+          ? new Error(INSTALL_HELP)
+          : error,
+      );
     });
     child.once("exit", (code) => {
       if (ready) return;

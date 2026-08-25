@@ -11,9 +11,10 @@
 //
 // Knobs, all optional:
 //   TRUAPI_HOST_PORT        frame WebSocket port       (default 9955)
-//   TRUAPI_HOST_PRODUCT_ID  product id to act as       (default localhost:<app port>)
-//   TRUAPI_HOST_NETWORK     paseo-next-v2 | previewnet (default paseo-next-v2)
+//   TRUAPI_HOST_PRODUCT_ID  product label/id to act as (default localhost:<app port>)
+//   TRUAPI_HOST_NETWORK     nextv2 | preview (CLI-native names work too; default nextv2)
 //   TRUAPI_HOST_SESSION     signer session name        (default the CLI's)
+//   TRUAPI_HOST_BIN         path to a locally built CLI (default `truapi-host` on PATH)
 //   TRUAPI_HOST_MNEMONIC    BIP-39 wallet root — sign as YOUR identity instead
 //                           of the auto-managed headless one, so your real
 //                           username shows up. Bypasses account auto-management
@@ -30,7 +31,7 @@
 // for any product id other than the one it serves, so the two must match.
 // Override it to act as a deployed product from localhost:
 //
-//   TRUAPI_HOST_PRODUCT_ID=dim2.paseo yarn dev:host
+//   TRUAPI_HOST_PRODUCT_ID=dim2 yarn dev:host # → dim2.paseo on Paseo
 //
 // The signer is still this machine's headless session, so the product account
 // is dim2.paseo *as derived by this signer* — right for local testing, and not
@@ -65,30 +66,58 @@ function appPort(args) {
 }
 
 const NETWORKS = {
-  "paseo-next-v2":
-    "0x23e730eb1c6fecae09c917439a5038cb6122d0d48980e8b9bbf0ff56f94a2ca6",
-  previewnet:
-    "0x4d11c803cc6921429e3876638977ad006ea1bba8cd3976a0bca2f164e7026210",
+  "paseo-next-v2": {
+    genesis:
+      "0x23e730eb1c6fecae09c917439a5038cb6122d0d48980e8b9bbf0ff56f94a2ca6",
+    productTld: "paseo",
+  },
+  previewnet: {
+    genesis:
+      "0x4d11c803cc6921429e3876638977ad006ea1bba8cd3976a0bca2f164e7026210",
+    // The current CLI validates DotNS identifiers as `.dot` only. Keep the
+    // supported Previewnet mapping honest until it learns `.test`.
+    productTld: "dot",
+  },
+};
+
+/** Friendly `.env.local` names mapped to the CLI's network preset names. */
+const NETWORK_ALIASES = {
+  nextv2: "paseo-next-v2",
+  preview: "previewnet",
 };
 
 const PORT = Number(process.env.TRUAPI_HOST_PORT ?? 9955);
-const NETWORK = process.env.TRUAPI_HOST_NETWORK ?? "paseo-next-v2";
+const NETWORK_INPUT = process.env.TRUAPI_HOST_NETWORK ?? "nextv2";
+const NETWORK = NETWORK_ALIASES[NETWORK_INPUT] ?? NETWORK_INPUT;
 const SESSION = process.env.TRUAPI_HOST_SESSION;
 const MNEMONIC = process.env.TRUAPI_HOST_MNEMONIC;
+const BINARY = process.env.TRUAPI_HOST_BIN;
 /** Explicit override: the app is told to act as this id too (see below). The
  * localhost default needs no telling — the app derives it from the URL. */
 const PRODUCT_ID_OVERRIDE = process.env.TRUAPI_HOST_PRODUCT_ID;
-const PRODUCT_ID = PRODUCT_ID_OVERRIDE ?? `localhost:${appPort(nextArgs)}`;
-
-const genesis = NETWORKS[NETWORK];
-if (!genesis) {
+const network = NETWORKS[NETWORK];
+if (!network) {
   console.error(
-    `unknown TRUAPI_HOST_NETWORK "${NETWORK}" — one of: ${Object.keys(NETWORKS).join(", ")}`,
+    `unknown TRUAPI_HOST_NETWORK "${NETWORK_INPUT}" — use nextv2, preview, ` +
+      `or a CLI-native name (${Object.keys(NETWORKS).join(", ")})`,
   );
   process.exit(1);
 }
 
+// A label selects the testnet's own product namespace. An explicitly qualified
+// id is respected verbatim, which lets a caller override this mapping.
+const PRODUCT_ID = PRODUCT_ID_OVERRIDE
+  ? PRODUCT_ID_OVERRIDE.includes(".")
+    ? PRODUCT_ID_OVERRIDE
+    : `${PRODUCT_ID_OVERRIDE}.${network.productTld}`
+  : `localhost:${appPort(nextArgs)}`;
+const genesis = network.genesis;
+
 const log = (message) => console.log(`[dev-host] ${message}`);
+
+if (NETWORK_INPUT !== NETWORK) {
+  log(`network "${NETWORK_INPUT}" → CLI preset "${NETWORK}"`);
+}
 
 /**
  * Block until the host answers a real call. `--serve` prints its ready line
@@ -117,10 +146,12 @@ async function waitForSigner(ws) {
 /**
  * Report the account the app will play as, and check that this host is really
  * serving `PRODUCT_ID`. `getAccount` succeeds for *any* product (a foreign one
- * only costs a consent prompt), so only signing separates "this host is ours"
- * from "this host serves something else and will refuse every signature later".
+ * only costs a consent prompt), so an attached host needs a signing probe to
+ * distinguish "this host is ours" from "this host will refuse every signature
+ * later". A host we just spawned received the id on argv, so skip the probe —
+ * it would create a distracting automatic approval before the demo begins.
  */
-async function reportProductAccount(ws) {
+async function reportProductAccount(ws, verifyAttachedHost) {
   const { client, close } = connectHost(ws);
   const account = {
     dotNsIdentifier: PRODUCT_ID,
@@ -136,14 +167,18 @@ async function reportProductAccount(ws) {
           "`@parity/product-sdk-host` depends on. It says nothing about the browser app, " +
           "which uses the sdk-host client, not this one.",
       );
-      return;
+      return false;
     }
     log(
-      `playing as ${PRODUCT_ID}/0 = ${AccountId(0).dec(got.value.account.publicKey)}`,
+      `product account ${PRODUCT_ID} (index 0): ${AccountId(0).dec(got.value.account.publicKey)}`,
     );
 
-    // Signs 0xdeadbeef and throws the signature away. On a host without
-    // --auto-accept this raises a confirmation, so never block on it.
+    if (!verifyAttachedHost) return true;
+
+    // Signs 0xdeadbeef and throws the signature away. This is only for an
+    // externally started host: its configured product id is otherwise opaque.
+    // On a host without --auto-accept this raises a confirmation, so never
+    // block on it.
     const signed = await withTimeout(
       attempt(
         client.signing.signRaw({
@@ -157,21 +192,21 @@ async function reportProductAccount(ws) {
       log("signing probe still pending — approve it in the host transcript");
     } else if (signed.isErr()) {
       log(
-        `WARNING: this host refuses to sign for ${PRODUCT_ID}, so it is serving a ` +
-          `different product id. Restart it with --product-id ${PRODUCT_ID}.`,
+        `this host refuses to sign for ${PRODUCT_ID}, so it is serving a ` +
+          `different product id. Stop it and restart with --product-id ${PRODUCT_ID}.`,
       );
+      return false;
     }
+    return true;
   } finally {
     close();
   }
 }
 
-if (PRODUCT_ID_OVERRIDE && !PRODUCT_ID_OVERRIDE.endsWith(".dot")) {
+if (PRODUCT_ID_OVERRIDE && !PRODUCT_ID_OVERRIDE.includes(".")) {
   log(
-    `NOTE: @parity/product-sdk normalizes wallet names by appending ".dot", so ` +
-      `the app.wallet path will ask for "${PRODUCT_ID_OVERRIDE}.dot" and be ` +
-      `refused, while product-account cards use "${PRODUCT_ID_OVERRIDE}" as-is ` +
-      `and work. Prefer an id ending in .dot for full coverage.`,
+    `resolving product label "${PRODUCT_ID_OVERRIDE}" to "${PRODUCT_ID}" for ` +
+      `${NETWORK}.`,
   );
 }
 
@@ -189,6 +224,7 @@ const host = await ensureHost({
   network: NETWORK,
   session: MNEMONIC ? undefined : SESSION,
   mnemonic: MNEMONIC,
+  binary: BINARY,
   log: (line) => console.log(`[host] ${line}`),
 });
 if (MNEMONIC && host.attached) {
@@ -197,11 +233,13 @@ if (MNEMONIC && host.attached) {
       "it keeps whatever identity it started with. Stop it to sign as yours.",
   );
 }
-if (!host.attached) log(`started a host on ${host.ws}`);
-
 const username = await waitForSigner(host.ws);
 log(`signer ready: ${username}`);
-await reportProductAccount(host.ws);
+const productReady = await reportProductAccount(host.ws, host.attached);
+if (!productReady) {
+  if (!host.attached) host.stop();
+  process.exit(1);
+}
 
 const next = spawn("yarn", ["next", "dev", "apps/app", ...nextArgs], {
   cwd: repoRoot,
@@ -213,7 +251,7 @@ const next = spawn("yarn", ["next", "dev", "apps/app", ...nextArgs], {
     // Only on explicit override — the localhost default is what the app
     // derives from its URL anyway, and deriving beats duplicating.
     ...(PRODUCT_ID_OVERRIDE
-      ? { NEXT_PUBLIC_SELF_DOTNS: PRODUCT_ID_OVERRIDE }
+      ? { NEXT_PUBLIC_SELF_DOTNS: PRODUCT_ID }
       : {}),
   },
 });

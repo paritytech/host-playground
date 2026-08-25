@@ -1,6 +1,8 @@
 "use client";
 
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
+import { ACTIVE_CHAIN } from "@/lib/types";
+import { getSelfDotNs } from "@/lib/dotns";
 
 /**
  * Dev-only bridge to a local `truapi-host` CLI (paritytech/host-rust-core,
@@ -34,12 +36,18 @@ declare global {
   }
 }
 
-function connect(): void {
-  if (process.env.NODE_ENV !== "development") return;
-  const url = process.env.NEXT_PUBLIC_TRUAPI_HOST_WS;
-  if (!url) return;
-  if (window.__HOST_API_PORT__) return;
+type ConnectionStatus = "connecting" | "connected" | "disconnected";
 
+function connect(onStatus: (status: ConnectionStatus) => void): () => void {
+  if (process.env.NODE_ENV !== "development") return () => {};
+  const url = process.env.NEXT_PUBLIC_TRUAPI_HOST_WS;
+  if (!url) return () => {};
+  if (window.__HOST_API_PORT__) {
+    onStatus("connected");
+    return () => {};
+  }
+
+  onStatus("connecting");
   const ws = new WebSocket(url);
   ws.binaryType = "arraybuffer";
   const { port1, port2 } = new MessageChannel();
@@ -54,6 +62,7 @@ function connect(): void {
   port2.start();
 
   ws.onopen = () => {
+    onStatus("connected");
     console.info(`[cli-host] connected to ${url}`);
     for (const frame of pending.splice(0)) ws.send(frame);
   };
@@ -62,6 +71,7 @@ function connect(): void {
     port2.postMessage(new Uint8Array(event.data));
   };
   ws.onclose = () => {
+    onStatus("disconnected");
     // Nothing to signal down a MessagePort — every pending host call just
     // stops resolving, which looks like a hung app. Say so loudly instead.
     console.warn(
@@ -69,6 +79,7 @@ function connect(): void {
     );
   };
   ws.onerror = () => {
+    onStatus("disconnected");
     console.error(
       `[cli-host] cannot reach ${url} — is \`truapi-host\` running?`,
     );
@@ -76,10 +87,51 @@ function connect(): void {
 
   window.__HOST_API_PORT__ = port1;
   console.info(`[cli-host] host bridge armed for ${url}`);
+  // Keep the singleton socket alive across React development-mode effect
+  // replays. The SDK owns the MessagePort for the page lifetime.
+  return () => {};
 }
 
-/** Mounts nothing; arms the bridge once on the client. */
+/** Arms the bridge and exposes its local-dev configuration in a fixed overlay. */
 export function CliHostBridge() {
-  useEffect(connect, []);
-  return null;
+  const enabled =
+    process.env.NODE_ENV === "development" &&
+    Boolean(process.env.NEXT_PUBLIC_TRUAPI_HOST_WS);
+  const [status, setStatus] = useState<ConnectionStatus>("connecting");
+  const [productId, setProductId] = useState("");
+
+  useEffect(() => {
+    setProductId(getSelfDotNs());
+    return connect(setStatus);
+  }, []);
+
+  if (!enabled) return null;
+
+  const statusLabel =
+    status === "connected"
+      ? "Connected"
+      : status === "connecting"
+        ? "Connecting"
+        : "Disconnected";
+  const statusColor =
+    status === "connected"
+      ? "bg-emerald-500"
+      : status === "connecting"
+        ? "bg-amber-500"
+        : "bg-destructive";
+
+  return (
+    <aside
+      aria-label="Local CLI host status"
+      className="fixed right-3 top-[calc(env(safe-area-inset-top)+0.75rem)] z-50 max-w-[calc(100vw-1.5rem)] rounded-lg border border-border bg-background/95 px-3 py-2 text-xs shadow-lg backdrop-blur"
+    >
+      <div className="flex items-center gap-2 font-medium text-foreground">
+        <span className={`size-2 rounded-full ${statusColor}`} />
+        Local CLI host · {statusLabel}
+      </div>
+      <div className="mt-1 truncate text-muted-foreground">
+        {ACTIVE_CHAIN.name} · {productId || "Resolving product…"}
+      </div>
+    </aside>
+  );
 }

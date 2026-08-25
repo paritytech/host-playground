@@ -72,9 +72,11 @@ How it works, in three pieces:
    terminal cannot prompt, so every confirmation is approved automatically and
    logged to this terminal instead.
 2. [`scripts/dev-host.mjs`](scripts/dev-host.mjs) pre-flights the host (waits
-   for the signer, resolves the product account, signs a throwaway payload to
-   prove the product id matches), then starts `next dev` with
+   for the signer and resolves the product account), then starts `next dev` with
    `NEXT_PUBLIC_TRUAPI_HOST_WS` pointing at the host.
+   When attaching to a host started elsewhere, it also signs a throwaway
+   payload to prove that host serves the requested product id; a host started
+   by `yarn dev:host` skips that noisy, unnecessary approval.
 3. [`apps/app/components/cli-host-bridge.tsx`](apps/app/components/cli-host-bridge.tsx)
    runs in the browser tab: the CLI serves one binary WebSocket message per
    SCALE frame, and `@parity/truapi`'s bootstrap already accepts a
@@ -89,7 +91,7 @@ in lock-step, port changes included. To act as a deployed product instead,
 override the id — the script then tells both sides at once:
 
 ```bash
-TRUAPI_HOST_PRODUCT_ID=play.paseo yarn dev:host
+TRUAPI_HOST_PRODUCT_ID=play yarn dev:host
 ```
 
 The signer stays this machine's headless session, so the product account is
@@ -101,21 +103,34 @@ everywhere:
 ```bash
 # .env.local (gitignored) — dev:host loads it via node --env-file-if-exists
 TRUAPI_HOST_LOG=debug
-TRUAPI_HOST_PRODUCT_ID=play.paseo
+TRUAPI_HOST_PRODUCT_ID=play
 TRUAPI_HOST_MNEMONIC="… …"
+```
+
+To exercise an uninstalled local CLI build, add its absolute path instead of
+replacing the globally installed binary:
+
+```bash
+TRUAPI_HOST_BIN=/Users/you/git/truapi/target/debug/truapi-host
 ```
 
 The mnemonic travels as an env var (the CLI's own `HOST_CLI_SIGNER_MNEMONIC`
 works too), never as an argument and never into a log line. It carries its own
 identity, so it cannot be combined with `TRUAPI_HOST_SESSION` — the script
 drops the session and says so. And remember what `--auto-accept` means here:
-the browser tab signs anything as that identity, so testnet keys only. One caveat the pre-flight also prints:
-`@parity/product-sdk` normalizes wallet names by appending `.dot`, so with a
-non-`.dot` id the `app.wallet` cards ask the host for `<id>.dot` and get
-refused, while every product-account card uses the id verbatim and works.
-Prefer an id ending in `.dot` when you want full coverage. `TRUAPI_HOST_NETWORK` (`paseo-next-v2`,
-the default, or `previewnet`) steers the host preset and the app's genesis
-hash together — though previewnet was wiped on 2026-08-19 and this repo's
+the browser tab signs anything as that identity, so testnet keys only. The
+launcher resolves a bare product label per selected network: `play` becomes
+`play.paseo` on Paseo Next v2 and `play.dot` on Previewnet. An already
+qualified identifier is used verbatim. The current CLI only accepts `.dot` or
+localhost product identifiers, so `play.test` is not available yet. The SDK wallet fallback currently
+appends `.dot` to every non-local identifier, so the raw-message demo card
+uses the equivalent host product-account signer for testnet namespaces; this
+keeps the real host binding correct for the Paseo `.paseo` namespace until that
+SDK behavior is fixed.
+`TRUAPI_HOST_NETWORK` (`nextv2`, the default, or `preview`) steers the host
+preset and the app's genesis hash together. The launcher maps those short
+names to the CLI's native `paseo-next-v2` and `previewnet` presets; the native
+names remain accepted too. Previewnet was wiped on 2026-08-19 and this repo's
 `NETWORKS` still carries the pre-wipe genesis, so that leg needs a repo-wide
 refresh first. A host already listening on the port is attached to instead of
 replaced, so you can run one in its own window to watch approvals
@@ -132,8 +147,9 @@ With the shim, chain reads work end to end (`Query Balance` answers with real
 on-chain state).
 
 What still fails does so for real host reasons, visible in the debug log:
-`Create Transaction` gets refused with "pipeline version 0 does not declare
-VerifyMultiSignature" (the CLI host cannot yet authorize transactions for the
+the Asset Hub transaction card records the documented
+"pipeline version 0 does not declare VerifyMultiSignature" rejection as an
+expected result (the CLI host cannot yet authorize transactions for the
 asset-hub pipeline — People-chain transactions are what it grew up signing),
 and the contract cards need a PGAS allowance the host only grants to a
 personhood ring member, which a fresh headless signer is not.
