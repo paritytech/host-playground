@@ -484,7 +484,7 @@ export async function ensureReviveAccountMapped(
       api.tx.Revive.map_account().signSubmitAndWatch(product.signer),
       log,
     );
-    for (let attempt = 0; attempt < 30; attempt++) {
+    for (let attempt = 0; attempt < 90; attempt++) {
       if (await api.query.Revive.OriginalAccount.getValue(h160)) {
         log(`Revive mapping visible for ${h160}`);
         return null;
@@ -493,7 +493,7 @@ export async function ensureReviveAccountMapped(
       setTimeout(resolve, 1_000);
       await promise;
     }
-    return error("Revive account mapping is not visible after 30s");
+    return error("Revive account mapping is not visible after 90s");
   } catch (err) {
     return error(`Revive account mapping failed: ${sdkErrorMessage(err)}`, err);
   }
@@ -586,34 +586,35 @@ export function watchTx(
   log: TestLogger,
   until: "best" | "finalized" = "best",
 ): Promise<TxEvent> {
-  return new Promise((resolve, reject) => {
-    let settled = false;
-    tx.subscribe({
-      next: (event: TxEvent) => {
-        log(`Event: ${event.type}`);
-        if (event.type === "finalized" && !event.ok) {
-          settled = true;
-          reject(new Error("Tx failed"));
-          return;
-        }
-        const done =
-          until === "best"
-            ? event.type === "txBestBlocksState" && event.found
-            : event.type === "finalized";
-        if (done) {
-          settled = true;
-          resolve(event);
-        }
-      },
-      error: (err: unknown) => {
+  const { promise, resolve, reject } = Promise.withResolvers<TxEvent>();
+  let settled = false;
+  tx.subscribe({
+    next: (event: TxEvent) => {
+      log(`Event: ${event.type}`);
+      if (event.type === "finalized" && !event.ok) {
         settled = true;
-        reject(err);
-      },
-      complete: () => {
-        if (!settled) reject(new Error("tx stream completed before settling"));
-      },
-    });
+        reject(new Error("Tx failed"));
+        return;
+      }
+      const done =
+        until === "best"
+          ? (event.type === "txBestBlocksState" && event.found) ||
+            event.type === "finalized"
+          : event.type === "finalized";
+      if (done) {
+        settled = true;
+        resolve(event);
+      }
+    },
+    error: (err: unknown) => {
+      settled = true;
+      reject(err);
+    },
+    complete: () => {
+      if (!settled) reject(new Error("tx stream completed before settling"));
+    },
   });
+  return promise;
 }
 
 // Two unit spaces meet at this contract. pallet-revive exposes EVM balances

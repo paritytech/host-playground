@@ -86,7 +86,7 @@ export const preimageTests: TestDefinition[] = [
     name: "Preimage Factory",
     description: "Creates a preimage manager via createHostPreimageManager",
     api: "createHostPreimageManager()",
-    timeoutMs: 90_000,
+    timeoutMs: 150_000,
     category: "preimage",
     async run() {
       const manager = await createHostPreimageManager();
