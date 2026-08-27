@@ -23,7 +23,7 @@ concurrency:
 jobs:
   deploy:
     name: Deploy ${{ matrix.target.display-name }}
-    runs-on: parity-int-ubuntu
+    runs-on: ubuntu-latest
     strategy:
       fail-fast: false
       matrix:
@@ -183,7 +183,7 @@ jobs:
   comment:
     if: github.event_name == 'pull_request'
     needs: deploy
-    runs-on: parity-int-ubuntu
+    runs-on: ubuntu-latest
     permissions:
       pull-requests: write
     steps:

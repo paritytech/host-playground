@@ -11,7 +11,7 @@ concurrency:
 
 jobs:
   typecheck:
-    runs-on: parity-int-ubuntu
+    runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
 
@@ -30,7 +30,7 @@ jobs:
 
   e2e:
     name: E2E
-    runs-on: parity-int-ubuntu
+    runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
 
