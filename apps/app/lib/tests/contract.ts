@@ -17,6 +17,7 @@ import {
   prepareSimpleStoreWrite,
   PRODUCT_ALIAS_CONTEXT_SUFFIX,
   PRODUCT_ALIAS_RING_OWNER,
+  READ_ORIGIN,
   productSigner,
   readSimpleStore,
   scaleBytes,
@@ -139,7 +140,7 @@ export const contractTests: TestDefinition[] = [
     async run({ chain, log, args }) {
       const write = await prepareSimpleStoreWrite(chain, log);
       if (!write.ok) return write.result;
-      const { contract, origin, signer } = write;
+      const { contract, signer } = write;
 
       // A payable call carries a native transfer value, so planck, not wei.
       const planck = parseUnits(args.amount, NATIVE_DECIMALS);
@@ -148,7 +149,7 @@ export const contractTests: TestDefinition[] = [
       let dryRun;
       try {
         dryRun = await withTimeout(
-          contract.query("deposit", { origin, value: planck }),
+          contract.query("deposit", { origin: READ_ORIGIN, value: planck }),
           45_000,
           "Contract deposit dry-run",
         );
@@ -157,7 +158,7 @@ export const contractTests: TestDefinition[] = [
           `Deposit dry-run did not settle; retrying at the latest block (${firstError})`,
         );
         dryRun = await withTimeout(
-          contract.query("deposit", { origin, value: planck }),
+          contract.query("deposit", { origin: READ_ORIGIN, value: planck }),
           45_000,
           "Contract deposit dry-run retry",
         );
