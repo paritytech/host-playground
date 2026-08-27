@@ -6,6 +6,7 @@ import type { TestDefinition } from "@/lib/types";
 import {
   ASSETHUB_GENESIS_TO_PEOPLE_GENESIS,
   ensureSmartContractAllowance,
+  ensureReviveAccountMapped,
   error,
   findRegisteredRingVrfKeyHandle,
   EVM_DECIMALS,
@@ -16,7 +17,6 @@ import {
   prepareSimpleStoreWrite,
   PRODUCT_ALIAS_CONTEXT_SUFFIX,
   PRODUCT_ALIAS_RING_OWNER,
-  READ_ORIGIN,
   productSigner,
   readSimpleStore,
   scaleBytes,
@@ -139,7 +139,7 @@ export const contractTests: TestDefinition[] = [
     async run({ chain, log, args }) {
       const write = await prepareSimpleStoreWrite(chain, log);
       if (!write.ok) return write.result;
-      const { contract, signer } = write;
+      const { contract, origin, signer } = write;
 
       // A payable call carries a native transfer value, so planck, not wei.
       const planck = parseUnits(args.amount, NATIVE_DECIMALS);
@@ -148,7 +148,7 @@ export const contractTests: TestDefinition[] = [
       let dryRun;
       try {
         dryRun = await withTimeout(
-          contract.query("deposit", { origin: READ_ORIGIN, value: planck }),
+          contract.query("deposit", { origin, value: planck }),
           45_000,
           "Contract deposit dry-run",
         );
@@ -157,7 +157,7 @@ export const contractTests: TestDefinition[] = [
           `Deposit dry-run did not settle; retrying at the latest block (${firstError})`,
         );
         dryRun = await withTimeout(
-          contract.query("deposit", { origin: READ_ORIGIN, value: planck }),
+          contract.query("deposit", { origin, value: planck }),
           45_000,
           "Contract deposit dry-run retry",
         );
@@ -233,6 +233,7 @@ export const contractTests: TestDefinition[] = [
     description:
       "Selects the personhood product's registered People Lite key, generates a Ring VRF personhood proof, and calls storeValueIfPerson; the contract verifies it via the individuality precompile (0x…0a010000) and stores the value only for a verified person.",
     api: "listRingVrfKeys(owner) → createRingVRFProof(keyHandle, context, location, message) → contract.send('storeValueIfPerson', { _value, request })",
+    timeoutMs: 180_000,
     args: [
       {
         name: "value",
@@ -309,6 +310,11 @@ export const contractTests: TestDefinition[] = [
         );
         if (allowanceError) return allowanceError;
 
+        const mappingError = await withTrace(
+          "ensureReviveAccountMapped",
+          ensureReviveAccountMapped(log, chain, product),
+        );
+        if (mappingError) return mappingError;
         const contract = await withTrace("simpleStore", simpleStore(chain));
 
         const value = BigInt(args.value);

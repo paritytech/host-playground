@@ -14,6 +14,7 @@ import {
   type AccountsProvider,
   type AllocatableResource,
   type DerivationIndex,
+  type ProductAccount,
   type HostLocalStorage,
   type HostStatementStore,
   type PreimageManager,
@@ -21,8 +22,14 @@ import {
   type RingVrfKeyHandle,
   type ThemeProvider,
 } from "@parity/product-sdk/host";
+import { deriveH160 } from "@parity/product-sdk/address";
 import { paseo_individuality } from "@parity/product-sdk-descriptors/paseo-individuality";
-import { AccountId, createClient, type PolkadotClient } from "polkadot-api";
+import {
+  AccountId,
+  createClient,
+  type PolkadotClient,
+  type PolkadotSigner,
+} from "polkadot-api";
 import { toHex } from "polkadot-api/utils";
 import { createInkSdk } from "@polkadot-api/sdk-ink";
 import { contracts } from "@polkadot-api/descriptors";
@@ -372,8 +379,16 @@ export async function runResourceAllocation(
   }
 }
 
+export interface ProductSigner {
+  provider: AccountsProvider;
+  account: ProductAccount;
+  signer: PolkadotSigner;
+  origin: string;
+}
 /** The product account plus everything needed to sign and dry-run with it. */
-export async function productSigner(log: TestLogger = () => {}) {
+export async function productSigner(
+  log: TestLogger = () => {},
+): Promise<ProductSigner | null> {
   const provider = await accounts();
   const result = await provider.getProductAccount(SELF_DOTNS, 0);
   const account = result.match(
@@ -452,6 +467,38 @@ export async function ensureSmartContractAllowance(
   }
 }
 
+/** Ensure a fresh product account has the explicit H160 mapping Revive calls require. */
+export async function ensureReviveAccountMapped(
+  log: TestLogger,
+  chain: ChainConfig,
+  product: ProductSigner,
+): Promise<TestResult | null> {
+  try {
+    const api = (await getClient(chain.genesis)).getUnsafeApi();
+    const h160 = deriveH160(product.account.publicKey);
+    if (await api.query.Revive.OriginalAccount.getValue(h160)) {
+      return null;
+    }
+    log(`Mapping product account ${h160} for Revive...`);
+    await watchTx(
+      api.tx.Revive.map_account().signSubmitAndWatch(product.signer),
+      log,
+    );
+    for (let attempt = 0; attempt < 30; attempt++) {
+      if (await api.query.Revive.OriginalAccount.getValue(h160)) {
+        log(`Revive mapping visible for ${h160}`);
+        return null;
+      }
+      const { promise, resolve } = Promise.withResolvers<void>();
+      setTimeout(resolve, 1_000);
+      await promise;
+    }
+    return error("Revive account mapping is not visible after 30s");
+  } catch (err) {
+    return error(`Revive account mapping failed: ${sdkErrorMessage(err)}`, err);
+  }
+}
+
 /** The deployed SimpleStore, bound to a papi client for `chain`. */
 export async function simpleStore(chain: ChainConfig) {
   const client = await getClient(chain.genesis);
@@ -507,6 +554,9 @@ export async function prepareSimpleStoreWrite(
     product.account,
   );
   if (allowanceError) return { ok: false as const, result: allowanceError };
+
+  const mappingError = await ensureReviveAccountMapped(log, chain, product);
+  if (mappingError) return { ok: false as const, result: mappingError };
 
   return {
     ok: true as const,
