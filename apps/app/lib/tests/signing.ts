@@ -10,6 +10,7 @@ import {
   prepareSimpleStoreWrite,
   sdkErrorMessage,
   SIMPLE_STORE_ADDRESS,
+  READ_ORIGIN,
   SELF_DOTNS,
   success,
   watchTx,
@@ -167,15 +168,17 @@ export const signingTests: TestDefinition[] = [
 
       log("Building 2 contract calls...");
 
-      // Dry-run each call to get weight+storage, then extract the inner
-      // pallet-revive call via decodedCall without broadcasting.
+      // The first transaction from a fresh product account establishes its
+      // Revive mapping. Estimate the call with the deployed read origin so the
+      // dry-run does not reject that still-unmapped product account; the
+      // decoded calls remain origin-independent and are submitted by `signer`.
       const dryRun1 = await contract.query("storeValue", {
-        origin,
+        origin: READ_ORIGIN,
         data: { _value: BigInt(42) },
       });
       if (!dryRun1.success) return error("Dry-run #1 failed", dryRun1.value);
       const dryRun2 = await contract.query("storeValue", {
-        origin,
+        origin: READ_ORIGIN,
         data: { _value: BigInt(43) },
       });
       if (!dryRun2.success) return error("Dry-run #2 failed", dryRun2.value);
