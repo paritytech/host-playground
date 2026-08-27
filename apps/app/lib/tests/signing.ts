@@ -157,6 +157,7 @@ export const signingTests: TestDefinition[] = [
     description:
       "Batches two storeValue calls on the SimpleStore contract using Utility.batch_all, signs via the createTransaction product signer, and submits atomically. All calls must be pallet-revive — mixing a System.remark in here makes the batch fail because the AsPgas fee route only applies to revive calls.",
     api: "api.tx.Utility.batch_all([storeValue, storeValue]).signSubmitAndWatch(signer)",
+    timeoutMs: 120_000,
     category: "signing",
     async run({ chain, log }): Promise<TestResult> {
       const write = await prepareSimpleStoreWrite(chain, log);
