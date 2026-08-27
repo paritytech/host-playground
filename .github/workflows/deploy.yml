@@ -23,6 +23,11 @@ concurrency:
 jobs:
   deploy:
     name: Deploy ${{ matrix.target.display-name }}
+    # Deploying needs `secrets.MNEMONIC`, and GitHub withholds secrets from
+    # pull requests opened from a fork. Skip rather than fail the check.
+    if: >-
+      github.event_name != 'pull_request' ||
+      github.event.pull_request.head.repo.full_name == github.repository
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
@@ -181,7 +186,10 @@ jobs:
           } >> $GITHUB_STEP_SUMMARY
 
   comment:
-    if: github.event_name == 'pull_request'
+    # Commenting needs a write token, which fork pull requests also don't get.
+    if: >-
+      github.event_name == 'pull_request' &&
+      github.event.pull_request.head.repo.full_name == github.repository
     needs: deploy
     runs-on: ubuntu-latest
     permissions:
