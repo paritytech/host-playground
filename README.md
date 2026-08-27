@@ -61,9 +61,9 @@ runs without a Host of its own.
 
 ## Deployment
 
-Deploy your own copy with [bulletin-deploy](https://github.com/paritytech/bulletin-deploy),
-which uploads the static export and publishes the dotNS records that make it
-resolvable in a Polkadot host.
+Deploy your own copy with `bulletin-deploy`, published on npm. It uploads the
+static export and publishes the dotNS records that make it resolvable in a
+Polkadot host.
 
 ```bash
 yarn build
