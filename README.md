@@ -99,7 +99,8 @@ Before deploying this for real use cases, you are responsible for:
 - Tracking the latest commits for security fixes. Older releases are not
   backported.
 
-For the Parity security disclosure process and Bug Bounty programme, see
+[SECURITY.md](SECURITY.md) covers what to report, what is out of scope, and how
+to reach us. For the Parity disclosure process and Bug Bounty programme, see
 https://parity.io/bug-bounty.
 
 ## Contribute
