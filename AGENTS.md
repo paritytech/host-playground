@@ -34,6 +34,8 @@ yarn format             # prettier --write
 
 Verify with `yarn typecheck`, `yarn lint`, and the relevant tests before calling work complete.
 
+To drive the cards outside a Host webview, run `truapi-host dev -- yarn dev:paseo`. It starts a local signing host on `127.0.0.1:9955` and serves the bridge snippet the root layout loads in development. See [README.md](README.md).
+
 ## Contracts and deployment
 
 `evm/` is a Foundry project. Build with `forge build` from `evm/`. Deploy scripts live in `evm/scripts` and run under `bun`, with commands defined in [evm/scripts/package.json](evm/scripts/package.json):
