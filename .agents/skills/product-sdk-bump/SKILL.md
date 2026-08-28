@@ -82,6 +82,13 @@ test card). Historical breaking changes to expect:
   `AllocatableResource::SmartContractAllowance`, `PaymentTopUpSource::ProductAccount`.
   RFC-0004 packed suffixes are obsolete, so a `"0x00"`-style suffix becomes `Left(0)`.
   RFC-0023 adds `account.signVrf`.
+- **0.23-0.25**: no migration. The host export surface only gained
+  `subscribeConnectionStatus`, `HostConnectionStatus`, `HostResponseDecodeError`,
+  and `WithDecodeError`, and the `AccountsProvider` err unions widened by one
+  case, which the card helpers absorb. The truapi wire types are unchanged
+  between 0.9.0 and 0.10.0, comments only, so there is no host skew to fear.
+  What the wave is worth having: host 0.17 fixes chainHead operation ordering,
+  without which every chain and contract card hangs against `truapi-host`.
 
 ## 4. Bump, install, migrate, verify
 
