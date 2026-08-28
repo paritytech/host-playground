@@ -24,10 +24,8 @@ export default function RootLayout({
     <html lang="en">
       <body>
         {process.env.NODE_ENV === "development" && (
-          // Bridge to a local `truapi-host dev` signing host, so the playground
-          // runs in a plain browser tab. Blocking on purpose: the snippet installs
-          // window.__HOST_API_PORT__, which the SDK reads synchronously. Stripped
-          // from production builds, so the page-weight rule it waives is moot.
+          // Bridge to a local `truapi-host dev` signing host,
+          //  so the playground runs in a plain browser tab
           // eslint-disable-next-line @next/next/no-sync-scripts
           <script src="http://127.0.0.1:9955/bootstrap.js" />
         )}
