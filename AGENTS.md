@@ -48,6 +48,12 @@ npm run deploy:previewnet         # deploy SimpleStore to Previewnet Hub
 
 Each command runs `forge build`, deploys via viem over the network eth-rpc, and rewrites `evm/deployment.json`. The default deployer key is a public testnet CI key; override with `PRIVATE_KEY`. A deploy is a live, hard-to-reverse action, so confirm before running one.
 
+## Pull requests
+
+Keep the description synthetic. A few short paragraphs: what it does, the one reason it needed doing, and a line on how it was verified. No section headers, no transcript of every command that passed. The reviewer reads the diff, not a report.
+
+`gh pr edit` fails against this repo with a Projects classic deprecation error from GitHub. Edit the description through the REST API instead: `gh api -X PATCH repos/paritytech/host-playground/pulls/<number> -F body=@body.md`.
+
 ## Codebase gotchas
 
 - **`evm/deployment.json` is a single flat `{ "simpleStore": "0x…" }`.** [shared.ts](apps/app/lib/tests/shared.ts) imports it at module load, so the app targets one deployed address at a time. Deploying to a second network overwrites it.
