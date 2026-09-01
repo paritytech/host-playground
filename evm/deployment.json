@@ -1,1 +1,8 @@
-{}
+{
+  "PASEO_ASSETHUBNEXTV2": {
+    "simpleStore": "0xa639c3ee7407188e471378c20adcc6da240089f3"
+  },
+  "PREVIEWNET_ASSETHUB": {
+    "simpleStore": "0x66091b7912c78c4fc0b5316cd2368b2dcc73ac9d"
+  }
+}
