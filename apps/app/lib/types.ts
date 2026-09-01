@@ -111,7 +111,7 @@ export const NETWORKS = {
       "0x4d11c803cc6921429e3876638977ad006ea1bba8cd3976a0bca2f164e7026210" as const,
     wsUrl: "wss://previewnet.substrate.dev/asset-hub",
     ss58Prefix: 0,
-    dotNsSuffix: "test",
+    dotNsSuffix: "testnet",
     peopleWsUrl: "wss://previewnet.substrate.dev/people",
     peopleGenesis:
       "0x3138c6d4ce58c760047a413c2a930e919b4673a841ab4890de59aac3bd037f3d" as const,
