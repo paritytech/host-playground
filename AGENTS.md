@@ -44,7 +44,7 @@ npm run deploy:paseo-next-v2      # deploy SimpleStore to Paseo Next v2 Hub
 npm run deploy:previewnet         # deploy SimpleStore to Previewnet Hub
 ```
 
-Each command runs `forge build`, deploys via viem over the network eth-rpc, and rewrites `evm/deployment.json`. The default deployer key is a public testnet CI key; override with `PRIVATE_KEY`. A deploy is a live, hard-to-reverse action, so confirm before running one.
+Each command runs `forge build`, deploys via viem over the network eth-rpc, and rewrites `evm/deployment.json`. Set `PRIVATE_KEY` to a testnet deployer account funded on the target network. There is no default key. A deploy is a live, hard-to-reverse action, so confirm before running one.
 
 ## Codebase gotchas
 

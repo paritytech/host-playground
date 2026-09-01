@@ -30,10 +30,6 @@ export const NETWORKS: Record<NetworkKey, NetworkConfig> = {
   },
 };
 
-// CI testnet deployer. Override with PRIVATE_KEY for a different account.
-const DEFAULT_PRIVATE_KEY =
-  "0x271ad9a5e1e0178acebdb572f8755aac3463d863ddfc70e32e7d5eb0b334e687";
-
 export function getNetwork(): { key: NetworkKey; config: NetworkConfig } {
   const key = (process.env.NETWORK ?? process.argv[2]) as NetworkKey;
   if (!key || !(key in NETWORKS)) {
@@ -46,8 +42,16 @@ export function getNetwork(): { key: NetworkKey; config: NetworkConfig } {
 }
 
 export function getAccount() {
-  const pk = (process.env.PRIVATE_KEY ?? DEFAULT_PRIVATE_KEY) as Hex;
-  return privateKeyToAccount(pk.startsWith("0x") ? pk : (`0x${pk}` as Hex));
+  const pk = process.env.PRIVATE_KEY;
+  if (!pk) {
+    console.error(
+      "Set PRIVATE_KEY to a testnet deployer account funded on the target network.",
+    );
+    process.exit(1);
+  }
+  return privateKeyToAccount(
+    pk.startsWith("0x") ? (pk as Hex) : (`0x${pk}` as Hex),
+  );
 }
 
 export async function deploy(

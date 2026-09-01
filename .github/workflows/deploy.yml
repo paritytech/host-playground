@@ -23,7 +23,12 @@ concurrency:
 jobs:
   deploy:
     name: Deploy ${{ matrix.target.display-name }}
-    runs-on: parity-int-ubuntu
+    # Deploying needs `secrets.MNEMONIC`, and GitHub withholds secrets from
+    # pull requests opened from a fork. Skip rather than fail the check.
+    if: >-
+      github.event_name != 'pull_request' ||
+      github.event.pull_request.head.repo.full_name == github.repository
+    runs-on: ubuntu-latest
     strategy:
       fail-fast: false
       matrix:
@@ -91,17 +96,21 @@ jobs:
       - name: Determine domain
         id: domain-input
         env:
-          BRANCH: ${{ github.event.pull_request.head.ref }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
         run: |
           # Two forms of the same name. `label` has no TLD and is what the
-          # browser URL is built from; `dotns` carries this environment's suffix
-          # (must match the registry's current tld(); the CLI rejects a stale one) and is what the CLI and
-          # the product manifest must both name, spelled identically.
-          if [ "${{ github.event_name }}" == "push" ]; then
-            LABEL="host-playground"
+          # browser URL is built from. `dotns` carries this environment suffix,
+          # which must match the registry current tld() because the CLI rejects
+          # a stale one, and is what the CLI and the product manifest must both
+          # name, spelled identically.
+          #
+          # Pull requests get a per-PR sandbox label. Keying it on the PR number
+          # rather than the branch name keeps it stable across renames and force
+          # pushes, and keeps the length fixed.
+          if [ "${{ github.event_name }}" == "pull_request" ]; then
+            LABEL="host-playground-pr${PR_NUMBER}-sandbox00"
           else
-            LABEL=$(printf '%s' "$BRANCH" | tr '/' '-' | sed 's/[^a-z0-9-]//g' | cut -c1-20)
-            LABEL="${LABEL}-host-playground00"
+            LABEL="host-playground"
           fi
           echo "label=${LABEL}" >> "$GITHUB_OUTPUT"
           echo "dotns=${LABEL}${{ matrix.target.suffix }}" >> "$GITHUB_OUTPUT"
@@ -181,9 +190,12 @@ jobs:
           } >> $GITHUB_STEP_SUMMARY
 
   comment:
-    if: github.event_name == 'pull_request'
+    # Commenting needs a write token, which fork pull requests also don't get.
+    if: >-
+      github.event_name == 'pull_request' &&
+      github.event.pull_request.head.repo.full_name == github.repository
     needs: deploy
-    runs-on: parity-int-ubuntu
+    runs-on: ubuntu-latest
     permissions:
       pull-requests: write
     steps:
