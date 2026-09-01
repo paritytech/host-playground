@@ -26,11 +26,12 @@ import { AccountId, createClient, type PolkadotClient } from "polkadot-api";
 import { toHex } from "polkadot-api/utils";
 import { createInkSdk } from "@polkadot-api/sdk-ink";
 import { contracts } from "@polkadot-api/descriptors";
-import deployment from "@root/evm/deployment.json";
+import deploymentJson from "@root/evm/deployment.json";
 import {
   ACTIVE_CHAIN_ID,
   NETWORKS,
   type ChainConfig,
+  type ChainId,
   type TestLogger,
   type TestOutcome,
   type TestResult,
@@ -141,7 +142,13 @@ export const theme: () => Promise<ThemeProvider> = hostRef(
 
 export const SELF_DOTNS = getSelfDotNs();
 
-export const SIMPLE_STORE_ADDRESS = deployment.simpleStore;
+// One entry per network: the same contract lives at a different address on each,
+// and a build targets exactly one of them.
+const deployment = deploymentJson as Partial<
+  Record<ChainId, { simpleStore: string }>
+>;
+export const SIMPLE_STORE_ADDRESS =
+  deployment[ACTIVE_CHAIN_ID]?.simpleStore ?? "";
 
 // `origin` for pallet-revive view dry-runs: needs an existing H160 mapping or
 // the chain returns AccountUnmapped. The CI deployer's H160 padded with 12×0xEE
@@ -454,6 +461,12 @@ export async function ensureSmartContractAllowance(
 
 /** The deployed SimpleStore, bound to a papi client for `chain`. */
 export async function simpleStore(chain: ChainConfig) {
+  if (!SIMPLE_STORE_ADDRESS) {
+    throw new Error(
+      `No SimpleStore address recorded for ${ACTIVE_CHAIN_ID} in evm/deployment.json. ` +
+        `Run \`NETWORK=… bun evm/scripts/ensure.ts\` to deploy it.`,
+    );
+  }
   const client = await getClient(chain.genesis);
   return createInkSdk(client).getContract(
     contracts.simpleStore,

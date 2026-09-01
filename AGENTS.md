@@ -40,15 +40,17 @@ Verify with `yarn typecheck`, `yarn lint`, and the relevant tests before calling
 
 ```bash
 cd evm/scripts
-npm run deploy:paseo-next-v2      # deploy SimpleStore to Paseo Next v2 Hub
-npm run deploy:previewnet         # deploy SimpleStore to Previewnet Hub
+npm run ensure:paseo-next-v2      # deploy only if the recorded address holds no code
+npm run ensure:previewnet
+npm run deploy:paseo-next-v2      # unconditional redeploy
+npm run deploy:previewnet
 ```
 
-Each command runs `forge build`, deploys via viem over the network eth-rpc, and rewrites `evm/deployment.json`. Set `PRIVATE_KEY` to a testnet deployer account funded on the target network. There is no default key. A deploy is a live, hard-to-reverse action, so confirm before running one.
+Each command runs `forge build`, then deploys through `Revive.instantiate_with_code` and rewrites this network's entry in `evm/deployment.json`. `ensure` is what CI runs on every job: it checks `eth_getCode` at the recorded address first and does nothing when the contract is already live, so a wiped chain self-heals on the next run. Signing uses the well-known `//Bob` dev seed — these are public testnets with pre-funded dev accounts, so no secret is involved; override with `DEPLOYER_SEED`. If the account is empty the script aborts with the SS58 address and faucet URL rather than failing inside a dry run. A deploy is a live, hard-to-reverse action, so confirm before running `deploy` by hand.
 
 ## Codebase gotchas
 
-- **`evm/deployment.json` is a single flat `{ "simpleStore": "0x…" }`.** [shared.ts](apps/app/lib/tests/shared.ts) imports it at module load, so the app targets one deployed address at a time. Deploying to a second network overwrites it.
+- **`evm/deployment.json` is keyed by `ChainId`**, one `{ "simpleStore": "0x…" }` per network. [shared.ts](apps/app/lib/tests/shared.ts) imports it at module load and picks the entry for `ACTIVE_CHAIN_ID`, so the address is fixed at build time by `NEXT_PUBLIC_NETWORK_GENESIS_HASH`. Anything that deploys must run before the build.
 - **`evm/` is excluded from the root TypeScript build** (see [tsconfig.json](tsconfig.json)); the deploy scripts typecheck against their own [evm/scripts/tsconfig.json](evm/scripts/tsconfig.json).
 - **Two TypeScript projects.** The root [tsconfig.json](tsconfig.json) covers everything outside `apps/app`, and [apps/app/tsconfig.json](apps/app/tsconfig.json) covers the app, where `@/*` means `apps/app/*` and `@root/*` means the repo root. `yarn typecheck` runs both.
 - **`bulletin-deploy.config.ts` has to keep that exact filename.** The CLI finds it by walking up from the build dir looking for `bulletin-deploy.config.{ts,js,mjs}` and there is no flag to point it elsewhere. Rename the file and the deploy still uploads the app, then silently skips the manifest publish.

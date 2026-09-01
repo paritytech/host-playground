@@ -38,11 +38,13 @@ jobs:
             genesis: "0x4d11c803cc6921429e3876638977ad006ea1bba8cd3976a0bca2f164e7026210"
             suffix: .testnet
             shell: testnet.li
+            evm-network: previewnet
           - env: paseo-next-v2
             display-name: Paseo
             genesis: "0x23e730eb1c6fecae09c917439a5038cb6122d0d48980e8b9bbf0ff56f94a2ca6"
             suffix: .paseo
             shell: paseo.li
+            evm-network: paseo-next-v2
     steps:
       - uses: actions/checkout@v4
 
@@ -55,6 +57,15 @@ jobs:
 
       - name: Install dependencies
         run: yarn install --immutable
+
+      - uses: foundry-rs/foundry-toolchain@v1
+
+      - uses: oven-sh/setup-bun@v2
+
+      # Must precede the build: the address is a static import in shared.ts.
+      - name: Ensure SimpleStore is deployed
+        working-directory: evm
+        run: forge build && NETWORK=${{ matrix.target.evm-network }} bun scripts/ensure.ts
 
       - name: Build for ${{ matrix.target.env }}
         env:
