@@ -86,6 +86,15 @@ jobs:
       - name: Install Playwright browsers
         run: npx playwright install --with-deps chromium
 
+      - uses: foundry-rs/foundry-toolchain@v1
+
+      - uses: oven-sh/setup-bun@v2
+
+      # The suite runs `yarn dev:paseo`, and the address is a static import.
+      - name: Ensure SimpleStore is deployed
+        working-directory: evm
+        run: forge build && NETWORK=paseo-next-v2 bun scripts/ensure.ts
+
       - name: Run E2E tests
         run: yarn test:e2e
         env:

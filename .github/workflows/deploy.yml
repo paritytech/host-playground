@@ -36,11 +36,15 @@ jobs:
           - env: preview
             display-name: Previewnet
             genesis: "0x4d11c803cc6921429e3876638977ad006ea1bba8cd3976a0bca2f164e7026210"
-            suffix: .test
+            suffix: .testnet
+            shell: testnet.li
+            evm-network: previewnet
           - env: paseo-next-v2
             display-name: Paseo
             genesis: "0x23e730eb1c6fecae09c917439a5038cb6122d0d48980e8b9bbf0ff56f94a2ca6"
             suffix: .paseo
+            shell: paseo.li
+            evm-network: paseo-next-v2
     steps:
       - uses: actions/checkout@v4
 
@@ -53,6 +57,15 @@ jobs:
 
       - name: Install dependencies
         run: yarn install --immutable
+
+      - uses: foundry-rs/foundry-toolchain@v1
+
+      - uses: oven-sh/setup-bun@v2
+
+      # Must precede the build: the address is a static import in shared.ts.
+      - name: Ensure SimpleStore is deployed
+        working-directory: evm
+        run: forge build && NETWORK=${{ matrix.target.evm-network }} bun scripts/ensure.ts
 
       - name: Build for ${{ matrix.target.env }}
         env:
@@ -163,8 +176,9 @@ jobs:
             *) NETWORK="${{ matrix.target.env }}" ;;
           esac
           mkdir -p .deploy-result
-          printf '{"env":"%s","network":"%s","domain":"%s","label":"%s","cid":"%s"}\n' \
-            "${{ matrix.target.env }}" "$NETWORK" "$DOMAIN" "$LABEL" "$CID" \
+          printf '{"env":"%s","network":"%s","domain":"%s","label":"%s","shell":"%s","cid":"%s"}\n' \
+            "${{ matrix.target.env }}" "$NETWORK" "$DOMAIN" "$LABEL" \
+            "${{ matrix.target.shell }}" "$CID" \
             > .deploy-result/${{ matrix.target.env }}.json
           cat .deploy-result/${{ matrix.target.env }}.json
 
@@ -179,8 +193,9 @@ jobs:
           DOMAIN=$(jq -r .domain .deploy-result/${{ matrix.target.env }}.json)
           LABEL=$(jq -r .label .deploy-result/${{ matrix.target.env }}.json)
           NETWORK=$(jq -r .network .deploy-result/${{ matrix.target.env }}.json)
+          SHELL_HOST=$(jq -r .shell .deploy-result/${{ matrix.target.env }}.json)
           CID=$(jq -r .cid .deploy-result/${{ matrix.target.env }}.json)
-          URL="https://${LABEL}.paseo.li?network=${NETWORK}&chainBackend=rpc-gateway"
+          URL="https://${LABEL}.${SHELL_HOST}?network=${NETWORK}&chainBackend=rpc-gateway"
           {
             echo "### ${DOMAIN} — ${{ matrix.target.env }}"
             echo ""
@@ -221,7 +236,6 @@ jobs:
             const runUrl = `${process.env.GITHUB_SERVER_URL}/${process.env.GITHUB_REPOSITORY}/actions/runs/${process.env.GITHUB_RUN_ID}`;
             const label = results[0]?.label ?? '(no domain)';
 
-            const SHELL = { preview: 'testnet.li', 'paseo-next-v2': 'paseo.li' };
             const ENV_NAME = { preview: 'Previewnet', 'paseo-next-v2': 'Paseo' };
 
             const lines = [
@@ -230,8 +244,8 @@ jobs:
               '| Network | Desktop | Web |',
               '| :--- | :---: | :---: |',
             ];
-            for (const { env, domain, label } of results) {
-              const url = `https://${label}.${SHELL[env] ?? 'paseo.li'}`;
+            for (const { env, domain, label, shell } of results) {
+              const url = `https://${label}.${shell}`;
               lines.push(`| ${ENV_NAME[env] ?? env} | \`${domain}\` | ${url} |`);
             }
 
