@@ -18,7 +18,7 @@ const smartContract = {
 describe("People chain descriptor", () => {
   it("binds Paseo Next to the current People chain genesis", () => {
     expect(PASEO_NEXT_INDIVIDUALITY.genesis).toBe(
-      "0x89a63b11fef2c0273fc72c0d864da0793a665dade5db153e0cab995348c5440f",
+      "0x4a2b5b737de1da59e209b0000a876ec2fa20035dc34fd292a848da32d255ad48",
     );
   });
 });

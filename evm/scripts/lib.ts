@@ -32,7 +32,7 @@ export const NETWORKS: Record<NetworkKey, NetworkConfig> = {
     ethRpc: "https://eth-rpc-paseo-next.polkadot.io",
     wsUrl: "wss://paseo-asset-hub-next-rpc.polkadot.io",
     genesis:
-      "0x23e730eb1c6fecae09c917439a5038cb6122d0d48980e8b9bbf0ff56f94a2ca6",
+      "0x4349b00e54897e21196fd331015fc5be0f14e118beb0375ed2bb1793737bb57a",
     ss58Prefix: 0,
     faucet: "https://faucet.polkadot.io/?parachain=1500",
   },
@@ -42,7 +42,7 @@ export const NETWORKS: Record<NetworkKey, NetworkConfig> = {
     ethRpc: "https://previewnet.substrate.dev/eth-rpc",
     wsUrl: "wss://previewnet.substrate.dev/asset-hub",
     genesis:
-      "0x4d11c803cc6921429e3876638977ad006ea1bba8cd3976a0bca2f164e7026210",
+      "0xc27c8bf3f13f96dc2130cd2b0a3debe57618fd02521ecc1902bd7dd4ed83d2fe",
     ss58Prefix: 0,
     faucet: "https://faucet.polkadot.io/",
   },
