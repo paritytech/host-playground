@@ -86,14 +86,13 @@ export const storageTests: TestDefinition[] = [
     id: "storage-clear",
     name: "Storage Clear",
     description:
-      "Removes a single storage key via app.localStorage.remove (Tier-1). Note: app.localStorage.clear() wipes ALL keys, so remove(key) is the per-key equivalent.",
+      "Removes a single storage key via app.localStorage.remove (Tier-1). There is no clear-all: the host exposes no key enumeration, so remove(key) is the only way to drop a value.",
     api: "app.localStorage.remove(key)",
     args: [
       { name: "key", label: "Key", defaultValue: "host_playground_string" },
     ],
     category: "storage",
     async run({ args }) {
-      // Write then remove just this key — clear() would wipe ALL keys.
       const app = await getApp();
       await app.localStorage.set(args.key, "to_be_cleared");
       await app.localStorage.remove(args.key);
