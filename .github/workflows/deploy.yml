@@ -7,6 +7,11 @@ on:
     branches: [main]
   workflow_dispatch:
     inputs:
+      network:
+        description: "Network to deploy; all on push, pick one for a targeted redeploy"
+        type: choice
+        default: all
+        options: [all, preview, paseo-next-v2]
       skip-cache:
         description: "Skip deployment cache and force redeploy"
         type: boolean
@@ -21,7 +26,44 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  # Which network legs this run deploys: every target on push, the chosen one
+  # on a targeted redeploy (paritytech/autodeployer dispatches per network).
+  plan:
+    name: Pick networks
+    runs-on: ubuntu-latest
+    outputs:
+      targets: ${{ steps.plan.outputs.targets }}
+    steps:
+      - id: plan
+        env:
+          NETWORK: ${{ inputs.network || 'all' }}
+        run: |
+          targets=$(jq -c --arg n "$NETWORK" 'map(select($n == "all" or .env == $n))' <<'JSON'
+          [
+            {
+              "env": "preview",
+              "display-name": "Previewnet",
+              "genesis": "0xc27c8bf3f13f96dc2130cd2b0a3debe57618fd02521ecc1902bd7dd4ed83d2fe",
+              "suffix": ".testnet",
+              "shell": "testnet.li",
+              "evm-network": "previewnet"
+            },
+            {
+              "env": "paseo-next-v2",
+              "display-name": "Paseo",
+              "genesis": "0x4349b00e54897e21196fd331015fc5be0f14e118beb0375ed2bb1793737bb57a",
+              "suffix": ".paseo",
+              "shell": "paseo.li",
+              "evm-network": "paseo-next-v2"
+            }
+          ]
+          JSON
+          )
+          echo "targets=$targets" >> "$GITHUB_OUTPUT"
+          echo "$targets" | jq -r '.[] | "deploying " + .env'
+
   deploy:
+    needs: plan
     name: Deploy ${{ matrix.target.display-name }}
     # Deploying needs `secrets.MNEMONIC`, and GitHub withholds secrets from
     # pull requests opened from a fork. Skip rather than fail the check.
@@ -32,19 +74,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        target:
-          - env: preview
-            display-name: Previewnet
-            genesis: "0xc27c8bf3f13f96dc2130cd2b0a3debe57618fd02521ecc1902bd7dd4ed83d2fe"
-            suffix: .testnet
-            shell: testnet.li
-            evm-network: previewnet
-          - env: paseo-next-v2
-            display-name: Paseo
-            genesis: "0x4349b00e54897e21196fd331015fc5be0f14e118beb0375ed2bb1793737bb57a"
-            suffix: .paseo
-            shell: paseo.li
-            evm-network: paseo-next-v2
+        target: ${{ fromJSON(needs.plan.outputs.targets) }}
     steps:
       - uses: actions/checkout@v4
 
