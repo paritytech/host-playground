@@ -697,10 +697,10 @@
     "@polkadot-labs/hdkd-helpers" "^0.0.29"
     ipfs-unixfs "^12.0.0"
 
-"@parity/host-api-test-sdk@^0.12.0":
-  version "0.12.0"
-  resolved "https://registry.yarnpkg.com/@parity/host-api-test-sdk/-/host-api-test-sdk-0.12.0.tgz#5e90b05f106f5d774171f1cb27251f0da231fbf6"
-  integrity sha512-0+F7kUA35UzweaP1S7AHl0XeMor9v8BH7Hbi8NbNsk9OGYp3uOqqYQ6Tpv/U9in8Y2tCQQLtTGnN1LuNxcqEgA==
+"@parity/host-api-test-sdk@0.12.1":
+  version "0.12.1"
+  resolved "https://registry.yarnpkg.com/@parity/host-api-test-sdk/-/host-api-test-sdk-0.12.1.tgz#0c56bdcbe72c53c13e465038b1edb36ac3549065"
+  integrity sha512-VprtVqoLhZfs8W5CcD8hu6xoJ9gPxDzSzEmsH5cTecceH7NCvcuJTKHpTq9J2mLvdy+TBmK6mMkeTyMCqZVzYw==
   dependencies:
     "@novasamatech/host-api" "^0.9.1"
 
@@ -763,13 +763,6 @@
     "@noble/curves" "^1.8.0"
     "@noble/hashes" "^1.7.1"
     tweetnacl "^1.0.3"
-
-"@parity/product-sdk-descriptors@0.11.0":
-  version "0.11.0"
-  resolved "https://registry.yarnpkg.com/@parity/product-sdk-descriptors/-/product-sdk-descriptors-0.11.0.tgz#3fe23ad94d005339a85a6d9766b0c8384acd15c4"
-  integrity sha512-YZMphXXVs6BXJjItqkfo7APgwdPBbtVrgEwaPAzg6HNCTV/+yTFVucCE+eteE/h5f0H4vUFEPtgILB8CSFhlkg==
-  dependencies:
-    polkadot-api "^2.1.6"
 
 "@parity/product-sdk-descriptors@0.12.0":
   version "0.12.0"

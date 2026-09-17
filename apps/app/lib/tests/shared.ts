@@ -234,8 +234,8 @@ export async function findRegisteredRingVrfKeyHandle(
 // wrong chain.
 export const PASEO_NEXT_INDIVIDUALITY = {
   ...paseo_individuality,
-  // The published descriptor predates the latest Paseo People chain reset.
-  // Metadata remains compatible, but host routing must use the live genesis.
+  // Descriptors 0.12 carries the post-reset genesis, so this override matches it
+  // today. It keeps NETWORKS as the one value host routing reads.
   genesis: NETWORKS.PASEO_ASSETHUBNEXTV2.peopleGenesis,
 } satisfies typeof paseo_individuality;
 export const PEOPLE_CHAIN_BY_HUB: Record<string, typeof paseo_individuality> = {
