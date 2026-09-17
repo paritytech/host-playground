@@ -2,6 +2,7 @@ import {
   getHostProvider,
   getAccountsProvider,
   getHostLocalStorage,
+  getLocaleProvider,
   getStatementStore,
   getPreimageManager,
   getThemeProvider,
@@ -16,6 +17,7 @@ import {
   type DerivationIndex,
   type HostLocalStorage,
   type HostStatementStore,
+  type LocaleProvider,
   type PreimageManager,
   type RingLocation,
   type RingVrfKeyHandle,
@@ -138,6 +140,10 @@ export const statements: () => Promise<HostStatementStore> = hostRef(
 export const theme: () => Promise<ThemeProvider> = hostRef(
   "getThemeProvider",
   getThemeProvider,
+);
+export const locale: () => Promise<LocaleProvider> = hostRef(
+  "getLocaleProvider",
+  getLocaleProvider,
 );
 
 export const SELF_DOTNS = getSelfDotNs();
