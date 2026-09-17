@@ -39,6 +39,7 @@ export type TestCategory =
   | "chain"
   | "contract"
   | "theme"
+  | "locale"
   | "entropy"
   | "payments"
   | "auth"

@@ -6,6 +6,7 @@ import { chainTests } from "./chain";
 import { contractTests } from "./contract";
 import { entropyTests } from "./entropy";
 import { extensionTests } from "./extension";
+import { localeTests } from "./locale";
 import { navigationTests } from "./navigation";
 import { notificationTests } from "./notifications";
 import { paymentTests } from "./payments";
@@ -30,6 +31,7 @@ export const testsByCategory: Record<TestCategory, TestDefinition[]> = {
   chain: chainTests,
   contract: contractTests,
   theme: themeTests,
+  locale: localeTests,
   entropy: entropyTests,
   auth: authTests,
   payments: paymentTests,
