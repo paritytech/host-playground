@@ -1,3 +1,12 @@
+/**
+ * Playwright fixture that embeds the app in the test host from
+ * `@parity/host-api-test-sdk`.
+ *
+ * The host runs the TrUAPI core itself since 0.13, so the product reaches it
+ * over the MessagePort that `@parity/truapi/sandbox` handshakes for. The app
+ * gets that transport from `@parity/product-sdk-host`, which pins the same
+ * truapi 0.17 minor, so nothing here has to arrange the connection.
+ */
 import { test as base, expect } from "@playwright/test";
 import {
   createTestHostFixture,
@@ -7,6 +16,7 @@ import {
 import { NETWORKS } from "../apps/app/lib/types";
 
 const PRODUCT_URL = "http://localhost:5199";
+const PRODUCT_ID = "localhost:5199";
 
 const PASEO = {
   ...PASEO_ASSET_HUB,
@@ -14,61 +24,39 @@ const PASEO = {
   rpcUrl: NETWORKS.PASEO_ASSETHUBNEXTV2.wsUrl,
 };
 
-/**
- * host-api-test-sdk since 0.11 exposes both its legacy window transport and its
- * modern MessagePort transport. TrUAPI intentionally accepts the first valid
- * transport it sees, so the eager legacy handshake probe from the host can win
- * the race with `truapi-init`. Requests then leave over window.postMessage
- * while the dual-stack host replies over the newly-created MessagePort.
- *
- * This fixture is explicitly testing the modern mock-host path. Ignore legacy
- * wire frames until the capability port has been transferred so both peers
- * select the same transport. The bootstrap messages themselves are objects and
- * continue through unchanged.
- */
-const modernTransportTest = base.extend({
-  page: async ({ page }, use) => {
-    await page.addInitScript(() => {
-      window.addEventListener(
-        "message",
-        (event) => {
-          const hostWindow = window.parent;
-          const injectedPort = (
-            window as Window & { __HOST_API_PORT__?: MessagePort }
-          ).__HOST_API_PORT__;
-
-          if (
-            window !== hostWindow &&
-            event.source === hostWindow &&
-            event.data instanceof Uint8Array &&
-            !injectedPort
-          ) {
-            event.stopImmediatePropagation();
-          }
-        },
-        true,
-      );
-    });
-
-    await use(page);
-  },
-});
+// The host routes a chain call by genesis hash and answers `supportedChains()`
+// from this list, so a role the product reaches for has to be registered here.
+// Preimage submit and lookup travel over the bulletin chain. Without this entry
+// the host refuses them with "no chain configured for genesis 0x00..00".
+const PASEO_BULLETIN = {
+  id: "paseo-bulletin",
+  name: "Paseo Bulletin",
+  genesisHash: NETWORKS.PASEO_ASSETHUBNEXTV2.bulletinGenesis,
+  rpcUrl: NETWORKS.PASEO_ASSETHUBNEXTV2.bulletinWsUrl,
+  tokenSymbol: PASEO_ASSET_HUB.tokenSymbol,
+  tokenDecimals: PASEO_ASSET_HUB.tokenDecimals,
+  chain: "Bulletin" as const,
+};
 
 const bobFixture = createTestHostFixture({
   productUrl: PRODUCT_URL,
   accounts: ["bob"],
-  networks: [PASEO],
-  // App derives its DotNS identifier from window.location.host, so under
-  // Playwright that's 'localhost:5199'. Map both to bob so the same Bob
-  // signer is used whether the app is opened under the local host or a
-  // canonical .dot identifier.
+  networks: [PASEO, PASEO_BULLETIN],
+  // Must match what the app derives, or the core refuses every product-account
+  // call with PermissionDenied. `getSelfDotNs` maps a local URL to its
+  // host:port, which is what the desktop binds a local product under, so under
+  // Playwright the app calls itself 'localhost:5199'.
+  //
+  // The core treats a 'localhost:' id as a dev caller and stops checking the
+  // identifier a call names. See gate.spec.ts, which pins the strict path this
+  // therefore cannot cover.
+  productId: PRODUCT_ID,
+  // Keyed by the identifier a call names, which is the one above. The entry
+  // replaces the whole product subtree, so it moves every indexed account.
   productAccounts: {
-    "host-playground.dot/0": "bob",
-    "localhost:5199/0": "bob",
+    [PRODUCT_ID]: "bob",
   },
 });
 
-export const test = modernTransportTest.extend<{ testHost: TestHost }>(
-  bobFixture,
-);
+export const test = base.extend<{ testHost: TestHost }>(bobFixture);
 export { expect };
