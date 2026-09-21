@@ -9,7 +9,10 @@ test.describe("Bulletin upload and fetch by CID", () => {
   // calculateCid and cidToPreimageKey derive between them, so the lookup key
   // matches the submit key. The deeper proof against a real bulletin chain
   // lives in triangle-e2e/packages/app-tests/.../web.test.ts.
-  test("submit and fetch-by-CID return byte-equal content", async ({
+  // The round trip needs a store that holds what the product submitted, which
+  // the test host no longer has. Blocked on the same bulletin allowance as
+  // preimage.spec.ts, and on the test host regaining somewhere to put a submit.
+  test.fixme("submit and fetch-by-CID return byte-equal content", async ({
     testHost,
   }) => {
     const frame = await waitForAppReady(testHost);

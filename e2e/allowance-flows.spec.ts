@@ -21,7 +21,9 @@ test.describe("Allowance then usage flows", () => {
     expect(submit).toBe("success");
   });
 
-  test("preimage: allocate allowance, submit preimage", async ({
+  // Blocked on the same live bulletin allowance as preimage.spec.ts. The
+  // allocation steps pass, the submit is refused at dry-run by the chain.
+  test.fixme("preimage: allocate allowance, submit preimage", async ({
     testHost,
   }) => {
     const frame = await waitForAppReady(testHost);
@@ -54,7 +56,9 @@ test.describe("Allowance then usage flows", () => {
     expect(query).toBe("success");
   });
 
-  test("full flow: allocate all resources in one request", async ({
+  // Same block as above. Allocation and the statement proof pass, the closing
+  // preimage submit is refused at dry-run by the bulletin chain.
+  test.fixme("full flow: allocate all resources in one request", async ({
     testHost,
   }) => {
     const frame = await waitForAppReady(testHost);

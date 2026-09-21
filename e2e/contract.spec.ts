@@ -28,7 +28,13 @@ test.describe("Contract reads", () => {
 });
 
 test.describe("Contract writes", () => {
-  test("deposit then withdraw", async ({ testHost }) => {
+  // Signs correctly and the chain refuses it with InvalidTransaction::Payment.
+  // The product account is derived as a soft junction over the product subtree,
+  // which moved the address, and the one it moved to holds no funds. Drop the
+  // `.fixme` once it is funded. Read the current address from the host with
+  // `getProductAccount`, never from a pinned constant, because a derivation
+  // change moves it again.
+  test.fixme("deposit then withdraw", async ({ testHost }) => {
     const frame = await waitForAppReady(testHost);
 
     const depositResult = await runTest(frame, "contract-deposit");
@@ -38,7 +44,8 @@ test.describe("Contract writes", () => {
     expect(withdrawResult).toBe("success");
   });
 
-  test("store value", async ({ testHost }) => {
+  // Blocked on the same unfunded product account as the deposit test above.
+  test.fixme("store value", async ({ testHost }) => {
     const frame = await waitForAppReady(testHost);
     const result = await runTest(frame, "contract-store-value");
     expect(result).toBe("success");
