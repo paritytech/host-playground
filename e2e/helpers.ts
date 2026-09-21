@@ -17,6 +17,10 @@ export async function waitForAppReady(
 
 /**
  * Click a test button by its test ID and wait for the log entry to resolve.
+ *
+ * The log viewer prepends, so the newest entry is the first one. Reading the
+ * last entry instead returns the oldest, which makes every step after the first
+ * assert against a stale result.
  */
 export async function runTest(
   frame: FrameLocator,
@@ -27,7 +31,7 @@ export async function runTest(
   await expect(btn).toBeVisible({ timeout: 10_000 });
   await btn.click();
 
-  const lastEntry = frame.locator('[data-testid="log-entry"]').last();
+  const lastEntry = frame.locator('[data-testid="log-entry"]').first();
   await expect(lastEntry).not.toHaveAttribute("data-status", "pending", {
     timeout,
   });
