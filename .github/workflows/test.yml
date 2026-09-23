@@ -11,7 +11,7 @@ concurrency:
 
 jobs:
   typecheck:
-    runs-on: parity-int-ubuntu
+    runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
 
@@ -28,9 +28,48 @@ jobs:
       - name: Typecheck
         run: yarn typecheck
 
+  lint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Enable Corepack
+        run: corepack enable
+
+      - name: Install dependencies
+        run: yarn install --immutable
+
+      - name: Lint
+        run: yarn lint
+
+      - name: Check formatting
+        run: yarn format:check
+
+  unit:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Enable Corepack
+        run: corepack enable
+
+      - name: Install dependencies
+        run: yarn install --immutable
+
+      - name: Unit tests
+        run: yarn test
+
   e2e:
     name: E2E
-    runs-on: parity-int-ubuntu
+    runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
 
@@ -46,6 +85,15 @@ jobs:
 
       - name: Install Playwright browsers
         run: npx playwright install --with-deps chromium
+
+      - uses: foundry-rs/foundry-toolchain@v1
+
+      - uses: oven-sh/setup-bun@v2
+
+      # The suite runs `yarn dev:paseo`, and the address is a static import.
+      - name: Ensure SimpleStore is deployed
+        working-directory: evm
+        run: forge build && NETWORK=paseo-next-v2 bun scripts/ensure.ts
 
       - name: Run E2E tests
         run: yarn test:e2e

@@ -39,6 +39,7 @@ export type TestCategory =
   | "chain"
   | "contract"
   | "theme"
+  | "locale"
   | "entropy"
   | "payments"
   | "auth"
@@ -57,6 +58,7 @@ export interface ChainConfig {
   personhoodRingOwner?: string;
   peopleNetworkId?: string;
   bulletinWsUrl?: string;
+  bulletinGenesis?: `0x${string}`;
 }
 
 export interface TestArg {
@@ -94,29 +96,33 @@ export const NETWORKS = {
     name: "Paseo Next v2 Hub",
     network: "Testnet",
     genesis:
-      "0x23e730eb1c6fecae09c917439a5038cb6122d0d48980e8b9bbf0ff56f94a2ca6" as const,
+      "0x4349b00e54897e21196fd331015fc5be0f14e118beb0375ed2bb1793737bb57a" as const,
     wsUrl: "wss://paseo-asset-hub-next-rpc.polkadot.io",
     ss58Prefix: 0,
     dotNsSuffix: "paseo",
     peopleWsUrl: "wss://paseo-people-next-system-rpc.polkadot.io",
     peopleGenesis:
-      "0x89a63b11fef2c0273fc72c0d864da0793a665dade5db153e0cab995348c5440f" as const,
+      "0x4a2b5b737de1da59e209b0000a876ec2fa20035dc34fd292a848da32d255ad48" as const,
     personhoodRingOwner: "peopl.paseo",
     bulletinWsUrl: "wss://paseo-bulletin-next-rpc.polkadot.io",
+    bulletinGenesis:
+      "0x8cfe6717dc4becfda2e13c488a1e2061ff2dfee96e7d031157f72d36716c0a22" as const,
   },
   PREVIEWNET_ASSETHUB: {
     name: "Previewnet Hub",
     network: "Testnet",
     genesis:
-      "0x4d11c803cc6921429e3876638977ad006ea1bba8cd3976a0bca2f164e7026210" as const,
+      "0xc27c8bf3f13f96dc2130cd2b0a3debe57618fd02521ecc1902bd7dd4ed83d2fe" as const,
     wsUrl: "wss://previewnet.substrate.dev/asset-hub",
     ss58Prefix: 0,
-    dotNsSuffix: "test",
+    dotNsSuffix: "testnet",
     peopleWsUrl: "wss://previewnet.substrate.dev/people",
     peopleGenesis:
-      "0x3138c6d4ce58c760047a413c2a930e919b4673a841ab4890de59aac3bd037f3d" as const,
+      "0xf720c28fe3315e67fa799a616fc59abad47dd257b1a336af6538435844d35218" as const,
     personhoodRingOwner: "peopl.dot",
     bulletinWsUrl: "wss://previewnet.substrate.dev/bulletin",
+    bulletinGenesis:
+      "0xa081192b90c1f6a3f8e9ce7b2a8246f41af805c66456c84e05fd97c2b3502425" as const,
   },
 } as const;
 

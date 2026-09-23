@@ -7,6 +7,11 @@ on:
     branches: [main]
   workflow_dispatch:
     inputs:
+      network:
+        description: "Network to deploy; all on push, pick one for a targeted redeploy"
+        type: choice
+        default: all
+        options: [all, preview, paseo-next-v2]
       skip-cache:
         description: "Skip deployment cache and force redeploy"
         type: boolean
@@ -21,21 +26,55 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  # Which network legs this run deploys: every target on push, the chosen one
+  # on a targeted redeploy (paritytech/autodeployer dispatches per network).
+  plan:
+    name: Pick networks
+    runs-on: ubuntu-latest
+    outputs:
+      targets: ${{ steps.plan.outputs.targets }}
+    steps:
+      - id: plan
+        env:
+          NETWORK: ${{ inputs.network || 'all' }}
+        run: |
+          targets=$(jq -c --arg n "$NETWORK" 'map(select($n == "all" or .env == $n))' <<'JSON'
+          [
+            {
+              "env": "preview",
+              "display-name": "Previewnet",
+              "genesis": "0xc27c8bf3f13f96dc2130cd2b0a3debe57618fd02521ecc1902bd7dd4ed83d2fe",
+              "suffix": ".testnet",
+              "shell": "testnet.li",
+              "evm-network": "previewnet"
+            },
+            {
+              "env": "paseo-next-v2",
+              "display-name": "Paseo",
+              "genesis": "0x4349b00e54897e21196fd331015fc5be0f14e118beb0375ed2bb1793737bb57a",
+              "suffix": ".paseo",
+              "shell": "paseo.li",
+              "evm-network": "paseo-next-v2"
+            }
+          ]
+          JSON
+          )
+          echo "targets=$targets" >> "$GITHUB_OUTPUT"
+          echo "$targets" | jq -r '.[] | "deploying " + .env'
+
   deploy:
+    needs: plan
     name: Deploy ${{ matrix.target.display-name }}
-    runs-on: parity-int-ubuntu
+    # Deploying needs `secrets.MNEMONIC`, and GitHub withholds secrets from
+    # pull requests opened from a fork. Skip rather than fail the check.
+    if: >-
+      github.event_name != 'pull_request' ||
+      github.event.pull_request.head.repo.full_name == github.repository
+    runs-on: ubuntu-latest
     strategy:
       fail-fast: false
       matrix:
-        target:
-          - env: preview
-            display-name: Previewnet
-            genesis: "0x4d11c803cc6921429e3876638977ad006ea1bba8cd3976a0bca2f164e7026210"
-            suffix: .test
-          - env: paseo-next-v2
-            display-name: Paseo
-            genesis: "0x23e730eb1c6fecae09c917439a5038cb6122d0d48980e8b9bbf0ff56f94a2ca6"
-            suffix: .paseo
+        target: ${{ fromJSON(needs.plan.outputs.targets) }}
     steps:
       - uses: actions/checkout@v4
 
@@ -48,6 +87,15 @@ jobs:
 
       - name: Install dependencies
         run: yarn install --immutable
+
+      - uses: foundry-rs/foundry-toolchain@v1
+
+      - uses: oven-sh/setup-bun@v2
+
+      # Must precede the build: the address is a static import in shared.ts.
+      - name: Ensure SimpleStore is deployed
+        working-directory: evm
+        run: forge build && NETWORK=${{ matrix.target.evm-network }} bun scripts/ensure.ts
 
       - name: Build for ${{ matrix.target.env }}
         env:
@@ -91,17 +139,21 @@ jobs:
       - name: Determine domain
         id: domain-input
         env:
-          BRANCH: ${{ github.event.pull_request.head.ref }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
         run: |
           # Two forms of the same name. `label` has no TLD and is what the
-          # browser URL is built from; `dotns` carries this environment's suffix
-          # (must match the registry's current tld(); the CLI rejects a stale one) and is what the CLI and
-          # the product manifest must both name, spelled identically.
-          if [ "${{ github.event_name }}" == "push" ]; then
-            LABEL="host-playground"
+          # browser URL is built from. `dotns` carries this environment suffix,
+          # which must match the registry current tld() because the CLI rejects
+          # a stale one, and is what the CLI and the product manifest must both
+          # name, spelled identically.
+          #
+          # Pull requests get a per-PR sandbox label. Keying it on the PR number
+          # rather than the branch name keeps it stable across renames and force
+          # pushes, and keeps the length fixed.
+          if [ "${{ github.event_name }}" == "pull_request" ]; then
+            LABEL="host-playground-pr${PR_NUMBER}-sandbox00"
           else
-            LABEL=$(printf '%s' "$BRANCH" | tr '/' '-' | sed 's/[^a-z0-9-]//g' | cut -c1-20)
-            LABEL="${LABEL}-host-playground00"
+            LABEL="host-playground"
           fi
           echo "label=${LABEL}" >> "$GITHUB_OUTPUT"
           echo "dotns=${LABEL}${{ matrix.target.suffix }}" >> "$GITHUB_OUTPUT"
@@ -154,8 +206,9 @@ jobs:
             *) NETWORK="${{ matrix.target.env }}" ;;
           esac
           mkdir -p .deploy-result
-          printf '{"env":"%s","network":"%s","domain":"%s","label":"%s","cid":"%s"}\n' \
-            "${{ matrix.target.env }}" "$NETWORK" "$DOMAIN" "$LABEL" "$CID" \
+          printf '{"env":"%s","network":"%s","domain":"%s","label":"%s","shell":"%s","cid":"%s"}\n' \
+            "${{ matrix.target.env }}" "$NETWORK" "$DOMAIN" "$LABEL" \
+            "${{ matrix.target.shell }}" "$CID" \
             > .deploy-result/${{ matrix.target.env }}.json
           cat .deploy-result/${{ matrix.target.env }}.json
 
@@ -170,8 +223,9 @@ jobs:
           DOMAIN=$(jq -r .domain .deploy-result/${{ matrix.target.env }}.json)
           LABEL=$(jq -r .label .deploy-result/${{ matrix.target.env }}.json)
           NETWORK=$(jq -r .network .deploy-result/${{ matrix.target.env }}.json)
+          SHELL_HOST=$(jq -r .shell .deploy-result/${{ matrix.target.env }}.json)
           CID=$(jq -r .cid .deploy-result/${{ matrix.target.env }}.json)
-          URL="https://${LABEL}.paseo.li?network=${NETWORK}&chainBackend=rpc-gateway"
+          URL="https://${LABEL}.${SHELL_HOST}?network=${NETWORK}&chainBackend=rpc-gateway"
           {
             echo "### ${DOMAIN} — ${{ matrix.target.env }}"
             echo ""
@@ -181,9 +235,12 @@ jobs:
           } >> $GITHUB_STEP_SUMMARY
 
   comment:
-    if: github.event_name == 'pull_request'
+    # Commenting needs a write token, which fork pull requests also don't get.
+    if: >-
+      github.event_name == 'pull_request' &&
+      github.event.pull_request.head.repo.full_name == github.repository
     needs: deploy
-    runs-on: parity-int-ubuntu
+    runs-on: ubuntu-latest
     permissions:
       pull-requests: write
     steps:
@@ -209,7 +266,6 @@ jobs:
             const runUrl = `${process.env.GITHUB_SERVER_URL}/${process.env.GITHUB_REPOSITORY}/actions/runs/${process.env.GITHUB_RUN_ID}`;
             const label = results[0]?.label ?? '(no domain)';
 
-            const SHELL = { preview: 'testnet.li', 'paseo-next-v2': 'paseo.li' };
             const ENV_NAME = { preview: 'Previewnet', 'paseo-next-v2': 'Paseo' };
 
             const lines = [
@@ -218,8 +274,8 @@ jobs:
               '| Network | Desktop | Web |',
               '| :--- | :---: | :---: |',
             ];
-            for (const { env, domain, label } of results) {
-              const url = `https://${label}.${SHELL[env] ?? 'paseo.li'}`;
+            for (const { env, domain, label, shell } of results) {
+              const url = `https://${label}.${shell}`;
               lines.push(`| ${ENV_NAME[env] ?? env} | \`${domain}\` | ${url} |`);
             }
 

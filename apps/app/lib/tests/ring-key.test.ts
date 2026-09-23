@@ -12,6 +12,7 @@ vi.mock("@parity/product-sdk/host", () => ({
   getAccountsProvider: vi.fn(),
   getHostLocalStorage: vi.fn(),
   getHostProvider: vi.fn(),
+  getLocaleProvider: vi.fn(),
   getPreimageManager: vi.fn(),
   getStatementStore: vi.fn(),
   getThemeProvider: vi.fn(),
