@@ -5,7 +5,7 @@
  * The host runs the TrUAPI core itself since 0.13, so the product reaches it
  * over the MessagePort that `@parity/truapi/sandbox` handshakes for. The app
  * gets that transport from `@parity/product-sdk-host`, which pins the same
- * truapi 0.17 minor, so nothing here has to arrange the connection.
+ * truapi 0.18 minor, so nothing here has to arrange the connection.
  */
 import { test as base, expect } from "@playwright/test";
 import {
