@@ -106,19 +106,21 @@ export const permissionTests: TestDefinition[] = [
     id: "remote-permission-remote",
     name: "Remote Permission: Remote (HTTP/WS)",
     description: "Requests permission to connect to remote domains",
-    api: "requestPermission({ tag: 'Remote', value: { domains: [url] } })",
+    api: "requestPermission({ tag: 'Remote', value: { domains: [domain] } })",
     args: [
       {
-        name: "url",
-        label: "URL pattern",
-        defaultValue: "https://example.com",
+        // A bare host. Since truapi 0.18 the core denies a domain carrying a
+        // scheme, such as "https://example.com", without asking the host.
+        name: "domain",
+        label: "Domain",
+        defaultValue: "example.com",
       },
     ],
     category: "permissions",
     async run({ args }) {
       return reportPermission(
         "Remote permission",
-        requestRemote({ tag: "Remote", value: { domains: [args.url] } }),
+        requestRemote({ tag: "Remote", value: { domains: [args.domain] } }),
       );
     },
   },
