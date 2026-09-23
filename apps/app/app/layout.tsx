@@ -22,7 +22,16 @@ export default function RootLayout({
 }) {
   return (
     <html lang="en">
-      <body>{children}</body>
+      <body>
+        {process.env.NODE_ENV === "development" &&
+          !process.env.NEXT_PUBLIC_SKIP_HOST_BRIDGE && (
+            // Bridge to a local `truapi-host dev` signing host,
+            //  so the playground runs in a plain browser tab
+            // eslint-disable-next-line @next/next/no-sync-scripts
+            <script src="http://127.0.0.1:9955/bootstrap.js" />
+          )}
+        {children}
+      </body>
     </html>
   );
 }

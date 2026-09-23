@@ -235,9 +235,9 @@ export async function findRegisteredRingVrfKeyHandle(
 
 // People/Individuality chain descriptor per Asset Hub, for DotNS-identity
 // signing (app.wallet.signMessageWithDotNsIdentity). Paseo pairs with
-// paseo_individuality; Previewnet has no published individuality descriptor, so
-// it's intentionally absent — the card reports that rather than signing on the
-// wrong chain.
+// paseo_individuality. Previewnet is absent until its descriptor and NETWORKS
+// agree on the live genesis, so the card reports that rather than signing on
+// the wrong chain.
 export const PASEO_NEXT_INDIVIDUALITY = {
   ...paseo_individuality,
   // Descriptors 0.12 carries the post-reset genesis, so this override matches it

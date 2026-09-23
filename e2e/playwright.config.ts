@@ -40,6 +40,7 @@ export default defineConfig({
     command: "yarn dev:paseo --port 5199",
     cwd: repoRoot,
     port: 5199,
+    env: { NEXT_PUBLIC_SKIP_HOST_BRIDGE: "1" },
     reuseExistingServer: !process.env.CI,
     timeout: 30_000,
   },

@@ -48,6 +48,30 @@ yarn dev:paseo        # Paseo
 The cards that write to a network need a funded account on that network. The
 read-only cards work without one.
 
+### Local signing host
+
+`truapi-host dev` starts a signing host on loopback and then runs the dev server
+with that host already live, so the cards work in a plain browser tab instead of
+a Host webview:
+
+```bash
+cargo install --git https://github.com/paritytech/host-rust-core \
+  --bin truapi-host --locked truapi-host-cli
+
+truapi-host dev -- yarn dev:paseo
+```
+
+Open http://localhost:3000. In development the root layout loads the bridge
+snippet the host serves at `http://127.0.0.1:9955/bootstrap.js`, which installs
+the message port the SDK talks over. Confirmations are approved automatically,
+so the host signs whatever a card asks for.
+
+Host and app have to serve the same network, otherwise the chain cards report
+`Host does not serve chain <genesis>`. `truapi-host dev` defaults to Paseo Next
+v2, which is what `yarn dev:paseo` builds against. Pair it with Paseo only.
+Previewnet resets often, and `--network previewnet` works only while the genesis
+hashes in `NETWORKS` match the live chains.
+
 ## Test
 
 ```bash
