@@ -89,6 +89,9 @@ test card). Historical breaking changes to expect:
   between 0.9.0 and 0.10.0, comments only, so there is no host skew to fear.
   What the wave is worth having: host 0.17 fixes chainHead operation ordering,
   without which every chain and contract card hangs against `truapi-host`.
+  Descriptors 0.11 go from 8 chains to 11: `summit-*` gives way to
+  `previewnet-asset-hub`, `previewnet-bulletin`, `previewnet-individuality`, and
+  the matching `devnet-*` trio.
 
 ## 4. Bump, install, migrate, verify
 

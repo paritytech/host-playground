@@ -68,7 +68,9 @@ so the host signs whatever a card asks for.
 
 Host and app have to serve the same network, otherwise the chain cards report
 `Host does not serve chain <genesis>`. `truapi-host dev` defaults to Paseo Next
-v2, which is what `yarn dev:paseo` builds against.
+v2, which is what `yarn dev:paseo` builds against. Pair it with Paseo only.
+Previewnet resets often, and `--network previewnet` works only while the genesis
+hashes in `NETWORKS` match the live chains.
 
 ## Test
 
