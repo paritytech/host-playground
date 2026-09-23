@@ -92,6 +92,10 @@ test card). Historical breaking changes to expect:
   Descriptors 0.11 go from 8 chains to 11: `summit-*` gives way to
   `previewnet-asset-hub`, `previewnet-bulletin`, `previewnet-individuality`, and
   the matching `devnet-*` trio.
+- **0.31**: no migration. `product-sdk-host` 0.23.0 ships the same `.d.ts` as
+  0.22.0. Its truapi moves 0.18 to 0.20, which only turns client fields into
+  `#private` and adds `requestIdPrefix`, `prepare`, and `onProtocolError` to
+  `CreateTransportOptions`.
 
 ## 4. Bump, install, migrate, verify
 
