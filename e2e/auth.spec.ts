@@ -10,9 +10,8 @@ test.describe("Auth", () => {
 
   test("get user identity", async ({ testHost }) => {
     const frame = await waitForAppReady(testHost);
-    // host-api-test-sdk 0.13 mints both halves of the SSO session at boot, so
-    // the session is already authenticated and getUserId needs no prior step.
-    // The login controls that used to arrange that are gone.
+    // The test host activates the session at boot, so it is already
+    // authenticated and getUserId needs no prior step.
     const result = await runTest(frame, "get-user-id");
     expect(result).toBe("success");
   });

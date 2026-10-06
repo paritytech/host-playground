@@ -80,7 +80,7 @@ yarn lint
 yarn test:e2e         # Playwright against a mock Host
 ```
 
-The E2E suite drives the real cards through `@parity/host-api-test-sdk`, so it
+The E2E suite drives the real cards through `@parity/truapi-host/testing`, so it
 runs without a Host of its own.
 
 ## Deployment
