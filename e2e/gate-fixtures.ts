@@ -12,7 +12,7 @@ import {
   createTestHostFixture,
   PASEO_ASSET_HUB,
   type TestHost,
-} from "@parity/host-api-test-sdk/playwright";
+} from "@parity/truapi-host/testing/playwright";
 import { NETWORKS } from "../apps/app/lib/types";
 
 export const BOUND_PRODUCT_ID = "host-playground.dot";
@@ -30,7 +30,6 @@ export const test = base.extend<{ testHost: TestHost }>(
     accounts: ["bob"],
     networks: [PASEO],
     productId: BOUND_PRODUCT_ID,
-    productAccounts: { [BOUND_PRODUCT_ID]: "bob" },
   }),
 );
 export { expect };

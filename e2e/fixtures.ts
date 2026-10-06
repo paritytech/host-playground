@@ -1,18 +1,19 @@
 /**
  * Playwright fixture that embeds the app in the test host from
- * `@parity/host-api-test-sdk`.
+ * `@parity/truapi-host/testing`.
  *
- * The host runs the TrUAPI core itself since 0.13, so the product reaches it
- * over the MessagePort that `@parity/truapi/sandbox` handshakes for. The app
- * gets that transport from `@parity/product-sdk-host`, which pins the same
- * truapi 0.18 minor, so nothing here has to arrange the connection.
+ * The host runs the TrUAPI core itself, so the product reaches it over the
+ * MessagePort that `@parity/truapi/sandbox` handshakes for. The app gets that
+ * transport from `@parity/product-sdk-host`, which pins the same truapi 0.20
+ * minor as `@parity/truapi-host`. The two must agree: a mismatch fails every
+ * call with `MalformedFrame`.
  */
 import { test as base, expect } from "@playwright/test";
 import {
   createTestHostFixture,
   PASEO_ASSET_HUB,
   type TestHost,
-} from "@parity/host-api-test-sdk/playwright";
+} from "@parity/truapi-host/testing/playwright";
 import { NETWORKS } from "../apps/app/lib/types";
 
 const PRODUCT_URL = "http://localhost:5199";
@@ -35,7 +36,6 @@ const PASEO_BULLETIN = {
   rpcUrl: NETWORKS.PASEO_ASSETHUBNEXTV2.bulletinWsUrl,
   tokenSymbol: PASEO_ASSET_HUB.tokenSymbol,
   tokenDecimals: PASEO_ASSET_HUB.tokenDecimals,
-  chain: "Bulletin" as const,
 };
 
 const bobFixture = createTestHostFixture({
@@ -50,12 +50,10 @@ const bobFixture = createTestHostFixture({
   // The core treats a 'localhost:' id as a dev caller and stops checking the
   // identifier a call names. See gate.spec.ts, which pins the strict path this
   // therefore cannot cover.
+  //
+  // The product account is derived from (bob's session root, this id), so it
+  // is not the well-known //Bob and starts empty on both chains.
   productId: PRODUCT_ID,
-  // Keyed by the identifier a call names, which is the one above. The entry
-  // replaces the whole product subtree, so it moves every indexed account.
-  productAccounts: {
-    [PRODUCT_ID]: "bob",
-  },
 });
 
 export const test = base.extend<{ testHost: TestHost }>(bobFixture);

@@ -1,4 +1,4 @@
-import type { TestHost } from "@parity/host-api-test-sdk/playwright";
+import type { TestHost } from "@parity/truapi-host/testing/playwright";
 import { expect, type FrameLocator } from "@playwright/test";
 
 export async function waitForAppReady(
