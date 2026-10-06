@@ -38,10 +38,22 @@ const PASEO_BULLETIN = {
   tokenDecimals: PASEO_ASSET_HUB.tokenDecimals,
 };
 
+// The statement store lives on the People chain, and the host serves it in-page
+// (`loopbackStatements`) only for a network whose id ends in `-people`. Without
+// this entry a statement submit is never answered and the card times out.
+const PASEO_PEOPLE = {
+  id: "paseo-people",
+  name: "Paseo People",
+  genesisHash: NETWORKS.PASEO_ASSETHUBNEXTV2.peopleGenesis,
+  rpcUrl: NETWORKS.PASEO_ASSETHUBNEXTV2.peopleWsUrl,
+  tokenSymbol: PASEO_ASSET_HUB.tokenSymbol,
+  tokenDecimals: PASEO_ASSET_HUB.tokenDecimals,
+};
+
 const bobFixture = createTestHostFixture({
   productUrl: PRODUCT_URL,
   accounts: ["bob"],
-  networks: [PASEO, PASEO_BULLETIN],
+  networks: [PASEO, PASEO_BULLETIN, PASEO_PEOPLE],
   // Must match what the app derives, or the core refuses every product-account
   // call with PermissionDenied. `getSelfDotNs` maps a local URL to its
   // host:port, which is what the desktop binds a local product under, so under
