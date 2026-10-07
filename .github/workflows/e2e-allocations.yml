@@ -1,0 +1,63 @@
+name: E2E allocations
+
+# Runs the allocation specs with real on-chain claims, once per person. PR runs
+# answer allocations as granted, because claims are rationed per person per
+# period; this is where the real allocation path is exercised. It also renews
+# each person's Bulletin claim (about 14 days long), which PR runs pay uploads
+# with.
+on:
+  schedule:
+    - cron: "0 6 * * 1"
+  workflow_dispatch:
+
+jobs:
+  allocations:
+    name: Allocations
+    runs-on: ubuntu-latest
+    concurrency:
+      group: paseo-live-e2e
+      cancel-in-progress: false
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Enable Corepack
+        run: corepack enable
+
+      - name: Install dependencies
+        run: yarn install --immutable
+
+      - name: Install Playwright browsers
+        run: npx playwright install --with-deps chromium
+
+      - name: Run allocation specs for each person
+        env:
+          CI: true
+          E2E_ALLOCATIONS: chain
+          E2E_PERSON_MNEMONICS: ${{ secrets.E2E_PERSON_MNEMONICS }}
+        run: |
+          count=$(printf '%s\n' "$E2E_PERSON_MNEMONICS" | grep -c .)
+          if [ "$count" -eq 0 ]; then
+            echo "::error::E2E_PERSON_MNEMONICS is not set"
+            exit 1
+          fi
+          status=0
+          for i in $(seq 0 $((count - 1))); do
+            echo "::group::person $i"
+            E2E_PERSON_INDEX=$i yarn test:e2e resource-allocation allowance-flows bulletin-upload preimage || status=1
+            echo "::endgroup::"
+          done
+          exit $status
+
+      - name: Upload test results
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-report
+          path: |
+            playwright-report/
+            test-results/
+          retention-days: 7
