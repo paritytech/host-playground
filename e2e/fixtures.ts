@@ -16,10 +16,10 @@ import {
 } from "@parity/truapi-host/testing/playwright";
 import { NETWORKS } from "../apps/app/lib/types";
 
-const PRODUCT_URL = "http://localhost:5199";
-const PRODUCT_ID = "localhost:5199";
+export const PRODUCT_URL = "http://localhost:5199";
+export const PRODUCT_ID = "localhost:5199";
 
-const PASEO = {
+export const PASEO = {
   ...PASEO_ASSET_HUB,
   genesisHash: NETWORKS.PASEO_ASSETHUBNEXTV2.genesis,
   rpcUrl: NETWORKS.PASEO_ASSETHUBNEXTV2.wsUrl,
@@ -29,7 +29,7 @@ const PASEO = {
 // from this list, so a role the product reaches for has to be registered here.
 // Preimage submit and lookup travel over the bulletin chain. Without this entry
 // the host refuses them with "no chain configured for genesis 0x00..00".
-const PASEO_BULLETIN = {
+export const PASEO_BULLETIN = {
   id: "paseo-bulletin",
   name: "Paseo Bulletin",
   genesisHash: NETWORKS.PASEO_ASSETHUBNEXTV2.bulletinGenesis,
@@ -41,7 +41,7 @@ const PASEO_BULLETIN = {
 // The statement store lives on the People chain, and the host serves it in-page
 // (`loopbackStatements`) only for a network whose id ends in `-people`. Without
 // this entry a statement submit is never answered and the card times out.
-const PASEO_PEOPLE = {
+export const PASEO_PEOPLE = {
   id: "paseo-people",
   name: "Paseo People",
   genesisHash: NETWORKS.PASEO_ASSETHUBNEXTV2.peopleGenesis,

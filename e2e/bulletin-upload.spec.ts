@@ -1,7 +1,9 @@
-import { test, expect } from "./fixtures";
+import { test, expect, SKIP_REASON } from "./person-fixtures";
 import { waitForAppReady, runTest } from "./helpers";
 
 test.describe("Bulletin upload and fetch by CID", () => {
+  test.skip(!!SKIP_REASON, SKIP_REASON);
+
   // The test uploads through the host preimage submit, derives the canonical
   // CID, and fetches the content back by that CID through the host preimage
   // lookup. No public IPFS gateway is involved. Under the e2e mock host this

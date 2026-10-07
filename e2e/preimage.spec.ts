@@ -1,7 +1,9 @@
-import { test, expect } from "./fixtures";
+import { test, expect, SKIP_REASON } from "./person-fixtures";
 import { waitForAppReady, runTest } from "./helpers";
 
 test.describe("Preimage", () => {
+  test.skip(!!SKIP_REASON, SKIP_REASON);
+
   test("submit preimage", async ({ testHost }) => {
     const frame = await waitForAppReady(testHost);
     const result = await runTest(frame, "preimage-submit");
