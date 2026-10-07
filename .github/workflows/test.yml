@@ -70,6 +70,12 @@ jobs:
   e2e:
     name: E2E
     runs-on: ubuntu-latest
+    # The suite signs in as the same people on live Paseo from every run, so two
+    # at once race each other's nonces. Queue them instead, here and in
+    # e2e-allocations.yml.
+    concurrency:
+      group: paseo-live-e2e
+      cancel-in-progress: false
     steps:
       - uses: actions/checkout@v4
 
@@ -99,6 +105,13 @@ jobs:
         run: yarn test:e2e
         env:
           CI: true
+          # Lite people on paseo-next-v2, one 24-word mnemonic per line. Their
+          # existing Bulletin claims pay for uploads; e2e-allocations.yml keeps
+          # the claims current. Unset on forks, where those specs skip.
+          E2E_PERSON_MNEMONICS: ${{ secrets.E2E_PERSON_MNEMONICS }}
+          # Spread runs across the people, so one person's rate limits are not
+          # spent by every run.
+          E2E_PERSON_INDEX: ${{ github.run_number }}
 
       - name: Upload test results
         if: failure()
