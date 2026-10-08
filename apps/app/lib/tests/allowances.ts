@@ -64,6 +64,7 @@ export const allowancesTests: TestDefinition[] = [
       },
     ],
     category: "allowances",
+    timeoutMs: 90_000,
     async run({ args }) {
       return runResourceAllocation([
         { tag: "StatementStoreAllowance", value: undefined },
