@@ -55,6 +55,8 @@ export const statementTests: TestDefinition[] = [
     description: "Creates an authorized statement proof via getStatementStore",
     api: "statementStore.createProofAuthorized(statement)",
     category: "statements",
+    // Right after an on-chain allocation the proof waits on the new slot.
+    timeoutMs: 90_000,
     async run() {
       const statementStore = await statements();
 
