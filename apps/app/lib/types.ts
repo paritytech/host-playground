@@ -43,7 +43,8 @@ export type TestCategory =
   | "entropy"
   | "payments"
   | "auth"
-  | "allowances";
+  | "allowances"
+  | "use-truapi";
 
 export interface ChainConfig {
   name: string;

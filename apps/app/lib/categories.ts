@@ -16,6 +16,7 @@ import {
   ScrollText,
   Search,
   User,
+  Webhook,
   type LucideIcon,
 } from "lucide-react";
 import { testsByCategory } from "@/lib/tests";
@@ -39,6 +40,7 @@ export const CATEGORY_ICONS: Record<TestCategory, LucideIcon> = {
   auth: LogIn,
   payments: CreditCard,
   allowances: Package,
+  "use-truapi": Webhook,
 };
 
 export const CATEGORY_INFO: Record<
@@ -115,6 +117,11 @@ export const CATEGORY_INFO: Record<
     description:
       "Request statement-store, bulletin, smart-contract, and auto-signing allocations (RFC-0010)",
   },
+  "use-truapi": {
+    title: "use-truapi Hooks",
+    description:
+      "Drive @use-truapi/react hooks against the host through a shared TruapiProvider",
+  },
 };
 
 // Sidebar/content grouping: "Local" = host/webview-side APIs, "Network" =
@@ -147,6 +154,10 @@ const CATEGORY_GROUPS: { label: string; categories: TestCategory[] }[] = [
       "entropy",
       "auth",
     ],
+  },
+  {
+    label: "Libraries",
+    categories: ["use-truapi"],
   },
 ];
 

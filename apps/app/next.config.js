@@ -21,6 +21,15 @@ const nextConfig = {
     ignoreBuildErrors: false,
   },
   transpilePackages: ["@polkadot-api/descriptors"],
+  webpack(config) {
+    // @use-truapi/core pulls in @parity/product-sdk-host 0.24, whose native
+    // chat fallback dynamically imports @novasamatech/host-api-wrapper 0.9.2.
+    // That wrapper imports a pjs-signer export polkadot-api 2 no longer ships,
+    // which fails the build. The playground never takes that path, so the
+    // import resolves to an empty module instead.
+    config.resolve.alias["@novasamatech/host-api-wrapper"] = false;
+    return config;
+  },
 };
 
 export default nextConfig;

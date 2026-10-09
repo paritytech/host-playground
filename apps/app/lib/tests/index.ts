@@ -16,6 +16,7 @@ import { signingTests } from "./signing";
 import { statementTests } from "./statements";
 import { storageTests } from "./storage";
 import { themeTests } from "./theme";
+import { useTruapiTests } from "./use-truapi";
 
 /** Every card in the playground. The Record type keeps a category from going missing. */
 export const testsByCategory: Record<TestCategory, TestDefinition[]> = {
@@ -36,6 +37,7 @@ export const testsByCategory: Record<TestCategory, TestDefinition[]> = {
   auth: authTests,
   payments: paymentTests,
   allowances: allowancesTests,
+  "use-truapi": useTruapiTests,
 };
 
 /** Resolves a test's declared arg defaults, so `run` never sees a missing arg. */
