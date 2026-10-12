@@ -121,12 +121,24 @@ jobs:
           echo "cid=$(cat .deploy-cache/cid)" >> "$GITHUB_OUTPUT"
           echo "::notice::Found cached CID: $(cat .deploy-cache/cid)"
 
+      # From Kubo's GitHub release rather than dist.ipfs.tech, which
+      # download-ipfs-distribution-action fetches from and which does not
+      # answer. The release publishes a sha512 beside each archive.
       - name: Setup IPFS Kubo
         if: steps.cache.outputs.cache-hit != 'true'
-        uses: ipfs/download-ipfs-distribution-action@v1
-        with:
-          name: kubo
-          version: v0.33.0
+        env:
+          KUBO_VERSION: v0.33.0
+        run: |
+          set -euo pipefail
+          archive="kubo_${KUBO_VERSION}_linux-amd64.tar.gz"
+          base="https://github.com/ipfs/kubo/releases/download/${KUBO_VERSION}"
+          cd "$RUNNER_TEMP"
+          curl -fsSL --retry 3 -o "$archive" "$base/$archive"
+          curl -fsSL --retry 3 -o "$archive.sha512" "$base/$archive.sha512"
+          sha512sum -c "$archive.sha512"
+          tar -xzf "$archive"
+          sudo install -m 0755 kubo/ipfs /usr/local/bin/ipfs
+          ipfs version
 
       - name: Initialize IPFS
         if: steps.cache.outputs.cache-hit != 'true'

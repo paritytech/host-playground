@@ -4,7 +4,7 @@
  *
  * The host runs the TrUAPI core itself, so the product reaches it over the
  * MessagePort that `@parity/truapi/sandbox` handshakes for. The app gets that
- * transport from `@parity/product-sdk-host`, which pins the same truapi 0.20
+ * transport from `@parity/product-sdk-host`, which pins the same truapi 0.24
  * minor as `@parity/truapi-host`. The two must agree: a mismatch fails every
  * call with `MalformedFrame`.
  */

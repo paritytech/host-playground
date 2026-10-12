@@ -83,12 +83,10 @@ yarn test:e2e         # Playwright against a mock Host
 The E2E suite drives the real cards through `@parity/truapi-host/testing`, so it
 runs without a Host of its own.
 
-It runs against live Paseo. The specs that allocate resources or upload to
-Bulletin sign in as a lite person from `E2E_PERSON_MNEMONICS` (24-word
-mnemonics, one per line) and skip without it. Those runs answer allocations as
-granted and pay Bulletin uploads with each person's existing claim; the weekly
-[E2E allocations](.github/workflows/e2e-allocations.yml) workflow claims for real
-and renews the claims. Set `E2E_ALLOCATIONS=chain` to claim locally.
+It runs against live Paseo for chain reads. Resource allocation is answered as
+granted, so the suite needs no funded account and no personhood. The real
+allocation path is covered against every host by the daily app-e2e suite in
+`paritytech/triangle-e2e`.
 
 ## Deployment
 

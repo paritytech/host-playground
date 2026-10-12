@@ -1,12 +1,12 @@
-import { test, expect, SKIP_REASON } from "./person-fixtures";
+import { test, expect } from "./fixtures";
 import { waitForAppReady, runTest } from "./helpers";
 
 // Matches the allocation cards' own 120s timeout, with room to report.
 const ALLOCATION_WAIT_MS = 150_000;
 
 test.describe("Resource Allocation", () => {
-  test.skip(!!SKIP_REASON, SKIP_REASON);
-  // Under E2E_ALLOCATIONS=chain each allocation is a real claim on People.
+  // The allocation cards wait on the host either way, and the usage half
+  // reads from live Paseo, so give these room.
   test.slow();
 
   test("allocate statement store allowance", async ({ testHost }) => {
