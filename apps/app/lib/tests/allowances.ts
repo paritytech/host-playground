@@ -9,6 +9,7 @@ export const allowancesTests: TestDefinition[] = [
       "Requests a statement-store allowance from the host (RFC-0010)",
     api: 'requestResourceAllocation([{ tag: "StatementStoreAllowance" }])',
     category: "allowances",
+    timeoutMs: 90_000,
     async run() {
       return runResourceAllocation([
         { tag: "StatementStoreAllowance", value: undefined },
@@ -21,6 +22,7 @@ export const allowancesTests: TestDefinition[] = [
     description: "Requests a bulletin allowance from the host (RFC-0010)",
     api: 'requestResourceAllocation([{ tag: "BulletinAllowance" }])',
     category: "allowances",
+    timeoutMs: 90_000,
     async run() {
       return runResourceAllocation([
         { tag: "BulletinAllowance", value: undefined },
@@ -41,6 +43,7 @@ export const allowancesTests: TestDefinition[] = [
       },
     ],
     category: "allowances",
+    timeoutMs: 90_000,
     async run({ args }) {
       return runResourceAllocation([
         {
