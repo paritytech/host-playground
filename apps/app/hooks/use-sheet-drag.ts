@@ -30,6 +30,7 @@ export function useSheetDrag(
 ): SheetDrag {
   const [offset, setOffset] = useState(0);
   const [dragging, setDragging] = useState(false);
+  const [height, setHeight] = useState(0);
   const drag = useRef({ startY: 0, height: 0, offset: 0, active: false });
 
   const onPointerDown = (e: PointerEvent<HTMLDivElement>) => {
@@ -39,6 +40,7 @@ export function useSheetDrag(
       offset: 0,
       active: true,
     };
+    setHeight(drag.current.height);
     setDragging(true);
     e.currentTarget.setPointerCapture(e.pointerId);
   };
@@ -63,7 +65,7 @@ export function useSheetDrag(
   return {
     offset,
     dragging,
-    height: drag.current.height,
+    height,
     handlers: {
       onPointerDown,
       onPointerMove,
