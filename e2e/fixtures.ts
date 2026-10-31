@@ -54,10 +54,9 @@ const bobFixture = createTestHostFixture({
   productUrl: PRODUCT_URL,
   accounts: ["bob"],
   networks: [PASEO, PASEO_BULLETIN, PASEO_PEOPLE],
-  // Must match what the app derives, or the core refuses every product-account
-  // call with PermissionDenied. `getSelfDotNs` maps a local URL to its
-  // host:port, which is what the desktop binds a local product under, so under
-  // Playwright the app calls itself 'localhost:5199'.
+  // The id the core binds the product under; the app reads it back through
+  // `system.getProductContext`, so under Playwright it calls itself
+  // 'localhost:5199', which is what the desktop binds a local product under.
   //
   // The core treats a 'localhost:' id as a dev caller and stops checking the
   // identifier a call names. See gate.spec.ts, which pins the strict path this

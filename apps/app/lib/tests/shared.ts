@@ -154,7 +154,7 @@ export const locale: () => Promise<LocaleProvider> = hostRef(
   getLocaleProvider,
 );
 
-export const SELF_DOTNS = getSelfDotNs();
+export { getSelfDotNs };
 
 // One entry per network: the same contract lives at a different address on each,
 // and a build targets exactly one of them.
@@ -396,7 +396,7 @@ export async function runResourceAllocation(
 /** The product account plus everything needed to sign and dry-run with it. */
 export async function productSigner(log: TestLogger = () => {}) {
   const provider = await accounts();
-  const result = await provider.getProductAccount(SELF_DOTNS, 0);
+  const result = await provider.getProductAccount(await getSelfDotNs(), 0);
   const account = result.match(
     (a) => a,
     (err) => {

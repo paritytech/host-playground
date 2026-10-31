@@ -8,7 +8,7 @@ import {
   PRODUCT_ALIAS_RING_LOCATION,
   PRODUCT_ALIAS_RING_OWNER,
   sdkErrorMessage,
-  SELF_DOTNS,
+  getSelfDotNs,
   success,
 } from "./shared";
 
@@ -22,7 +22,7 @@ export const accountTests: TestDefinition[] = [
       {
         name: "dotNsIdentifier",
         label: "DotNS ID",
-        defaultValue: SELF_DOTNS,
+        defaultValue: getSelfDotNs,
       },
     ],
     category: "accounts",
@@ -81,7 +81,10 @@ export const accountTests: TestDefinition[] = [
       if (!key.ok) return key.result;
       const result = await accountsProvider.getProductAccountAlias(
         key.handle,
-        { productId: SELF_DOTNS, suffix: PRODUCT_ALIAS_CONTEXT_SUFFIX },
+        {
+          productId: await getSelfDotNs(),
+          suffix: PRODUCT_ALIAS_CONTEXT_SUFFIX,
+        },
         PRODUCT_ALIAS_RING_LOCATION,
       );
 
@@ -104,7 +107,7 @@ export const accountTests: TestDefinition[] = [
       {
         name: "dotNsIdentifier",
         label: "DotNS ID",
-        defaultValue: SELF_DOTNS,
+        defaultValue: getSelfDotNs,
       },
     ],
     category: "accounts",

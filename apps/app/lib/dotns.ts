@@ -1,9 +1,8 @@
 /**
- * Derive the DotNS identifier the host bound this product under. The desktop's
- * handleCreateTransaction gate rejects with PermissionDenied when the signer's
- * dotNsIdentifier doesn't match the binding identifier — and that identifier
- * comes from the URL. Native `dot:` containers already expose the exact
- * environment-qualified binding identifier, so they use the hostname as-is.
+ * Derive the DotNS identifier the host bound this product under from the URL,
+ * for when there is no host to ask (see getSelfDotNs). Native `dot:`
+ * containers already expose the exact environment-qualified binding
+ * identifier, so they use the hostname as-is.
  * Web shells use the dotli BASE_DOMAIN rule (packages/config/src/config.ts)
  * inverted: the shell takes the last two segments of the hostname as the
  * registrable root (dot.li, paseo.li, paseoli.dev, ephemeral previews, ...),
@@ -27,6 +26,7 @@
  *      and the desktop binds local URLs under "localhost[:port]")
  *   - anything else                    → fall back to the prod identifier
  */
+import { getTruApi } from "@parity/product-sdk/host";
 import { ACTIVE_CHAIN } from "./types";
 
 export function hostPlaygroundFallback(suffix: string): string {
@@ -71,7 +71,7 @@ export function deriveSelfDotNs(input: {
   return hostPlaygroundFallback(suffix);
 }
 
-export function getSelfDotNs(): string {
+function deriveSelfDotNsFromUrl(): string {
   const suffix = ACTIVE_CHAIN.dotNsSuffix;
   if (typeof window === "undefined") return hostPlaygroundFallback(suffix);
   return deriveSelfDotNs({
@@ -79,4 +79,27 @@ export function getSelfDotNs(): string {
     host: window.location.host,
     protocol: window.location.protocol,
   });
+}
+
+let selfDotNs: Promise<string> | undefined;
+
+/**
+ * The DotNS identifier the host binds this product under, as the host reports
+ * it; derived from the URL only when there is no host. Web shells serve a
+ * subname such as pr109.host-playground from a hashed host (sn--<hash>), which
+ * the URL cannot be mapped back from.
+ */
+export function getSelfDotNs(): Promise<string> {
+  selfDotNs ??= getTruApi().then(async (truApi) => {
+    if (!truApi) return deriveSelfDotNsFromUrl();
+    const context = await truApi.system.getProductContext();
+    if (context.isErr()) {
+      selfDotNs = undefined;
+      throw new Error(
+        `system.getProductContext failed: ${JSON.stringify(context.error)}`,
+      );
+    }
+    return context.value.productId;
+  });
+  return selfDotNs;
 }
