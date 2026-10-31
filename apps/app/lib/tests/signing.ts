@@ -10,7 +10,7 @@ import {
   prepareSimpleStoreWrite,
   sdkErrorMessage,
   SIMPLE_STORE_ADDRESS,
-  SELF_DOTNS,
+  getSelfDotNs,
   submitPgasWrite,
   success,
   watchTx,
@@ -95,7 +95,7 @@ export const signingTests: TestDefinition[] = [
       {
         name: "dotNsIdentifier",
         label: "DotNS ID",
-        defaultValue: SELF_DOTNS,
+        defaultValue: getSelfDotNs,
       },
       {
         name: "message",

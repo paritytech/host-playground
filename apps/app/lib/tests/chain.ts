@@ -11,7 +11,7 @@ import {
   getClient,
   productSigner,
   sdkErrorMessage,
-  SELF_DOTNS,
+  getSelfDotNs,
   success,
 } from "./shared";
 
@@ -139,7 +139,7 @@ export const chainTests: TestDefinition[] = [
           // the active chain's prefix if it differs.
           const accountsProvider = await accounts();
           const result = await accountsProvider.getProductAccount(
-            SELF_DOTNS,
+            await getSelfDotNs(),
             0,
           );
           return result.match(
@@ -153,10 +153,11 @@ export const chainTests: TestDefinition[] = [
     async run({ chain, log, args }) {
       let address = args.address.trim();
       if (!address) {
+        const selfDotNs = await getSelfDotNs();
         const product = await productSigner(log);
-        if (!product) return error(`No product account for "${SELF_DOTNS}"`);
+        if (!product) return error(`No product account for "${selfDotNs}"`);
         address = AccountId(chain.ss58Prefix).dec(product.account.publicKey);
-        log(`Resolved product account ${SELF_DOTNS}/0 → ${address}`);
+        log(`Resolved product account ${selfDotNs}/0 → ${address}`);
       }
       // Stays on getClient (genesis-keyed): app.chain is descriptor-based and
       // ChainConfig carries no PAPI descriptor, so there's no clean mapping.

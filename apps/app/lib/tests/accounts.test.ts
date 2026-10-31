@@ -7,7 +7,6 @@ import {
   PRODUCT_ALIAS_CONTEXT_SUFFIX,
   PRODUCT_ALIAS_RING_LOCATION,
   PRODUCT_ALIAS_RING_OWNER,
-  SELF_DOTNS,
 } from "./shared";
 
 vi.mock("./shared", () => ({
@@ -25,7 +24,7 @@ vi.mock("./shared", () => ({
   },
   PRODUCT_ALIAS_RING_OWNER: "peopl.dot",
   sdkErrorMessage: (value: unknown) => String(value),
-  SELF_DOTNS: "host-playground.dot",
+  getSelfDotNs: async () => "host-playground.dot",
   success: (message: string, details?: unknown) => ({
     success: true,
     message,
@@ -80,7 +79,7 @@ describe("accounts-provider-alias", () => {
     expect(getProductAccountAlias).toHaveBeenCalledWith(
       handle,
       {
-        productId: SELF_DOTNS,
+        productId: "host-playground.dot",
         suffix: PRODUCT_ALIAS_CONTEXT_SUFFIX,
       },
       PRODUCT_ALIAS_RING_LOCATION,

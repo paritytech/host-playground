@@ -18,7 +18,7 @@ import {
   productSigner,
   readSimpleStore,
   scaleBytes,
-  SELF_DOTNS,
+  getSelfDotNs,
   sdkErrorMessage,
   simpleStore,
   SIMPLE_STORE_ADDRESS,
@@ -267,7 +267,10 @@ export const contractTests: TestDefinition[] = [
             provider
               .createRingVRFProof(
                 key.handle,
-                { productId: SELF_DOTNS, suffix: PRODUCT_ALIAS_CONTEXT_SUFFIX },
+                {
+                  productId: await getSelfDotNs(),
+                  suffix: PRODUCT_ALIAS_CONTEXT_SUFFIX,
+                },
                 ring,
                 message,
               )

@@ -26,7 +26,7 @@ yarn install --immutable
 yarn dev                # next dev apps/app
 yarn build              # next build apps/app + vite worker build
 yarn typecheck          # tsc --noEmit for the repo root and apps/app
-yarn lint               # next lint apps/app
+yarn lint               # eslint apps/app
 yarn test               # vitest run
 yarn test:e2e           # playwright
 yarn format             # prettier --write

@@ -1,18 +1,24 @@
 "use client";
 
-import { Suspense, useEffect, useState } from "react";
+import { Suspense, useSyncExternalStore } from "react";
 import { useSearchParams } from "next/navigation";
 import Link from "next/link";
 
+const noSubscription = () => () => {};
+
 function PageContent() {
   const searchParams = useSearchParams();
-  const [fragment, setFragment] = useState<string>("");
-  const [fullUrl, setFullUrl] = useState<string>("");
-
-  useEffect(() => {
-    setFullUrl(window.location.href);
-    setFragment(window.location.hash);
-  }, []);
+  // The server snapshot keeps the prerendered HTML and the first client render matching.
+  const fullUrl = useSyncExternalStore(
+    noSubscription,
+    () => window.location.href,
+    () => "",
+  );
+  const fragment = useSyncExternalStore(
+    noSubscription,
+    () => window.location.hash,
+    () => "",
+  );
 
   const params = Array.from(searchParams.entries());
   const fragmentParts = fragment.replace("#", "").split("&").filter(Boolean);
