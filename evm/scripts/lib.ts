@@ -1,5 +1,5 @@
 import { Binary, createClient, type PolkadotClient } from "polkadot-api";
-import { getPolkadotSigner } from "polkadot-api/signer";
+import { getTxCreator } from "polkadot-api/tx-creator";
 import { getWsProvider } from "polkadot-api/ws";
 import { sr25519CreateDerive } from "@polkadot-labs/hdkd";
 import {
@@ -69,7 +69,7 @@ export function getDeployer(config: NetworkConfig) {
   return {
     suri,
     address: ss58Address(keypair.publicKey, config.ss58Prefix),
-    signer: getPolkadotSigner(keypair.publicKey, "Sr25519", keypair.sign),
+    signer: getTxCreator(keypair.publicKey, "Sr25519", keypair.sign),
   };
 }
 
@@ -222,7 +222,7 @@ export async function deploy(
         code,
         data,
         salt: undefined,
-      }).signAndSubmit(deployer.signer);
+      }).createAndSubmit(deployer.signer);
 
       if (!result.ok) {
         throw new Error(`extrinsic failed: ${JSON.stringify(result.dispatchError)}`);
