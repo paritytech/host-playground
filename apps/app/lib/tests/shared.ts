@@ -24,8 +24,16 @@ import {
   type ThemeProvider,
 } from "@parity/product-sdk/host";
 import { paseo_individuality } from "@parity/product-sdk-descriptors/paseo-individuality";
-import { AccountId, createClient, type PolkadotClient } from "polkadot-api";
+import {
+  AccountId,
+  createClient,
+  type PolkadotClient,
+  type Transaction,
+  type TxCreator,
+  type TxEvent,
+} from "polkadot-api";
 import { toHex } from "polkadot-api/utils";
+import type { Observable } from "rxjs";
 import { createInkSdk } from "@polkadot-api/sdk-ink";
 import { contracts } from "@polkadot-api/descriptors";
 import deploymentJson from "@root/evm/deployment.json";
@@ -534,15 +542,23 @@ export async function prepareSimpleStoreWrite(
   };
 }
 
-interface TxEvent {
-  type: string;
-  found?: boolean;
-  ok?: boolean;
-  txHash?: string;
+/**
+ * Signs and submits a pallet-revive write paid from the product account's PGAS
+ * allowance. Supplying `AsPgas` (None) makes the host signer use the extension
+ * pipeline that declares it, the only one with the PGAS fee route; without it
+ * the transaction goes out on pipeline 0 and fails with `Invalid::Payment`.
+ */
+export function submitPgasWrite(
+  tx: Transaction,
+  signer: TxCreator,
+): Observable<TxEvent> {
+  return tx.createSubmitAndWatch(signer, {
+    customSignedExtensions: { AsPgas: { value: undefined } },
+  });
 }
 
 /**
- * Awaits a signed transaction, logging each event as it arrives.
+ * Awaits a submitted transaction, logging each event as it arrives.
  *
  * Resolves at best-block inclusion by default, which is where a contract write
  * becomes observable; pass `"finalized"` to wait for finality instead. A failed
@@ -550,15 +566,14 @@ interface TxEvent {
  * settling (papi completes silently when the host drops the subscription).
  */
 export function watchTx(
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  tx: { subscribe(observer: any): unknown },
+  tx: Observable<TxEvent>,
   log: TestLogger,
   until: "best" | "finalized" = "best",
 ): Promise<TxEvent> {
   return new Promise((resolve, reject) => {
     let settled = false;
     tx.subscribe({
-      next: (event: TxEvent) => {
+      next: (event) => {
         log(`Event: ${event.type}`);
         if (event.type === "finalized" && !event.ok) {
           settled = true;
@@ -567,7 +582,7 @@ export function watchTx(
         }
         const done =
           until === "best"
-            ? event.type === "txBestBlocksState" && event.found
+            ? event.type === "inBestBlock"
             : event.type === "finalized";
         if (done) {
           settled = true;

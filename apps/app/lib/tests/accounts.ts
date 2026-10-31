@@ -98,7 +98,7 @@ export const accountTests: TestDefinition[] = [
   {
     id: "accounts-provider-product-signer",
     name: "Product Account Signer",
-    description: "Creates a PolkadotSigner for a product account",
+    description: "Creates a PAPI TxCreator for a product account",
     api: "accountsProvider.getProductAccountSigner(account)",
     args: [
       {

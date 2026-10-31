@@ -22,6 +22,7 @@ import {
   sdkErrorMessage,
   simpleStore,
   SIMPLE_STORE_ADDRESS,
+  submitPgasWrite,
   success,
   toHexString,
   watchTx,
@@ -51,7 +52,7 @@ export const contractTests: TestDefinition[] = [
     name: "Contract: Store Value",
     description:
       "Calls storeValue() on the SimpleStore contract (write operation)",
-    api: "contract.send('storeValue', { origin, data: { _value } }).signSubmitAndWatch(signer)",
+    api: "contract.send('storeValue', { origin, data: { _value } }).waited → createSubmitAndWatch(signer, { customSignedExtensions: { AsPgas } })",
     timeoutMs: 90_000,
     args: [
       {
@@ -76,7 +77,10 @@ export const contractTests: TestDefinition[] = [
       if (!dryRun.success) return error("Dry-run failed", dryRun.value);
 
       log("Signing and submitting...");
-      await watchTx(dryRun.value.send().signSubmitAndWatch(signer), log);
+      await watchTx(
+        submitPgasWrite(await dryRun.value.send().waited, signer),
+        log,
+      );
 
       return success(`Stored value: ${value}`, {
         value: String(value),
@@ -124,7 +128,7 @@ export const contractTests: TestDefinition[] = [
     name: "Contract: Deposit",
     description:
       "Calls deposit() on the SimpleStore contract (payable write operation)",
-    api: "contract.send('deposit', { origin, value: amount }).signSubmitAndWatch(signer)",
+    api: "contract.send('deposit', { origin, value: amount }).waited → createSubmitAndWatch(signer, { customSignedExtensions: { AsPgas } })",
     timeoutMs: 90_000,
     args: [
       {
@@ -147,7 +151,10 @@ export const contractTests: TestDefinition[] = [
       if (!dryRun.success) return error("Dry-run failed", dryRun.value);
 
       log("Signing and submitting...");
-      await watchTx(dryRun.value.send().signSubmitAndWatch(signer), log);
+      await watchTx(
+        submitPgasWrite(await dryRun.value.send().waited, signer),
+        log,
+      );
 
       return success(`Deposited ${args.amount} PAS`, {
         planck: String(planck),
@@ -160,7 +167,7 @@ export const contractTests: TestDefinition[] = [
     name: "Contract: Withdraw",
     description:
       "Calls withdraw() on the SimpleStore contract (write operation)",
-    api: "contract.send('withdraw', { origin, data: { _amount } }).signSubmitAndWatch(signer)",
+    api: "contract.send('withdraw', { origin, data: { _amount } }).waited → createSubmitAndWatch(signer, { customSignedExtensions: { AsPgas } })",
     timeoutMs: 90_000,
     args: [
       {
@@ -186,7 +193,10 @@ export const contractTests: TestDefinition[] = [
       if (!dryRun.success) return error("Dry-run failed", dryRun.value);
 
       log("Signing and submitting...");
-      await watchTx(dryRun.value.send().signSubmitAndWatch(signer), log);
+      await watchTx(
+        submitPgasWrite(await dryRun.value.send().waited, signer),
+        log,
+      );
 
       return success(`Withdrew ${args.amount} PAS`, {
         wei: String(wei),
@@ -336,8 +346,11 @@ export const contractTests: TestDefinition[] = [
 
         log("Signing and submitting...");
         await withTrace(
-          "signSubmitAndWatch",
-          watchTx(dryRun.value.send().signSubmitAndWatch(signer), log),
+          "createSubmitAndWatch",
+          watchTx(
+            submitPgasWrite(await dryRun.value.send().waited, signer),
+            log,
+          ),
         );
 
         return success(`Stored value ${value} with personhood proof`, {

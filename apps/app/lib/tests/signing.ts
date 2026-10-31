@@ -11,6 +11,7 @@ import {
   sdkErrorMessage,
   SIMPLE_STORE_ADDRESS,
   SELF_DOTNS,
+  submitPgasWrite,
   success,
   watchTx,
 } from "./shared";
@@ -89,7 +90,7 @@ export const signingTests: TestDefinition[] = [
     name: "Create Transaction with Product Account",
     description:
       "Signs a transaction offline via the product account signer (mode = createTransaction). Returns the signed bytes without broadcasting.",
-    api: "tx.sign(accountsProvider.getProductAccountSigner(account))",
+    api: "tx.create(accountsProvider.getProductAccountSigner(account))",
     args: [
       {
         name: "dotNsIdentifier",
@@ -134,7 +135,7 @@ export const signingTests: TestDefinition[] = [
 
       log("Signing (createTransaction mode)...");
       try {
-        const signedBytes = await tx.sign(signer);
+        const signedBytes = await tx.create(signer);
         const signedHex = toHex(signedBytes);
         return success(`Transaction signed (${signedBytes.length} bytes)`, {
           preview: `${signedHex.slice(0, 80)}...`,
@@ -155,7 +156,7 @@ export const signingTests: TestDefinition[] = [
     name: "Sign & Submit Batch (2 contract writes)",
     description:
       "Batches two storeValue calls on the SimpleStore contract using Utility.batch_all, signs via the createTransaction product signer, and submits atomically. All calls must be pallet-revive — mixing a System.remark in here makes the batch fail because the AsPgas fee route only applies to revive calls.",
-    api: "api.tx.Utility.batch_all([storeValue, storeValue]).signSubmitAndWatch(signer)",
+    api: "api.tx.Utility.batch_all([storeValue, storeValue]).createSubmitAndWatch(signer, { customSignedExtensions: { AsPgas } })",
     category: "signing",
     // Waits for finality, which runs well behind block inclusion on Paseo.
     timeoutMs: 120_000,
@@ -190,7 +191,7 @@ export const signingTests: TestDefinition[] = [
       });
 
       const finalized = await watchTx(
-        batchTx.signSubmitAndWatch(signer),
+        submitPgasWrite(batchTx, signer),
         log,
         "finalized",
       );
