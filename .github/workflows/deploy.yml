@@ -159,11 +159,11 @@ jobs:
           # a stale one, and is what the CLI and the product manifest must both
           # name, spelled identically.
           #
-          # Pull requests get a per-PR sandbox label. Keying it on the PR number
-          # rather than the branch name keeps it stable across renames and force
-          # pushes, and keeps the length fixed.
+          # Pull requests deploy as a subname of the product, prNN.host-playground,
+          # owned by the same deployer as the parent. DotNS takes a trailing
+          # digit run of exactly 2 digits, hence the zero-padding.
           if [ "${{ github.event_name }}" == "pull_request" ]; then
-            LABEL="host-playground-pr${PR_NUMBER}-sandbox00"
+            LABEL="$(printf 'pr%02d' "$PR_NUMBER").host-playground"
           else
             LABEL="host-playground"
           fi
@@ -237,12 +237,12 @@ jobs:
           NETWORK=$(jq -r .network .deploy-result/${{ matrix.target.env }}.json)
           SHELL_HOST=$(jq -r .shell .deploy-result/${{ matrix.target.env }}.json)
           CID=$(jq -r .cid .deploy-result/${{ matrix.target.env }}.json)
-          URL="https://${LABEL}.${SHELL_HOST}?network=${NETWORK}&chainBackend=rpc-gateway"
+          # The web shells serve a name under their path, not as a subdomain.
+          URL="https://${SHELL_HOST}/${LABEL}?network=${NETWORK}&chainBackend=rpc-gateway"
           {
             echo "### ${DOMAIN} — ${{ matrix.target.env }}"
             echo ""
             echo "Browser &nbsp; ${URL}"
-            echo "Desktop &nbsp; \`${DOMAIN}\`"
             echo "CID &nbsp; \`${CID}\`"
           } >> $GITHUB_STEP_SUMMARY
 
@@ -283,12 +283,11 @@ jobs:
             const lines = [
               `**${label}** · [logs](${runUrl})`,
               '',
-              '| Network | Desktop | Web |',
-              '| :--- | :---: | :---: |',
+              '| Network | Browser |',
+              '| :--- | :--- |',
             ];
-            for (const { env, domain, label, shell } of results) {
-              const url = `https://${label}.${shell}`;
-              lines.push(`| ${ENV_NAME[env] ?? env} | \`${domain}\` | ${url} |`);
+            for (const { env, label, shell } of results) {
+              lines.push(`| ${ENV_NAME[env] ?? env} | https://${shell}/${label} |`);
             }
 
             const body = lines.join('\n');
