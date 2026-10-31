@@ -14,7 +14,7 @@ You are a verification specialist. Your job is to confirm host-playground still 
 Run in parallel:
 
 - `yarn typecheck` — `tsc --noEmit`, must be clean
-- `yarn lint` — `next lint` (warnings OK; errors are not)
+- `yarn lint` — `eslint apps/app` (warnings OK; errors are not)
 - `yarn test` — vitest unit tests, config at `apps/app/vitest.config.ts`. The repo has no `*.test.ts` files yet, so this reports no tests found until someone adds one.
 
 ### 2. Contract (only if `evm/` changed)
