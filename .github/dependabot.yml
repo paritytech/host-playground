@@ -1,16 +1,19 @@
 version: 2
 updates:
-  # One PR a day carrying every @parity package update; merge-dependabot.yml
-  # merges it once Tests passes.
+  # Daily, two grouped PRs: every @parity package (merged by
+  # merge-dependabot.yml once Tests passes) and every other dependency.
   - package-ecosystem: npm
     directory: /
     schedule:
       interval: daily
-    allow:
-      - dependency-name: "@parity/*"
     groups:
       parity:
         patterns:
+          - "@parity/*"
+      other:
+        patterns:
+          - "*"
+        exclude-patterns:
           - "@parity/*"
     commit-message:
       prefix: chore
