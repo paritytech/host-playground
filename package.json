@@ -33,7 +33,7 @@
     "@radix-ui/react-tooltip": "^1.4.1",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
-    "lucide-react": "^1.63.0",
+    "lucide-react": "^1.64.0",
     "next": "16.4.3",
     "polkadot-api": "^3.3.0",
     "react": "^19.3.1",
