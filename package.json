@@ -23,7 +23,7 @@
     "test:e2e:ui": "playwright test --config e2e/playwright.config.ts --ui"
   },
   "dependencies": {
-    "@parity/product-sdk": "0.42.0",
+    "@parity/product-sdk": "0.43.0",
     "@parity/product-sdk-descriptors": "0.14.0",
     "@polkadot-api/descriptors": "file:.papi/descriptors",
     "@polkadot-api/ink-contracts": "^0.7.2",
@@ -42,7 +42,7 @@
     "tailwind-merge": "^3.7.0"
   },
   "devDependencies": {
-    "@parity/truapi-host": "0.27.0",
+    "@parity/truapi-host": "0.28.0",
     "@playwright/test": "^1.64.1",
     "@tailwindcss/postcss": "^4",
     "@typescript/native": "npm:typescript@^7",
