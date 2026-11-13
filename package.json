@@ -42,7 +42,7 @@
     "tailwind-merge": "^3.7.0"
   },
   "devDependencies": {
-    "@parity/truapi-host": "0.29.0",
+    "@parity/truapi-host": "0.30.0",
     "@playwright/test": "^1.65.0",
     "@tailwindcss/postcss": "^4",
     "@typescript/native": "npm:typescript@^7",

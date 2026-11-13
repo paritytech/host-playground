@@ -1096,19 +1096,28 @@
   resolved "https://registry.yarnpkg.com/@parity/result/-/result-0.2.0.tgz#cc9ea4cf876af7e06b504f66a3aabbfa408d7e22"
   integrity sha512-QCrhYPeVVaPIjnlsfBIk5GHPRqfuCjy6MjqKkoCP4kwS1LIo5YtJCSFeB5mGtvMG7hiaRNl4lHQcd5YqDfJ1tQ==
 
-"@parity/truapi-host@0.29.0":
-  version "0.29.0"
-  resolved "https://registry.yarnpkg.com/@parity/truapi-host/-/truapi-host-0.29.0.tgz#e5b999ecee09eb175eec2a2954dc814941cfa861"
-  integrity sha512-k7riFnZeWR0MPLBVQLi4GAnW+r0MdW3Ca/uGy5r4mlRXij8ucZ2gXDRg9xGADdelAsuzjj2hjFCF3WALbPXXWg==
+"@parity/truapi-host@0.30.0":
+  version "0.30.0"
+  resolved "https://registry.yarnpkg.com/@parity/truapi-host/-/truapi-host-0.30.0.tgz#4b243dfe4cda45f1a4ac29343f49210750dbf068"
+  integrity sha512-aix15d7VnyVoU46XcvwqQEIjcRG9mGG+JvgATbnKDhVJNOr/PqxB5eLUMja+YQCpE9HK+8/ef5wKDhgOjrtnew==
   dependencies:
     "@noble/hashes" "^2.2.0"
-    "@parity/truapi" "^0.29.0"
+    "@parity/truapi" "^0.30.0"
     neverthrow "^8.2.0"
 
 "@parity/truapi@^0.29.0":
   version "0.29.0"
   resolved "https://registry.yarnpkg.com/@parity/truapi/-/truapi-0.29.0.tgz#db88fd2a0632cb053ddf89baa81403a366dca387"
   integrity sha512-+AVyOygAcewybCHYZQDhxLzf6qcL4BRusHLMPE8UPJBMWDh5xzs9iU6YVUrEm1OvSHh/Oahk+vU8jzc3IOQk8Q==
+  dependencies:
+    "@noble/hashes" "^2.2.0"
+    neverthrow "^8.2.0"
+    scale-ts "^1.6.1"
+
+"@parity/truapi@^0.30.0":
+  version "0.30.0"
+  resolved "https://registry.yarnpkg.com/@parity/truapi/-/truapi-0.30.0.tgz#0872fb431b05801bf259efb404e7a70ac97f9262"
+  integrity sha512-th4puHU2z0LYwkLBEXJxbsLgZhBASSWN7/NKfGdz1T15b+Z7GfrPq9J62QfJxrkpRvNDYQGF7QGbKJ1m7ZsOkQ==
   dependencies:
     "@noble/hashes" "^2.2.0"
     neverthrow "^8.2.0"
