@@ -43,7 +43,7 @@ jobs:
             {
               "env": "preview",
               "display-name": "Previewnet",
-              "genesis": "0xc27c8bf3f13f96dc2130cd2b0a3debe57618fd02521ecc1902bd7dd4ed83d2fe",
+              "genesis": "0xf7d88e2e343e911c9a5c1a7e6ed53d06ef4cd73276fc3afff87062a1f6f90514",
               "suffix": ".testnet",
               "shell": "testnet.li",
               "evm-network": "previewnet"

@@ -6,11 +6,11 @@
   "type": "module",
   "scripts": {
     "dev": "next dev apps/app",
-    "dev:previewnet": "NEXT_PUBLIC_NETWORK_GENESIS_HASH=0xc27c8bf3f13f96dc2130cd2b0a3debe57618fd02521ecc1902bd7dd4ed83d2fe next dev apps/app",
+    "dev:previewnet": "NEXT_PUBLIC_NETWORK_GENESIS_HASH=0xf7d88e2e343e911c9a5c1a7e6ed53d06ef4cd73276fc3afff87062a1f6f90514 next dev apps/app",
     "dev:paseo": "NEXT_PUBLIC_NETWORK_GENESIS_HASH=0x4349b00e54897e21196fd331015fc5be0f14e118beb0375ed2bb1793737bb57a next dev apps/app",
     "start": "npx serve apps/app/out",
     "build": "next build apps/app && vite build --config apps/worker/vite.config.ts",
-    "build:previewnet": "NEXT_PUBLIC_NETWORK_GENESIS_HASH=0xc27c8bf3f13f96dc2130cd2b0a3debe57618fd02521ecc1902bd7dd4ed83d2fe next build apps/app && vite build --config apps/worker/vite.config.ts",
+    "build:previewnet": "NEXT_PUBLIC_NETWORK_GENESIS_HASH=0xf7d88e2e343e911c9a5c1a7e6ed53d06ef4cd73276fc3afff87062a1f6f90514 next build apps/app && vite build --config apps/worker/vite.config.ts",
     "build:paseo": "NEXT_PUBLIC_NETWORK_GENESIS_HASH=0x4349b00e54897e21196fd331015fc5be0f14e118beb0375ed2bb1793737bb57a next build apps/app && vite build --config apps/worker/vite.config.ts",
     "lint": "eslint apps/app",
     "lint:fix": "eslint apps/app --fix",
