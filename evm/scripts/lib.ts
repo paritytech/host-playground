@@ -42,7 +42,7 @@ export const NETWORKS: Record<NetworkKey, NetworkConfig> = {
     ethRpc: "https://previewnet.substrate.dev/eth-rpc",
     wsUrl: "wss://previewnet.substrate.dev/asset-hub",
     genesis:
-      "0xc27c8bf3f13f96dc2130cd2b0a3debe57618fd02521ecc1902bd7dd4ed83d2fe",
+      "0xf7d88e2e343e911c9a5c1a7e6ed53d06ef4cd73276fc3afff87062a1f6f90514",
     ss58Prefix: 0,
     faucet: "https://faucet.polkadot.io/",
   },

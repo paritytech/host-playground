@@ -112,17 +112,17 @@ export const NETWORKS = {
     name: "Previewnet Hub",
     network: "Testnet",
     genesis:
-      "0xc27c8bf3f13f96dc2130cd2b0a3debe57618fd02521ecc1902bd7dd4ed83d2fe" as const,
+      "0xf7d88e2e343e911c9a5c1a7e6ed53d06ef4cd73276fc3afff87062a1f6f90514" as const,
     wsUrl: "wss://previewnet.substrate.dev/asset-hub",
     ss58Prefix: 0,
     dotNsSuffix: "testnet",
     peopleWsUrl: "wss://previewnet.substrate.dev/people",
     peopleGenesis:
-      "0xf720c28fe3315e67fa799a616fc59abad47dd257b1a336af6538435844d35218" as const,
+      "0x732abb4e3052154ebd9201a375b0aacf2d1fe7015700235c0a8b30d44b401c19" as const,
     personhoodRingOwner: "peopl.dot",
     bulletinWsUrl: "wss://previewnet.substrate.dev/bulletin",
     bulletinGenesis:
-      "0xa081192b90c1f6a3f8e9ce7b2a8246f41af805c66456c84e05fd97c2b3502425" as const,
+      "0x1c0a1c27946ca0e7def02955315633db590bc38b0c537936e423efeb6c554876" as const,
   },
 } as const;
 
